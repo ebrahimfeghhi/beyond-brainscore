@@ -1,13 +1,13 @@
 # What is brainscore 
 
-Code for (insert our paper title here).
+Code for "What are large language models mapping to in the brain? A case against over-reliance on brain score.
 
 ## Environment 
 
-List required packages here. 
+Required packages can be installed using the environment.yaml file. 
 
-Our code relies on an edited version of himalaya. 
-To use this code, clone our custom himalaya repo 
+Our code relies on an edited version of himalaya and LMMS. 
+To use this code, clone our custom himalaya and LMMS repo 
 and pip install. 
 
 ## Overview
@@ -24,18 +24,20 @@ run_himalayas (located near the end of helper_funcs.py) to get the
 regression results.
 
 All results are saved to results_all/results_dataset, where dataset 
-is specified by the user. 
+is specified by the user. The three possible datasets which 
+were used in the paper, are pereira, fedorenko, and blank.
 
 ### Feature construction 
 We construct all our features in the generate_activations folder. 
 
-LLM.py contains the code used to generate features from LLMs for Blank,
-Fedoronko, and Pereira.
+LLM.py contains the code used to generate features from LLMs for all
+three neural datasets. 
 
 LMMS_generate.py contains the code we used to generate sense embeddings 
 using LMMS (pereira only). 
 
-The code for syntactic embeddings will be added soon.
+Syntax.py contians the code used to generate syntactic embeddings. We followed
+a procedure that was highly similar to Caucheteux et. al (2021). (Periera only).
 
 ### Generating figures
 
