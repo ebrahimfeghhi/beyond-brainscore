@@ -12,14 +12,14 @@
 N=10
 start=0
 model='gpt2-xl'
-exp_arr=("384" "243")
+exp_arr=("243" "384")
 
 source ~/miniconda3/etc/profile.d/conda.sh
 
 # Store the current directory
-CURRENT_DIR=$(pwd)
+HOME_DIR="/home2/ebrahim/beyond-brainscore/"
 
-ENV_NAME="llama" 
+ENV_NAME="llm_brain" 
 conda activate "$ENV_NAME"
 
 for ((i=start; i<=N; i++))
@@ -30,9 +30,28 @@ do
     for exp in "${exp_arr[@]}"
     do
         echo "Running exp $exp"
-        python call_banded_reg.py --model gpt2-xl-ut_bil-lang_POSWN_"m$i" --exp "$exp" --untrained --y_hat --f_list "[1600,4,1]" --niter 1000 --device 1
-        python call_banded_reg.py --model gpt2-xl-ut_bil-lang_WN_"m$i" --exp "$exp" --untrained --y_hat --f_list "[1600,1]" --niter 1000 --device 1
-        python call_banded_reg.py --model gpt2-xl-ut_bil-lang_POS_"m$i" --exp "$exp" --untrained --y_hat --f_list "[1600,4]" --niter 1000 --device 1
+
+        cd $HOME_DIR
+
+        # sum pooled, where the best layer was selected using our pooled out of sample r2 procedure (clip 0 values, take mean across lang voxels)
+        python call_banded_reg.py --model gpt2-xl-ut-sp_bil-lang_POSWN_"m$i" --exp "$exp" --untrained --y_hat --f_list "[1600,4,1]" --niter 1000 --device 2
+        python call_banded_reg.py --model gpt2-xl-ut-sp_bil-lang_WN_"m$i" --exp "$exp" --untrained --y_hat --f_list "[1600,1]" --niter 1000 --device 2
+        python call_banded_reg.py --model gpt2-xl-ut-sp_bil-lang_POS_"m$i" --exp "$exp" --untrained --y_hat --f_list "[1600,4]" --niter 1000 --device 2
+        
+        # same as first three lines, but now last token method
+        python call_banded_reg.py --model gpt2-xl-ut_bil-lang_POSWN_"m$i" --exp "$exp" --untrained --y_hat --f_list "[1600,4,1]" --niter 1000 --device 2
+        python call_banded_reg.py --model gpt2-xl-ut_bil-lang_WN_"m$i" --exp "$exp" --untrained --y_hat --f_list "[1600,1]" --niter 1000 --device 2
+        python call_banded_reg.py --model gpt2-xl-ut_bil-lang_POS_"m$i" --exp "$exp" --untrained --y_hat --f_list "[1600,4]" --niter 1000 --device 2
+
+        # sum pooled, but where the best layer was selected using schrimpf pearson correlation procedure (mean r values across folds, take median across lang voxels)
+        python call_banded_reg.py --model gpt2-xl-ut-sp_bil-lang-pearson_POSWN_"m$i" --exp "$exp" --untrained --y_hat --f_list "[1600,4,1]" --niter 1000 --device 2
+        python call_banded_reg.py --model gpt2-xl-ut-sp_bil-lang-pearson_WN_"m$i" --exp "$exp" --untrained --y_hat --f_list "[1600,1]" --niter 1000 --device 2
+        python call_banded_reg.py --model gpt2-xl-ut-sp_bil-lang-pearson_POS_"m$i" --exp "$exp" --untrained --y_hat --f_list "[1600,4]" --niter 1000 --device 2
+        
+        # same as above three lines but for last token method 
+        python call_banded_reg.py --model gpt2-xl-ut_bil-lang-pearson_POSWN_"m$i" --exp "$exp" --untrained --y_hat --f_list "[1600,4,1]" --niter 1000 --device 2
+        python call_banded_reg.py --model gpt2-xl-ut_bil-lang-pearson_WN_"m$i" --exp "$exp" --untrained --y_hat --f_list "[1600,1]" --niter 1000 --device 2
+        python call_banded_reg.py --model gpt2-xl-ut_bil-lang-pearson_POS_"m$i" --exp "$exp" --untrained --y_hat --f_list "[1600,4]" --niter 1000 --device 2
     done
    
     echo "Iteration $i complete"

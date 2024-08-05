@@ -12,14 +12,14 @@
 N=10
 start=0
 model='gpt2-xl'
-exp_arr=("384" "243")
+exp_arr=("243" "384")
 
 source ~/miniconda3/etc/profile.d/conda.sh
 
 # Store the current directory
-CURRENT_DIR=$(pwd)
+HOME_DIR="/home2/ebrahim/beyond-brainscore/"
 
-ENV_NAME="llama" 
+ENV_NAME="llm_brain" 
 conda activate "$ENV_NAME"
 
 for ((i=start; i<=N; i++))
@@ -28,7 +28,7 @@ do
 
     # Navigate to the 'activations' directory to run 'run_LLM.py'
 
-    cd $CURRENT_DIR/generate_activations
+    cd $HOME_DIR/generate_activations
     python LLM.py --untrained --model "$model"
 
     # Loop through exp_arr
@@ -36,13 +36,17 @@ do
     do
         echo "Running exp $exp"
         # Navigate back to the original directory
-        cd $CURRENT_DIR
+        cd $HOME_DIR
+
         # run regression for each layer of gpt2-large-untrained (sum pooled)
-        #python call_banded_reg.py --model gpt2-xl-untrained-sp --exp both --save_new --untrained
-        python call_banded_reg.py --model gpt2-xl-untrained --exp "$exp" --save_new --untrained --y_hat --device 1
+        python call_banded_reg.py --model "$model"-untrained-sp --exp "$exp" --save_new --untrained --y_hat --device 2
+        # also run for last token 
+        python call_banded_reg.py --model "$model"-untrained --exp "$exp" --save_new --untrained --y_hat --device 2
         
-        cd $CURRENT_DIR/misc_code
-        python clean_untrained.py --seed $i --exp "$exp"
+        cd $HOME_DIR/misc_code
+        python clean_untrained.py --model "$model" --seed $i --exp "$exp" --sp # clean sum pooled untrained
+        python clean_untrained.py --model "$model" --seed $i --exp "$exp"
+        
         
     done
    

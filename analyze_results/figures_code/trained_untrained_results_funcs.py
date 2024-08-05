@@ -17,7 +17,7 @@ def max_across_nested(df, updated_model_name):
         r2 value for each voxel, as well as the row_indices used to index the original df. 
     '''
     
-    max_indices = df.groupby(['voxel_id', 'Network', 'subjects'])['r2'].idxmax()
+    max_indices = df.groupby(['voxel_id', 'Network', 'subjects'])['perf'].idxmax()
     
     # Use the indices to extract corresponding rows
     max_rows = df.loc[max_indices]

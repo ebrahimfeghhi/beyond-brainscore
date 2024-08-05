@@ -7,8 +7,6 @@ import sys
 from sklearn.metrics import r2_score, mean_squared_error
 from helper_funcs import split_by_exp_passage_num, run_himalayas, preprocess_himalayas
 from scipy import stats
-#from sklearn.linear_model import Ridge
-from stats_helper import compute_corr
 from sklearn.metrics import mean_squared_error
 import os
 import torch
@@ -34,8 +32,8 @@ parser.add_argument("--niter", type=int, required=False, default=1, help="Number
 parser.add_argument("--dataset", type=str, help="pereira, federonko, or blank", default='pereira')
 parser.add_argument("--intercept", action='store_true', help="save intercept model only")
 parser.add_argument("--save_new", action='store_true', help="save under new name")
-parser.add_argument("--exp", type=str, default='both', help='384, 243, or both, for pereira only')
-parser.add_argument("--data_folder", type=str, default='data_processed', help='where to look for data')
+parser.add_argument("--exp", type=str, default='384', help='384, 243, or both, for pereira only')
+parser.add_argument("--data_folder", type=str, default='/data/LLMs/data_processed', help='where to look for data')
 parser.add_argument("--device", type=int, default=2, help="-1 for cpu, otherwise specify gpu device")
 parser.add_argument("--untrained", action='store_true', default=False, help="If true, save to untrained folder")
 parser.add_argument("--y_hat", action='store_true', default=False, help="If true, save y hat")

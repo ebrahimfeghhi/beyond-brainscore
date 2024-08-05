@@ -6,8 +6,9 @@ import torch
 import re
 from spacy.tokenizer import Tokenizer
 from spacy.training import Alignment
-device_number = 1
+device_number = 2
 device = torch.device(f"cuda:{device_number}" if torch.cuda.is_available() else "cpu")
+
 import os
 from interp_funcs import separate_words_commas_periods, group_tokens, is_punctuation
 import argparse
@@ -21,24 +22,30 @@ parser = argparse.ArgumentParser(description="Your program description")
 parser.add_argument("--untrained", action='store_true', default=False, help="If true, generate activations for untrained model.")
 parser.add_argument("--model", type=str, help="Model to generate activations for")
 parser.add_argument("--model_num", type=str, default='', help="Seed number if specified")
+parser.add_argument("--dataset", type=str, default='pereira', help="pereira, fedorenko, or blank")
 
 args = parser.parse_args()
-dataset = 'fedorenko'
-basePath = '/home3/ebrahim/what-is-brainscore/'
+basePath = ''
+savePath = '/data/LLMs/'
+dataset = args.dataset
 model_str = args.model
 untrained = args.untrained
 model_num = args.model_num
-save_words = True
+save_words = False
 print("Untrained: ", untrained)
 print("generating activations for: ", model_str)
 
+
+basePath_data = '/data/LLMs/data_processed/'
+
 # load linguistic stimuli 
 if dataset == 'pereira':
-    pereira_path = f"{basePath}{dataset}_data/sentences_ordered.txt"
+    pereira_path = f"{basePath_data}{dataset}/text/sentences_ordered.txt"
     with open(pereira_path, "r") as file:
         # Read the contents line by line into a list
         experiment_txt = [line.strip() for line in file]
-    data_labels = np.load(f"{basePath}data_processed/{dataset}/data_labels_{dataset}.npy")
+    # each element is exp-passage_name-passage_num-first half or second half
+    data_labels = np.load(f"{basePath_data}{dataset}/dataset/data_labels_{dataset}.npy") 
     
 if dataset == 'fedorenko':
     fed_path = f"{basePath}{dataset}_data/sentences_ordered.txt"
@@ -315,7 +322,7 @@ for txt, dl in zip(experiment_txt, data_labels):
                 current_text, embedding_matrix, positional_matrix, tokenizer, model_str=model_str, dataset=dataset, save_words=save_words)
 
     previous_text += current_text
-                
+
     static_pos_embed_activity.append(static_pos_embed_rep)
     static_pos_activity.append(static_pos_rep)
     static_embed_activity.append(static_embed_rep)
@@ -357,18 +364,26 @@ if save_words == True:
     word_str = '-word'
 else:
     word_str = ''
+
+savePath = f'{savePath}data_processed/{dataset}/LLM_acts'
+
+# create folder to save data if it doesn't already exist
+if os.path.isdir(savePath):
+    pass
+else:
+    os.makedirs(savePath)
     
-    
-    
-np.save(f'{basePath}data_processed/{dataset}/sent_length{word_str}', num_words_or_tokens)
-np.savez(f'{basePath}data_processed/{dataset}/X_{model_str}{word_str}{model_num}', **contextual_dict)
+np.save(f'{savePath}sent_length{word_str}', num_words_or_tokens)
+
+# last token method
+np.savez(f'{savePath}/X_{model_str}{word_str}{model_num}', **contextual_dict)
 
 
 if contextual_dict_sp is not None:
-    np.savez(f'{basePath}data_processed/{dataset}/X_{model_str}-sp{word_str}', **contextual_dict_sp)
+    np.savez(f'{savePath}/X_{model_str}-sp{word_str}', **contextual_dict_sp)
     
 if dataset == 'blank' or dataset == 'pereira':
-    np.savez(f'{basePath}data_processed/{dataset}/X_{model_str}-sp-static-non-avg{word_str}', **{'layer1': static_pos_embed_activity_non_avgs_stacked})
-    np.savez(f'{basePath}data_processed/{dataset}/X_{model_str}-sp-static{word_str}', **{'layer1': static_pos_embed_activity_stacked})
-    np.savez(f'{basePath}data_processed/{dataset}/X_{model_str}-sp-static-pos{word_str}', **{'layer1': static_pos_activity_stacked})
-    np.savez(f'{basePath}data_processed/{dataset}/X_{model_str}-sp-static-embed{word_str}', **{'layer1': static_embed_activity_stacked})
+    np.savez(f'{savePath}/X_{model_str}-sp-static-non-avg{word_str}', **{'layer1': static_pos_embed_activity_non_avgs_stacked})
+    np.savez(f'{savePath}/X_{model_str}-sp-static{word_str}', **{'layer1': static_pos_embed_activity_stacked})
+    np.savez(f'{savePath}/X_{model_str}-sp-static-pos{word_str}', **{'layer1': static_pos_activity_stacked})
+    np.savez(f'{savePath}/X_{model_str}-sp-static-embed{word_str}', **{'layer1': static_embed_activity_stacked})

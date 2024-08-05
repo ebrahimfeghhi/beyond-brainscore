@@ -3,7 +3,7 @@ import seaborn as sns
 import pandas as pd 
 from matplotlib import pyplot as plt
 import sys
-sys.path.append('/home3/ebrahim/what-is-brainscore/')
+sys.path.append('/home2/ebrahim/beyond-brainscore/')
 from helper_funcs import return_network_idxs
 from scipy.stats import pearsonr 
 import matplotlib
@@ -23,7 +23,7 @@ def find_rows_without_nan(matrix):
   
     return mse_seed_avg, np.mean(r2_np,axis=0)
 
-def single_seed_mse_r2(y_test, model_name, exp, layer_name, niters, resultsFolder):
+def single_seed_metrics(y_test, model_name, exp, layer_name, niters, resultsFolder, pearson_r=False):
     
         
     '''
@@ -33,14 +33,18 @@ def single_seed_mse_r2(y_test, model_name, exp, layer_name, niters, resultsFolde
         :param str layer_name: layer to load
         :param list niters: number of iterations model was run for
         :param str resultsFolder: where to load data from
+        :param bool pearsonr_r: if True, return pearson r as well
         
-        Returns r2 for a single model
+        Returns mse, r2, and (r) for a single model
     '''
     
     y_hat = np.load(f'{resultsFolder}pereira_{model_name}_{layer_name}_{niters}_{exp}.npz')['y_hat'] 
     r2 = np.load(f'{resultsFolder}pereira_{model_name}_{layer_name}_{niters}_{exp}.npz')['out_of_sample_r2'] 
-    
-    return (y_test - y_hat)**2, r2
+    if pearson_r:
+        r = np.load(f'{resultsFolder}pereira_{model_name}_{layer_name}_{niters}_{exp}.npz')['pearson_r'] 
+        return (y_test - y_hat)**2, r
+    else:
+        return (y_test - y_hat)**2, r2
 
 
 
@@ -48,7 +52,7 @@ def plot_test_perf_across_layers(model_arr, dataset, subjects, layers_range, lay
                                  figurePath, resultsFolder, colors, yticks, br_labels, exp=None, 
                                  model_nums=None, networks=[], ylabel=True, xlabel=True,
                                  plot_legend=False, replace_key=None, plot_lang_only=True, gpt_sp_perf=None, 
-                                 num_layers=48):
+                                 num_layers=48, load_str='out_of_sample_r2'):
     
     '''
         :param list model_arr: model names to load
@@ -78,8 +82,6 @@ def plot_test_perf_across_layers(model_arr, dataset, subjects, layers_range, lay
     '''
 
     counter = 0
-
-    load_str = 'out_of_sample_r2'
     
     plt.figure(figsize=(6,4))
     
@@ -141,9 +143,10 @@ def plot_test_perf_across_layers(model_arr, dataset, subjects, layers_range, lay
     
     results_pd = pd.DataFrame(results_pd)
     results_pd_all = pd.DataFrame(results_pd_all)
+    results_pd_seed_all = results_pd_all.groupby(['layer', 'Network', 'model', 'seed'])['r2'].mean().reset_index()
     results_pd = results_pd.groupby(['participant', 'layer', 'Network', 'model'])['r2'].mean().reset_index()
     results_pd_all = results_pd_all.groupby(['layer', 'Network', 'model'])['r2'].mean().reset_index()
-    
+
     sns.lineplot(data=results_pd_all, x='layer', y='r2', hue='Network', 
             linewidth=8, alpha=0.7, palette=colors, errorbar=None, legend=plot_legend, hue_order=networks)
         
@@ -157,7 +160,10 @@ def plot_test_perf_across_layers(model_arr, dataset, subjects, layers_range, lay
     else:
         plt.xlabel('')
     if ylabel:
-        plt.ylabel(r'$R^2$', fontsize=30)
+        if 'r2' in load_str:
+            plt.ylabel(r'$R^2$', fontsize=30)
+        else:
+            plt.ylabel('Pearson r', fontsize=30)
     else:
         plt.ylabel('')
         
@@ -176,7 +182,7 @@ def plot_test_perf_across_layers(model_arr, dataset, subjects, layers_range, lay
         
     plt.show()
     
-    return results_pd_all
+    return results_pd_seed_all
 
 
 def load_model_to_pd(model_name, layer_name, niters, br_labels, subject_labels, resultsFolder, exp_list, replace_key):
@@ -204,7 +210,7 @@ def load_model_to_pd(model_name, layer_name, niters, br_labels, subject_labels, 
 def plot_across_subjects(dict_pd_merged, figurePath, selected_networks, yticks=None, saveName=None,
                          color_palette=None, hue_order=None, 
                          order=None, clip_zero=True, draw_lines=False, plot_legend=False, plot_legend_under=False, ms=10, width=0.8, 
-                         LLM_perf=None, ylabel=True):
+                         LLM_perf=None, ylabel=True, median=False):
     
     '''
         :param DataFrame dict_pd_merged: pandas df with the following columns: [subjects, Network, Model]
@@ -229,13 +235,16 @@ def plot_across_subjects(dict_pd_merged, figurePath, selected_networks, yticks=N
     '''
     
     if clip_zero:
-        dict_pd_merged['r2'] = np.where(dict_pd_merged['r2']<0, 0, dict_pd_merged['r2'])
+        dict_pd_merged['perf'] = np.where(dict_pd_merged['perf']<0, 0, dict_pd_merged['perf'])
  
     dict_pd_with_all = dict_pd_merged.copy()
     pattern = '|'.join(selected_networks)
     dict_pd_merged = dict_pd_merged.loc[dict_pd_merged['Network'].str.contains(pattern)]
         
-    subject_avg_pd = dict_pd_merged.groupby(['subjects', 'Network', 'Model']).mean()
+    if median:
+        subject_avg_pd = dict_pd_merged.groupby(['subjects', 'Network', 'Model']).median()
+    else:
+        subject_avg_pd = dict_pd_merged.groupby(['subjects', 'Network', 'Model']).mean()
     
     #plt.figure(figsize=(14,10))
     sns.set_theme()
@@ -244,19 +253,28 @@ def plot_across_subjects(dict_pd_merged, figurePath, selected_networks, yticks=N
     
     fig, ax = plt.subplots(1,1, figsize=(4, 6))
     
-    sns.stripplot(data=subject_avg_pd, x='Network', y='r2', hue='Model', dodge=True, palette=color_palette, 
+    sns.stripplot(data=subject_avg_pd, x='Network', y='perf', hue='Model', dodge=True, palette=color_palette, 
                    size=ms, hue_order=hue_order, order=order, ax=ax,  legend=plot_legend)
     
     if draw_lines:
-        for i in range(0, len(selected_networks)*2, 2):
+        for i in range(0, 2, 2):
             locs1 = ax.get_children()[i].get_offsets()
             locs2 = ax.get_children()[i+1].get_offsets()
             for i in range(locs1.shape[0]):
                 x = [locs1[i, 0], locs2[i, 0]]
                 y = [locs1[i, 1], locs2[i, 1]]
                 ax.plot(x, y, color="black", alpha=0.2)
+                
+        # Connect 2nd to 3rd set
+        for i in range(1, 3, 2):
+            locs2 = ax.get_children()[i].get_offsets()
+            locs3 = ax.get_children()[i+1].get_offsets()
+            for j in range(locs2.shape[0]):
+                x = [locs2[j, 0], locs3[j, 0]]
+                y = [locs2[j, 1], locs3[j, 1]]
+                ax.plot(x, y, color="black", alpha=0.2)
     
-    sns.barplot(data=subject_avg_pd, x='Network', y='r2', hue='Model', palette=color_palette, 
+    sns.barplot(data=subject_avg_pd, x='Network', y='perf', hue='Model', palette=color_palette, 
                 alpha=0.5, errorbar=None, hue_order=hue_order, order=order, ax=ax, legend=False, width=width)
     
     if LLM_perf is not None:
@@ -366,13 +384,13 @@ def plot_across_seeds(model_names_arr, layers_name_arr, niters, num_seeds, seed_
         if len(r2_seeds.shape) > 1:
             r2_seeds = np.mean(r2_seeds, axis=0)
             
-        r2_seed_avg_pd = pd.DataFrame({'r2': r2_seeds,
+        r2_seed_avg_pd = pd.DataFrame({'perf': r2_seeds,
                         'Network': br_labels, 
                         'Model': np.repeat(key, num_vox)})
         store_pd_seed_averaged.append(r2_seed_avg_pd)
         
         ns = num_seeds[counter]
-        r2_pd = pd.DataFrame({'r2': np.ravel(val), 'seeds': np.repeat(np.arange(ns), num_vox), 
+        r2_pd = pd.DataFrame({'perf': np.ravel(val), 'seeds': np.repeat(np.arange(ns), num_vox), 
                                 'Network': np.tile(br_labels, ns), 
                                 'Model': np.repeat(key, num_vox*ns)})
         store_pd.append(r2_pd)
@@ -383,7 +401,7 @@ def plot_across_seeds(model_names_arr, layers_name_arr, niters, num_seeds, seed_
     
     rows_to_update = store_pd['Model'].isin(single_seed_models)
     store_pd_no_single_seed = store_pd.copy()
-    store_pd_no_single_seed.loc[rows_to_update, 'r2'] = np.nan
+    store_pd_no_single_seed.loc[rows_to_update, 'perf'] = np.nan
     
     if remove_auditory:
         store_pd = store_pd.loc[store_pd['Network']!='auditory']
@@ -399,11 +417,11 @@ def plot_across_seeds(model_names_arr, layers_name_arr, niters, num_seeds, seed_
     plt.figure(figsize=(14,10))
     sns.set_theme()
     sns.set_style("white")
-    sns.barplot(data=grouped_data, y='r2', x='Network', hue='Model', palette=color_palette, 
+    sns.barplot(data=grouped_data, y='perf', x='Network', hue='Model', palette=color_palette, 
                 alpha=0.4, errorbar=None, hue_order=hue_order)
     
     if len(single_seed_models) != len(model_names_arr):
-        sns.stripplot(data=grouped_data_no_single_seed, y='r2', x='Network', 
+        sns.stripplot(data=grouped_data_no_single_seed, y='perf', x='Network', 
                   hue='Model', size=10, legend=False, palette=color_palette, dodge=True, hue_order=hue_order)   
         
     sns.despine()

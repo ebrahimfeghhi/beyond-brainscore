@@ -24,7 +24,29 @@ import pathlib
 import h5py
 from os.path import join
 from sklearn.impute import SimpleImputer
+from scipy.stats import pearsonr
 
+def pearson_corr_schrimpf_style(y_test_folds, y_hat_folds):
+    
+    '''
+    :param list y_test_folds: length num_folds, each element shape num_sentences x num_voxels per folds
+    :param list y_hat_folds: length num_folds, each element shape num_sentences x num_voxels per folds
+    '''
+    
+    
+    num_folds = len(y_test_folds)
+    
+    num_voxels = y_test_folds[0].shape[1]
+    
+    pearsonr_values = np.zeros(num_voxels)
+    
+    for yt, yh in zip(y_test_folds, y_hat_folds):
+        
+        r, p = pearsonr(yt, yh, axis=0) # correlation per voxel
+        
+        pearsonr_values += r
+        
+    return pearsonr_values/num_folds
 
 def compute_R2(model_dict, neural_data, dataset, resultsFolder, exp='both', use_last=None):
     
@@ -206,12 +228,13 @@ def return_network_idxs(br_labels, networks):
     ni_storage = []
     for ni in network_indices:
         ni_storage = np.union1d(ni_storage, ni)
+        
     return ni_storage.astype(int), network_indices
 
 def find_best_layer(model, resultsFolder, required_str=[''], exclude_str=[''], model_num=None, 
-                    networks=[], br_labels=None):
+                    networks=[], br_labels=None, r2_bool=True):
    
-    voxel_idxs = return_network_idxs(br_labels, networks)
+    voxel_idxs, _ = return_network_idxs(br_labels, networks)
 
     perf = -np.inf
         
@@ -246,20 +269,27 @@ def find_best_layer(model, resultsFolder, required_str=[''], exclude_str=[''], m
             continue
             
         results = np.load(f'{resultsFolder}/{file}')
-        
-        perf_loaded_all = results['out_of_sample_r2'][voxel_idxs].squeeze()
-        
-        # replace with 0 for negative r2 values
-        perf_loaded = np.where(perf_loaded_all<0, 0, perf_loaded_all)
-        
-        better_bool = np.mean(perf_loaded[np.isfinite(perf_loaded)]) > perf
+
+        if r2_bool:
+            perf_loaded_all = results['out_of_sample_r2'][voxel_idxs].squeeze()
+            # replace with 0 for negative r2 values
+            perf_loaded = np.where(perf_loaded_all<0, 0, perf_loaded_all)
+            new_perf = np.mean(perf_loaded[np.isfinite(perf_loaded)])
+            
+            
+        # schrimpf style
+        else:
+            # don't clip 0 values to maintain consistency with Schrimpf et. al 2021
+            perf_loaded_all = results['pearson_r'][voxel_idxs].squeeze()
+            new_perf = np.median(perf_loaded_all[np.isfinite(perf_loaded_all)])
+            
+        better_bool = new_perf > perf
         
         if better_bool:
-            
             best_file = file
-            perf = np.mean(perf_loaded[np.isfinite(perf_loaded)])
+            perf = new_perf # replace perf with the current best performance 
                 
-    return best_file
+    return best_file, perf
 
 def load_val_perf_by_layer(model, resultsFolder):
     
