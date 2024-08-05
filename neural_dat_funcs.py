@@ -3,7 +3,7 @@ import numpy as np
 from helper_funcs import run_himalayas, split_by_exp_passage_num
 
 def construct_splits_pereira(X, y, data_labels, alphas, device, feature_grouper, 
-                             n_iter, use_kernelized, dataset, features_list, exp):
+                             n_iter, use_kernelized, dataset, exp):
     
     y_hat_folds = []
     mse_stored_intercept_non_avg = []
@@ -66,7 +66,7 @@ def construct_splits_pereira(X, y, data_labels, alphas, device, feature_grouper,
                 mse_test, mse_intercept, val_perf, y_pred, mse_intercept_non_avg = run_himalayas(X_train, 
                                                 y_train, X_test, y_test, alphas, device, 
                                                 train_labels, feature_grouper, n_iter, use_kernelized, 
-                                                dataset, features_list, exp, 
+                                                dataset, exp, 
                                                 first_second_half)
             
                 val_stored.append(val_perf)
@@ -81,7 +81,7 @@ def construct_splits_pereira(X, y, data_labels, alphas, device, feature_grouper,
 
 
 def construct_splits_fedorenko(X, y, data_labels, alphas, device, feature_grouper, 
-                             n_iter, use_kernelized, dataset, features_list, split_size):
+                             n_iter, use_kernelized, dataset, split_size):
     
     sentence_length = 8
     sentence_num = 52
@@ -108,7 +108,7 @@ def construct_splits_fedorenko(X, y, data_labels, alphas, device, feature_groupe
         mse_test, mse_intercept, val_perf, y_pred, y_pred_intercept = run_himalayas(X_train, 
                                         y_train, X_test, y_test, alphas, device, 
                                         train_labels, feature_grouper, n_iter, use_kernelized, 
-                                        dataset, features_list, val_passages=None, val_exp_names=None)
+                                        dataset, val_passages=None, val_exp_names=None)
 
         val_stored.append(val_perf)
         mse_stored_intercept_only.append(mse_intercept)
@@ -121,7 +121,7 @@ def construct_splits_fedorenko(X, y, data_labels, alphas, device, feature_groupe
 
 
 def construct_splits_blank(X, y, data_labels, alphas, device, feature_grouper, 
-                             n_iter, use_kernelized, dataset, features_list):
+                             n_iter, use_kernelized, dataset):
     
     y_hat_folds = []
     y_test_folds = []
@@ -147,7 +147,7 @@ def construct_splits_blank(X, y, data_labels, alphas, device, feature_grouper,
         mse_test, mse_intercept, val_perf, y_pred, y_pred_intercept = run_himalayas(X_train, 
                                     y_train, X_test, y_test, alphas, device, 
                                     train_labels, feature_grouper, n_iter, use_kernelized, 
-                                    dataset, features_list, val_passages=None, val_exp_names=None)
+                                    dataset, val_passages=None, val_exp_names=None)
 
         
         val_stored.append(val_perf)

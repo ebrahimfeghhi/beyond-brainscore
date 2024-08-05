@@ -25,6 +25,7 @@ import h5py
 from os.path import join
 from sklearn.impute import SimpleImputer
 from scipy.stats import pearsonr
+from sklearn.linear_model import LinearRegression
 
 def pearson_corr_schrimpf_style(y_test_folds, y_hat_folds):
     
@@ -574,9 +575,23 @@ def obtain_val_predictions(alphas, X_train, y_train, pereira_cv):
     
 def run_himalayas(X_train, y_train, X_test, 
                   y_test, alphas, device, train_labels, feature_grouper, n_iter, 
-                  use_kernelized, dataset, features_list, selected_exp, first_second_half, 
-                  val_passages=None, val_exp_names=None):
+                  use_kernelized, dataset, selected_exp, first_second_half, 
+                  linear_reg=False):
     
+    
+    '''
+    :param X_train, y_train, X_test, y_test: ndarrays 
+    :param ndarray alphas: l2 reg 
+    :param int device: for gpu
+    :param ndarray train_labels: stimulus labels for organizing splits 
+    :param himalaya-thing feature_grouper: organize predictors into feature spaces
+    :param int n_iter: how many iterations to run banded search for
+    :param bool use_kernelized: if true, use kernelized ridge regression
+    :param str dataset: pereira, blank, or fedorenko
+    :param str selected_exp: 243 or 384 for pereira
+    :param str first_second_half: -fh or -sh
+    :param bool linear_reg: if true, run vanilla linear regression for Schrimpf style
+    '''
     
     if device == 'cpu':
         pass
@@ -599,21 +614,32 @@ def run_himalayas(X_train, y_train, X_test,
         n_alphas_batch = len(alphas)
         targets_batch = y_train.shape[1]
         
-    if use_kernelized:
-    
-        solver_params = dict(n_iter=n_iter, alphas=alphas, diagonalize_method='svd', conservative=False)
-        model = MultipleKernelRidgeCV(kernels="precomputed", solver="random_search",
-                                    cv=cv, fit_intercept=True, early_stop_y_idxs=None,
-                                    solver_params=solver_params)
-    else:
-        
-        model = GroupRidgeCV(groups="input", fit_intercept=True, cv=cv, 
-                        solver_params={'alphas': alphas, 'n_iter': n_iter, 'warn': False, 
-                                       'n_alphas_batch': n_alphas_batch, 'n_targets_batch': targets_batch})
-        
+           
     scaler = StandardScaler()
     X_train = scaler.fit_transform(X_train)
     X_test = scaler.transform(X_test)
+        
+    if linear_reg:
+        
+        model = LinearRegression(fit_intercept=True)
+        model.fit(X_train, y_train)
+        y_pred = model.predict(X_test)
+        return None, None, None, y_pred, None
+    
+    else:
+        
+        if use_kernelized:
+        
+            solver_params = dict(n_iter=n_iter, alphas=alphas, diagonalize_method='svd', conservative=False)
+            model = MultipleKernelRidgeCV(kernels="precomputed", solver="random_search",
+                                        cv=cv, fit_intercept=True, early_stop_y_idxs=None,
+                                        solver_params=solver_params)
+        else:
+            
+            model = GroupRidgeCV(groups="input", fit_intercept=True, cv=cv, 
+                            solver_params={'alphas': alphas, 'n_iter': n_iter, 'warn': False, 
+                                        'n_alphas_batch': n_alphas_batch, 'n_targets_batch': targets_batch})
+ 
 
     pipe = make_pipeline(feature_grouper, model)
     _ = pipe.fit(X_train, y_train)

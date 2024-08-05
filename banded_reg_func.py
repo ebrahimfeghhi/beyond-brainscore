@@ -18,8 +18,8 @@ def himalaya_regression_caller(model: Union[str, dict, np.ndarray],
                                dataset: str = 'pereira', data_folder: str ='/data/LLMs/data_processed/', 
                                exp: str ='both', save_results: bool = True, 
                                save_y_hat: bool = True, save_new: bool= False, 
-                               device: Union[str, int] = 'cpu', untrained: bool = False, sig_model: str='', 
-                               results_folder: str = '/data/LLMs/brainscore'):
+                               device: Union[str, int] = 'cpu', untrained: bool = False,
+                               results_folder: str = '/data/LLMs/brainscore', linear_reg: bool = False):
     
     '''
     This function performs banded regression based on the himalaya package. 
@@ -60,6 +60,8 @@ def himalaya_regression_caller(model: Union[str, dict, np.ndarray],
     untrained: if True, save results to the untrained folder.
     
     results_folder: str specifying where to save data
+    
+    linear_reg: If true, set alphas to 0 
     '''
 
     
@@ -92,12 +94,6 @@ def himalaya_regression_caller(model: Union[str, dict, np.ndarray],
             
     y = y.astype("float32")
     
-    if sig_model:
-        sig_indices = np.load(f'/home2/ebrahim/beyond-brainscore/analyze_results/stats_results/sig-voxels_{sig_model}_{exp}.npy').squeeze()
-        y = y[:, sig_indices].squeeze()
-        print("only running regression on this many voxels: ", sig_indices.shape[0])
-
-
     if isinstance(data_labels, str):
         if len(data_labels) == 0:
             data_labels = np.load(f'{data_folder}/dataset/data_labels_{dataset}.npy')
@@ -119,8 +115,11 @@ def himalaya_regression_caller(model: Union[str, dict, np.ndarray],
         os.makedirs(full_results_folder)
 
     # alpha values used for ridge regression
-    alphas = np.exp2(np.arange(-5, 35))
-    alphas = np.hstack((0,alphas))
+    if not linear_reg:
+        alphas = np.exp2(np.arange(-5, 35))
+        alphas = np.hstack((0,alphas))
+    else:
+        alphas = np.array([1e-8])
 
     test_fold_size = []
     
@@ -168,20 +167,20 @@ def himalaya_regression_caller(model: Union[str, dict, np.ndarray],
             
            val_stored, mse_stored_intercept_only, mse_stored, y_hat_folds, mse_stored_intercept_non_avg, y_test_folds, test_fold_size = \
                             construct_splits_pereira(X, y, data_labels, alphas, device, feature_grouper, 
-                             n_iter, use_kernelized, dataset, features_list, exp)
+                             n_iter, use_kernelized, dataset, exp)
         
         elif dataset == 'fedorenko':
             
             val_stored, mse_stored_intercept_only, mse_stored, y_hat_folds, y_test_folds, test_fold_size = \
                 construct_splits_fedorenko(X, y, data_labels, alphas, device, feature_grouper, 
-                             n_iter, use_kernelized, dataset, features_list, split_size=32)
+                             n_iter, use_kernelized, dataset, split_size=32)
             
           
         elif dataset == 'blank':
             
            val_stored, mse_stored_intercept_only, mse_stored, y_hat_folds, y_test_folds, test_fold_size = \
                construct_splits_blank(X, y, data_labels, alphas, device, feature_grouper, 
-                             n_iter, use_kernelized, dataset, features_list)
+                             n_iter, use_kernelized, dataset)
                 
         # num_folds x number of brain units (voxels, electrodes,...)
         val_stored = np.vstack(val_stored)
@@ -217,6 +216,9 @@ def himalaya_regression_caller(model: Union[str, dict, np.ndarray],
 
             file_name = f"{dataset}_{model}_{layer_name}_{n_iter}"
             
+            if linear_reg:
+                file_name = f"{file_name}_noL2"
+                
             if dataset == 'pereira':
                 file_name = f"{file_name}_{exp}"
                 
