@@ -37,7 +37,7 @@ parser.add_argument("--data_folder", type=str, default='/data/LLMs/data_processe
 parser.add_argument("--device", type=int, default=2, help="-1 for cpu, otherwise specify gpu device")
 parser.add_argument("--untrained", action='store_true', default=False, help="If true, save to untrained folder")
 parser.add_argument("--y_hat", action='store_true', default=False, help="If true, save y hat")
-parser.add_argument("--linear", action='store_true', default=False, help="If true, run linear regression")
+parser.add_argument("--linear_reg", action='store_true', default=False, help="If true, run linear regression")
 
 
 # Parse the command-line arguments
@@ -52,7 +52,7 @@ niter = args.niter
 device = args.device
 untrained = args.untrained
 y_hat = args.y_hat
-linear_reg = args.linear
+linear_reg = args.linear_reg
 
 if device == -1:
     device = 'cpu'

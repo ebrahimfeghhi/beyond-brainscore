@@ -3,7 +3,7 @@ import numpy as np
 from helper_funcs import run_himalayas, split_by_exp_passage_num
 
 def construct_splits_pereira(X, y, data_labels, alphas, device, feature_grouper, 
-                             n_iter, use_kernelized, dataset, exp):
+                             n_iter, use_kernelized, dataset, exp, linear_reg):
     
     y_hat_folds = []
     mse_stored_intercept_non_avg = []
@@ -67,7 +67,7 @@ def construct_splits_pereira(X, y, data_labels, alphas, device, feature_grouper,
                                                 y_train, X_test, y_test, alphas, device, 
                                                 train_labels, feature_grouper, n_iter, use_kernelized, 
                                                 dataset, exp, 
-                                                first_second_half)
+                                                first_second_half, linear_reg)
             
                 val_stored.append(val_perf)
                 mse_stored_intercept_only.append(mse_intercept)

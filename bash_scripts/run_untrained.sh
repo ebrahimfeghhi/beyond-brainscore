@@ -39,9 +39,9 @@ do
         cd $HOME_DIR
 
         # run regression for each layer of gpt2-large-untrained (sum pooled)
-        python call_banded_reg.py --model "$model"-untrained-sp --exp "$exp" --save_new --untrained --y_hat --device 2
+        python call_banded_reg.py --model "$model"-untrained-sp --exp "$exp" --save_new --untrained --linear_reg --device 2
         # also run for last token 
-        python call_banded_reg.py --model "$model"-untrained --exp "$exp" --save_new --untrained --y_hat --device 2
+        python call_banded_reg.py --model "$model"-untrained --exp "$exp" --save_new --untrained --linear_reg --device 2
         
         cd $HOME_DIR/misc_code
         python clean_untrained.py --model "$model" --seed $i --exp "$exp" --sp # clean sum pooled untrained

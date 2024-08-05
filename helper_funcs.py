@@ -620,11 +620,10 @@ def run_himalayas(X_train, y_train, X_test,
     X_test = scaler.transform(X_test)
         
     if linear_reg:
-        
         model = LinearRegression(fit_intercept=True)
         model.fit(X_train, y_train)
         y_pred = model.predict(X_test)
-        return None, None, None, y_pred, None
+        return np.zeros_like(y_pred), np.zeros_like(y_pred), np.zeros_like(y_pred), y_pred, np.zeros_like(y_pred)
     
     else:
         

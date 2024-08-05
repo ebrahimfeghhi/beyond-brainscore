@@ -167,7 +167,7 @@ def himalaya_regression_caller(model: Union[str, dict, np.ndarray],
             
            val_stored, mse_stored_intercept_only, mse_stored, y_hat_folds, mse_stored_intercept_non_avg, y_test_folds, test_fold_size = \
                             construct_splits_pereira(X, y, data_labels, alphas, device, feature_grouper, 
-                             n_iter, use_kernelized, dataset, exp)
+                             n_iter, use_kernelized, dataset, exp, linear_reg=linear_reg)
         
         elif dataset == 'fedorenko':
             
