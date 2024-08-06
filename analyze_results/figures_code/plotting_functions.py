@@ -210,7 +210,7 @@ def load_model_to_pd(model_name, layer_name, niters, br_labels, subject_labels, 
 def plot_across_subjects(dict_pd_merged, figurePath, selected_networks, yticks=None, saveName=None,
                          color_palette=None, hue_order=None, 
                          order=None, clip_zero=True, draw_lines=False, plot_legend=False, plot_legend_under=False, ms=10, width=0.8, 
-                         LLM_perf=None, ylabel=True, median=False):
+                         LLM_perf=None, ylabel=True, median=False, ylabel_str=r'$R^2$'):
     
     '''
         :param DataFrame dict_pd_merged: pandas df with the following columns: [subjects, Network, Model]
@@ -229,6 +229,7 @@ def plot_across_subjects(dict_pd_merged, figurePath, selected_networks, yticks=N
         :param float width: width of bars
         :param [float, None] LLM_perf: if a float, plots performance of LLM as a dashed line grey line
         :param bool ylabel: if false, don't plot y-axis label
+        :param str ylabel_str: what string to plot for ylabel
         
         Plots performance, where each dot is a subject and bar is the mean across subjects. Hue is model and 
         x-axis is network. 
@@ -242,6 +243,7 @@ def plot_across_subjects(dict_pd_merged, figurePath, selected_networks, yticks=N
     dict_pd_merged = dict_pd_merged.loc[dict_pd_merged['Network'].str.contains(pattern)]
         
     if median:
+        print("Taking median value across voxels with a participant")
         subject_avg_pd = dict_pd_merged.groupby(['subjects', 'Network', 'Model']).median()
     else:
         subject_avg_pd = dict_pd_merged.groupby(['subjects', 'Network', 'Model']).mean()
@@ -289,9 +291,10 @@ def plot_across_subjects(dict_pd_merged, figurePath, selected_networks, yticks=N
             plt.legend(fontsize=20,frameon=False, bbox_to_anchor=(1, 1), loc='upper left')
 
     if ylabel:
-        ax.set_ylabel(r'$R^2$', fontsize=35)
+        ax.set_ylabel(ylabel_str, fontsize=35)
     else:
         ax.set_ylabel('')
+        
     ax.set_xticks([])
     ax.set_xlabel('')
     if yticks is not None:

@@ -49,7 +49,7 @@ def mse_max_model(mse_models):
     return np.stack(best_models)
 
 
-def pool_across_seeds(y_test, model_name, exp_list, layer_name, niters, resultsFolder, seed_last=True, pearson_r=False):
+def pool_across_seeds(y_test, model_name, exp_list, layer_name, niters, resultsFolder, seed_last=True, pearson_r=False, linear_reg=False, load_y_hat=False):
     
     '''
         :param ndarray y_test: neural data
@@ -61,36 +61,50 @@ def pool_across_seeds(y_test, model_name, exp_list, layer_name, niters, resultsF
             
         :param str resultsFolder: where to load data from
         :param bool seed_last: where seed label is in file string
+        :param bool pearson_r: if true, load pearson r
+        :param bool linear_reg: if true, load results from vanilla linear regression
         
         Returns mse and r2 pooled across seeds. If pearson_r is True, then also return that
     '''
     
+    if linear_reg:
+        linear_reg_str = '_noL2'
+    else:
+        linear_reg_str = ''
+    
     if seed_last:
-        y_hat_across_seeds = [np.load(f'{resultsFolder}pereira_{m}_{l}_{n}_{e}_m{i}.npz')['y_hat'] for i, (m, l, n, e) in enumerate(zip(model_name, layer_name, niters, exp_list))]
-        r2_across_seeds = [np.load(f'{resultsFolder}pereira_{m}_{l}_{n}_{e}_m{i}.npz')['out_of_sample_r2'] for i, (m, l, n, e) in enumerate(zip(model_name, layer_name, niters, exp_list))]
+        if load_y_hat:
+            y_hat_across_seeds = [np.load(f'{resultsFolder}pereira_{m}_{l}_{n}{linear_reg_str}_{e}_m{i}.npz')['y_hat'] for i, (m, l, n, e) in enumerate(zip(model_name, layer_name, niters, exp_list))]
+        r2_across_seeds = [np.load(f'{resultsFolder}pereira_{m}_{l}_{n}{linear_reg_str}_{e}_m{i}.npz')['out_of_sample_r2'] for i, (m, l, n, e) in enumerate(zip(model_name, layer_name, niters, exp_list))]
         
         if pearson_r:
-            r_across_seeds = [np.load(f'{resultsFolder}pereira_{m}_{l}_{n}_{e}_m{i}.npz')['pearson_r'] for i, (m, l, n, e) in enumerate(zip(model_name, layer_name, niters, exp_list))]
+            r_across_seeds = [np.load(f'{resultsFolder}pereira_{m}_{l}_{n}{linear_reg_str}_{e}_m{i}.npz')['pearson_r'] for i, (m, l, n, e) in enumerate(zip(model_name, layer_name, niters, exp_list))]
             
     else:
-        y_hat_across_seeds = [np.load(f'{resultsFolder}pereira_{m}_m{i}_{l}_{n}_{e}.npz')['y_hat'] for i, (m, l, n, e) in enumerate(zip(model_name, layer_name, niters, exp_list))]
-        r2_across_seeds = [np.load(f'{resultsFolder}pereira_{m}_m{i}_{l}_{n}_{e}.npz')['out_of_sample_r2'] for i, (m, l, n, e) in enumerate(zip(model_name, layer_name, niters, exp_list))]
+        if load_y_hat:
+            y_hat_across_seeds = [np.load(f'{resultsFolder}pereira_{m}_m{i}_{l}_{n}{linear_reg_str}_{e}.npz')['y_hat'] for i, (m, l, n, e) in enumerate(zip(model_name, layer_name, niters, exp_list))]
+        r2_across_seeds = [np.load(f'{resultsFolder}pereira_{m}_m{i}_{l}_{n}{linear_reg_str}_{e}.npz')['out_of_sample_r2'] for i, (m, l, n, e) in enumerate(zip(model_name, layer_name, niters, exp_list))]
         
         if pearson_r:
-            r_across_seeds = [np.load(f'{resultsFolder}pereira_{m}_m{i}_{l}_{n}_{e}.npz')['pearson_r'] for i, (m, l, n, e) in enumerate(zip(model_name, layer_name, niters, exp_list))]
+            r_across_seeds = [np.load(f'{resultsFolder}pereira_{m}_m{i}_{l}_{n}{linear_reg_str}_{e}.npz')['pearson_r'] for i, (m, l, n, e) in enumerate(zip(model_name, layer_name, niters, exp_list))]
         
-    y_hat_np = np.stack(y_hat_across_seeds)
+    if load_y_hat:
+        y_hat_np = np.stack(y_hat_across_seeds)
+        mse_seed_avg = np.zeros_like(y_hat_np[0])
+        num_seeds = y_hat_np.shape[0]
+        
+        for y_hat_seed in y_hat_np:
+            mse_seed = (y_test - y_hat_seed)**2
+            mse_seed_avg += mse_seed
+            
+        
+        mse_seed_avg /= num_seeds
+        
+    else:
+        mse_seed_avg = None
+    
     r2_np = np.stack(r2_across_seeds)
-    
-    
-    mse_seed_avg = np.zeros_like(y_hat_np[0])
-    num_seeds = y_hat_np.shape[0]
-    for y_hat_seed in y_hat_np:
-        mse_seed = (y_test - y_hat_seed)**2
-        mse_seed_avg += mse_seed
-    
-    mse_seed_avg /= num_seeds
-    
+
     if pearson_r:
         r_np = np.stack(r_across_seeds)
         return mse_seed_avg, np.mean(r_np, axis=0)

@@ -68,6 +68,7 @@ def himalaya_regression_caller(model: Union[str, dict, np.ndarray],
     data_folder = f"{data_folder}/{dataset}"
 
     if isinstance(model, str):
+        print("Running model: ", model)
         X_all_layers = dict(np.load(f'{data_folder}/LLM_acts/X_{model}.npz'))
     # if a numpy array was passed, turn it into a dict
     else:
