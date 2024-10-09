@@ -18,7 +18,8 @@ def himalaya_regression_caller(model: Union[str, dict, np.ndarray],
                                dataset: str = 'pereira', data_folder: str ='data_processed', 
                                exp: str ='both', save_results: bool = True, 
                                save_y_hat: bool = True, save_new: bool= False, 
-                               device: Union[str, int] = 'cpu', untrained: bool = False, sig_model: str=''):
+                               device: Union[str, int] = 'cpu', untrained: bool = False, sig_model: str='',
+                               shuffled: bool=False):
     
     '''
     This function performs banded regression based on the himalaya package. 
@@ -57,6 +58,8 @@ def himalaya_regression_caller(model: Union[str, dict, np.ndarray],
     device: 'cpu' or int specifying which gpu device to use.
     
     untrained: if True, save results to the untrained folder.
+    
+    shuffled: if True, shuffle the labels to replicate (only used for replicating previous studies)
     '''
 
     
@@ -123,6 +126,21 @@ def himalaya_regression_caller(model: Union[str, dict, np.ndarray],
     
     r2_storage = []
     val_r2_storage = []
+    
+    
+    if shuffled:
+        # shuffling the data labels means splits won't be generated on contiguous splits 
+        print("SHUFFLING DATA")
+        np.random.seed(42)
+        if dataset == 'pereira':
+            # performing shuffling for data labels within each experiment
+            data_labels_384 = data_labels[243:]
+            data_labels_243 = data_labels[:243]
+            np.random.shuffle(data_labels_384)
+            np.random.shuffle(data_labels_243)
+            data_labels = np.concatenate((data_labels_243, data_labels_384))
+        else:
+            np.random.shuffle(data_labels)  
 
     for layer_name, X in X_all_layers.items():
 
@@ -189,13 +207,13 @@ def himalaya_regression_caller(model: Union[str, dict, np.ndarray],
         y_test_folds = np.vstack(y_test_folds)
         
         # save y_test and mse of intercept model if not already saved
-        #y_test_ordered_filename = f'/home3/ebrahim/what-is-brainscore/results_all/results_pereira/y_test_ordered_{exp}.npy'
-        #mse_intercept_filename = f'/home3/ebrahim/what-is-brainscore/results_all/results_pereira/mse_intercept_{exp}.npy'
+        y_test_ordered_filename = f'/home3/ebrahim/what-is-brainscore/results_all/results_pereira/y_test_ordered_{exp}_shuffled.npy'
+        mse_intercept_filename = f'/home3/ebrahim/what-is-brainscore/results_all/results_pereira/mse_intercept_{exp}_shuffled.npy'
         
-        #if ~os.path.isfile(y_test_ordered_filename):  
-        #np.save(y_test_ordered_filename, y_test_folds)
-        #if ~os.path.isfile(mse_intercept_filename):
-        #np.save(mse_intercept_filename, mse_stored_intercept_non_avg)
+        if ~os.path.isfile(y_test_ordered_filename):  
+            np.save(y_test_ordered_filename, y_test_folds)
+        if ~os.path.isfile(mse_intercept_filename):
+            np.save(mse_intercept_filename, mse_stored_intercept_non_avg)
         
         # pool mse across folds based on fold size 
         pooled_mse  = combine_MSE_across_folds(mse_stored, test_fold_size)
@@ -209,8 +227,11 @@ def himalaya_regression_caller(model: Union[str, dict, np.ndarray],
 
             file_name = f"{dataset}_{model}_{layer_name}_{n_iter}"
             
+            
             if dataset == 'pereira':
                 file_name = f"{file_name}_{exp}"
+            if shuffled:
+                file_name = f"{file_name}_shuffled"
                 
             complete_file_name = f"{file_name}.npz"
         

@@ -7,7 +7,7 @@ sys.path.append('/home3/ebrahim/what-is-brainscore/')
 from helper_funcs import return_network_idxs
 from scipy.stats import pearsonr 
 import matplotlib
-from scipy.stats import ttest_rel, ttest_1samp
+from scipy.stats import ttest_rel, ttest_1samp, pearsonr
 import nibabel as nib
 
 def find_rows_without_nan(matrix):
@@ -23,7 +23,7 @@ def find_rows_without_nan(matrix):
   
     return mse_seed_avg, np.mean(r2_np,axis=0)
 
-def single_seed_mse_r2(y_test, model_name, exp, layer_name, niters, resultsFolder):
+def single_seed_mse_r2(y_test, model_name, exp, layer_name, niters, resultsFolder, shuffled=False, compute_pearsonr=False):
     
         
     '''
@@ -33,16 +33,24 @@ def single_seed_mse_r2(y_test, model_name, exp, layer_name, niters, resultsFolde
         :param str layer_name: layer to load
         :param list niters: number of iterations model was run for
         :param str resultsFolder: where to load data from
+        :param bool shuffled: if true, load shuffled data
         
         Returns r2 for a single model
     '''
     
-    y_hat = np.load(f'{resultsFolder}pereira_{model_name}_{layer_name}_{niters}_{exp}.npz')['y_hat'] 
-    r2 = np.load(f'{resultsFolder}pereira_{model_name}_{layer_name}_{niters}_{exp}.npz')['out_of_sample_r2'] 
+    if shuffled:
+        shuffle_str = '_shuffled'
+    else:
+        shuffle_str = ''
+    
+    y_hat = np.load(f'{resultsFolder}pereira_{model_name}_{layer_name}_{niters}_{exp}{shuffle_str}.npz')['y_hat'] 
+    r2 = np.load(f'{resultsFolder}pereira_{model_name}_{layer_name}_{niters}_{exp}{shuffle_str}.npz')['out_of_sample_r2'] 
+    
+    if compute_pearsonr:
+        corr, p = pearsonr(y_test, y_hat, axis=0)
+        return (y_test - y_hat)**2, r2, corr
     
     return (y_test - y_hat)**2, r2
-
-
 
 def plot_test_perf_across_layers(model_arr, dataset, subjects, layers_range, layer_name_arr, saveName, 
                                  figurePath, resultsFolder, colors, yticks, br_labels, exp=None, 
@@ -204,7 +212,7 @@ def load_model_to_pd(model_name, layer_name, niters, br_labels, subject_labels, 
 def plot_across_subjects(dict_pd_merged, figurePath, selected_networks, yticks=None, saveName=None,
                          color_palette=None, hue_order=None, 
                          order=None, clip_zero=True, draw_lines=False, plot_legend=False, plot_legend_under=False, ms=10, width=0.8, 
-                         LLM_perf=None, ylabel=True):
+                         LLM_perf=None, ylabel=True, figsize=[4,4]):
     
     '''
         :param DataFrame dict_pd_merged: pandas df with the following columns: [subjects, Network, Model]
@@ -242,7 +250,7 @@ def plot_across_subjects(dict_pd_merged, figurePath, selected_networks, yticks=N
     sns.set_style("white")
     sns.despine()
     
-    fig, ax = plt.subplots(1,1, figsize=(4, 6))
+    fig, ax = plt.subplots(1,1, figsize=(figsize[0], figsize[1]))
     
     sns.stripplot(data=subject_avg_pd, x='Network', y='r2', hue='Model', dodge=True, palette=color_palette, 
                    size=ms, hue_order=hue_order, order=order, ax=ax,  legend=plot_legend)
@@ -420,7 +428,8 @@ def plot_across_seeds(model_names_arr, layers_name_arr, niters, num_seeds, seed_
         
     return store_pd, store_pd_seed_averaged, store_pd_seed_averaged_all
 
-def pass_info_plot_hist2d(df, best_DEM_model, best_LLM_model, max_val_dict, min_val, figurePath, saveName):
+def pass_info_plot_hist2d(df, best_DEM_model, best_LLM_model, max_val_dict, 
+                          min_val, figurePath, saveName, labels=True):
     
     '''
         See plot hist2d for description of parameters
@@ -434,10 +443,11 @@ def pass_info_plot_hist2d(df, best_DEM_model, best_LLM_model, max_val_dict, min_
     networks = ['language', 'DMN', 'MD', 'visual']
     plot_hist2d(nested,  model1=best_DEM_model, model2=best_LLM_model, 
                 figurePath=figurePath, cmaps=cmaps, max_val=max_val_dict,
-                networks=networks, min_val=min_val, saveName=saveName)
+                networks=networks, min_val=min_val, saveName=saveName, labels=labels)
         
 
-def plot_hist2d(df, model1, model2, cmaps, max_val, networks, min_val, figurePath, saveName=None):
+def plot_hist2d(df, model1, model2, cmaps, max_val, networks, 
+                min_val, figurePath, saveName=None, labels=True):
     
     '''
         :param pandasdf df: R2 values averaged across seeds for interpretable model and interp + BIL
@@ -487,13 +497,13 @@ def plot_hist2d(df, model1, model2, cmaps, max_val, networks, min_val, figurePat
         
         ax.set_yticks([0.0, max_val[region]])
         ax.set_xticks([0.0, max_val[region]])
-        ax.tick_params(axis='y', labelsize=25) 
+        ax.tick_params(axis='y', labelsize=25)
         ax.tick_params(axis='x', labelsize=25) 
         ax.plot(ax.get_xlim(), ax.get_ylim(), 'r--', alpha=0.75, color='black')
         #ax.text(ax.get_xlim()[0]+0.02, ax.get_ylim()[1]-0.02, f'Pearson r = {r}', ha='left', va='top', size=20)
        
         
-        if region == 'language':
+        if region == 'language' and labels:
             ax.set_xlabel(model2, fontsize=25)
             ax.set_ylabel(model1, fontsize=25)
             plt.colorbar(hb[3], ax=ax) 
