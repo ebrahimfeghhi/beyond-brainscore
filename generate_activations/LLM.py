@@ -23,6 +23,7 @@ parser.add_argument("--untrained", action='store_true', default=False, help="If 
 parser.add_argument("--model", type=str, help="Model to generate activations for")
 parser.add_argument("--model_num", type=str, default='', help="Seed number if specified")
 parser.add_argument("--dataset", type=str, default='pereira', help="pereira, fedorenko, or blank")
+parser.add_argument("--decontext", action="store_true", default=False, help='If true, run each sentence in isolation for Pereira')
 
 args = parser.parse_args()
 basePath = ''
@@ -31,10 +32,10 @@ dataset = args.dataset
 model_str = args.model
 untrained = args.untrained
 model_num = args.model_num
+decontext = args.decontext
 save_words = False
 print("Untrained: ", untrained)
 print("generating activations for: ", model_str)
-
 
 basePath_data = '/data/LLMs/data_processed/'
 
@@ -137,7 +138,9 @@ def pool_representations(dataset, contextual_embeddings, static_embeddings,
     
     if dataset == 'pereira' or dataset == 'blank':
         
+        # last token pooling
         activity_sent = contextual_embeddings[-1]
+        # sum pooling
         activity_sent_sp = np.sum(contextual_embeddings, axis=0)
         static_activity_pos_embed = np.sum(static_embeddings, axis=0)
         static_activity_pos = np.sum(static_embeddings_pos_only, axis=0)
@@ -304,15 +307,18 @@ num_words_or_tokens = []
 print("GENERATING ACTIVATIONS")
 
 for txt, dl in zip(experiment_txt, data_labels):
+
     
     # remove right spaces
     txt = txt.rstrip()
     
-    if dl != current_label:
+    # if new passage reset context
+    # also reset context if running in decontextualized mode
+    if dl != current_label or decontext:
         # reset the previous context 
         previous_text = ''
         current_label = dl
-    
+
     current_text = f' {txt}'
 
     if dataset == 'fedorenko':
@@ -364,6 +370,9 @@ if save_words == True:
     word_str = '-word'
 else:
     word_str = ''
+    
+if decontext:
+    model_str = f"{model_str}-decontext"
 
 savePath = f'{savePath}data_processed/{dataset}/LLM_acts'
 
@@ -378,7 +387,7 @@ np.save(f'{savePath}sent_length{word_str}', num_words_or_tokens)
 # last token method
 np.savez(f'{savePath}/X_{model_str}{word_str}{model_num}', **contextual_dict)
 
-
+# sum pooling method
 if contextual_dict_sp is not None:
     np.savez(f'{savePath}/X_{model_str}-sp{word_str}', **contextual_dict_sp)
     
