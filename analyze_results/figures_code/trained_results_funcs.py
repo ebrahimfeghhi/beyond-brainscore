@@ -3,6 +3,25 @@ import numpy as np
 from trained_untrained_results_funcs import max_across_nested
 
 
+def return_frac_var_explained(submodel, submodel_with_LLM, LLM_perf):
+    
+    '''
+    This function computes the omega metric. 
+    
+        :param df submodel: dataframe containing performance values for model without LLM
+        :param df submodel_with_LLM: dataframe containing performance values for model with LLM 
+        :param LLM_perf: performnace of LLM model for each subject
+    '''
+    
+    submodel = submodel.loc[submodel.Network=='language']
+    submodel_with_LLM = submodel_with_LLM.loc[submodel_with_LLM.Network=='language']
+    numerator = submodel_with_LLM.groupby(['subjects']).r2.mean().values - submodel.groupby(['subjects']).r2.mean().values
+    
+    fve = np.clip(1 - (numerator/LLM_perf), 0, 1)
+    print(np.mean(fve), np.std(fve)/np.sqrt(LLM_perf.shape[0]))
+    return fve
+    
+
 def create_pd_selected_models(perf_values, model_names, select_model_names, replace_model_names, 
                               num_vox_dict, br_labels_dict, subjects_dict, exp):
     

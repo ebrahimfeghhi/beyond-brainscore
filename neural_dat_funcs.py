@@ -10,7 +10,6 @@ def construct_splits_pereira(X, y, data_labels, alphas, device, feature_grouper,
     y_test_folds = []
     mse_stored = []
     mse_stored_intercept_only = []
-    val_stored = []
     test_fold_size = []
     
     # for within experiment regressions, divide the set of 24 passages (one from 
@@ -63,13 +62,12 @@ def construct_splits_pereira(X, y, data_labels, alphas, device, feature_grouper,
                 X_test = X[test_indices]
                 y_test = y[test_indices]
      
-                mse_test, mse_intercept, val_perf, y_pred, mse_intercept_non_avg = run_himalayas(X_train, 
+                mse_test, mse_intercept, y_pred, mse_intercept_non_avg = run_himalayas(X_train, 
                                                 y_train, X_test, y_test, alphas, device, 
                                                 train_labels, feature_grouper, n_iter, use_kernelized, 
                                                 dataset, exp, 
                                                 first_second_half, linear_reg)
             
-                val_stored.append(val_perf)
                 mse_stored_intercept_only.append(mse_intercept)
                 mse_stored.append(mse_test)
                 y_hat_folds.append(y_pred)
@@ -77,57 +75,59 @@ def construct_splits_pereira(X, y, data_labels, alphas, device, feature_grouper,
                 y_test_folds.append(y_test)
                 test_fold_size.append(X_test.shape[0])
                 
-    return val_stored, mse_stored_intercept_only, mse_stored, y_hat_folds, mse_stored_intercept_non_avg, y_test_folds, test_fold_size
+    return mse_stored_intercept_only, mse_stored, y_hat_folds, mse_stored_intercept_non_avg, y_test_folds, test_fold_size
 
 
 def construct_splits_fedorenko(X, y, data_labels, alphas, device, feature_grouper, 
-                             n_iter, use_kernelized, dataset, split_size):
+                             n_iter, use_kernelized, dataset, split_size, linear_reg):
     
     sentence_length = 8
     sentence_num = 52
     
+    mse_stored_intercept_non_avg = []
     y_hat_folds = []
     y_test_folds = []
     mse_stored = []
     mse_stored_intercept_only = []
-    val_stored = []
     test_fold_size = []
+
   
     for i in range(0, sentence_num*sentence_length, split_size):
         
         test_indices = np.arange(i, i+split_size)
         train_indices = np.setdiff1d(np.arange(sentence_num*sentence_length), test_indices)
-        test_labels = data_labels[test_indices]
-        train_labels = data_labels[train_indices]
+        test_indices = data_labels[test_indices]
+        train_indices = data_labels[train_indices]
+    
 
         X_train = X[train_indices]
         y_train = y[train_indices]
         X_test = X[test_indices]
         y_test = y[test_indices]
         
-        mse_test, mse_intercept, val_perf, y_pred, y_pred_intercept = run_himalayas(X_train, 
+        mse_test, mse_intercept, y_pred, mse_intercept_non_avg = run_himalayas(X_train, 
                                         y_train, X_test, y_test, alphas, device, 
-                                        train_labels, feature_grouper, n_iter, use_kernelized, 
-                                        dataset, val_passages=None, val_exp_names=None)
+                                        train_indices, feature_grouper, n_iter, use_kernelized, 
+                                        dataset, linear_reg=linear_reg)
 
-        val_stored.append(val_perf)
         mse_stored_intercept_only.append(mse_intercept)
+        mse_stored_intercept_non_avg.append(mse_intercept_non_avg)
         mse_stored.append(mse_test)
         y_hat_folds.append(y_pred)
         y_test_folds.append(y_test) 
         test_fold_size.append(X_test.shape[0])  
         
-    return val_stored, mse_stored_intercept_only, mse_stored, y_hat_folds, y_test_folds, test_fold_size
+    return mse_stored_intercept_only, mse_stored, y_hat_folds, mse_stored_intercept_non_avg, y_test_folds, test_fold_size
 
 
 def construct_splits_blank(X, y, data_labels, alphas, device, feature_grouper, 
-                             n_iter, use_kernelized, dataset):
+                             n_iter, use_kernelized, dataset, linear_reg):
     
     y_hat_folds = []
     y_test_folds = []
     mse_stored = []
     mse_stored_intercept_only = []
-    val_stored = []
+    mse_stored_intercept_non_avg = []
     test_fold_size = []
     
     num_samples = data_labels.shape[0]
@@ -144,18 +144,18 @@ def construct_splits_blank(X, y, data_labels, alphas, device, feature_grouper,
         X_test = np.squeeze(X[test_indices])
         y_test = np.squeeze(y[test_indices])
         
-        mse_test, mse_intercept, val_perf, y_pred, y_pred_intercept = run_himalayas(X_train, 
+        mse_test, mse_intercept, y_pred, y_pred, mse_intercept_non_avg = run_himalayas(X_train, 
                                     y_train, X_test, y_test, alphas, device, 
                                     train_labels, feature_grouper, n_iter, use_kernelized, 
-                                    dataset, val_passages=None, val_exp_names=None)
+                                    dataset, linear_reg=linear_reg)
+
 
         
-        val_stored.append(val_perf)
-        
         mse_stored_intercept_only.append(mse_intercept)
+        mse_stored_intercept_non_avg.append(mse_intercept_non_avg)
         mse_stored.append(mse_test)
         y_hat_folds.append(y_pred)
         y_test_folds.append(y_test)
         test_fold_size.append(X_test.shape[0]) 
         
-    return val_stored, mse_stored_intercept_only, mse_stored, y_hat_folds, y_test_folds, test_fold_size
+    return mse_stored_intercept_only, mse_stored, y_hat_folds, mse_stored_intercept_non_avg, y_test_folds, test_fold_size

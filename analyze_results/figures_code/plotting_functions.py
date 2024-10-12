@@ -213,7 +213,7 @@ def plot_across_subjects(dict_pd_merged, figurePath, selected_networks, yticks=N
                          LLM_perf=None, ylabel=True, median=False, ylabel_str=r'$R^2$'):
     
     '''
-        :param DataFrame dict_pd_merged: pandas df with the following columns: [subjects, Network, Model]
+        :param DataFrame dict_pd_merged: pandas df with the following columns: [subjects, Network, Model, perf]
         :param str figurePath: where to store figure
         :param list selected_networks: plot data from these networks
         :param [list, None] yticks: yticks for figure, if None they are set automatically by matplotlib
@@ -258,7 +258,9 @@ def plot_across_subjects(dict_pd_merged, figurePath, selected_networks, yticks=N
     sns.stripplot(data=subject_avg_pd, x='Network', y='perf', hue='Model', dodge=True, palette=color_palette, 
                    size=ms, hue_order=hue_order, order=order, ax=ax,  legend=plot_legend)
     
+
     if draw_lines:
+        num_models = np.unique(dict_pd_merged['Model']).shape[0]
         for i in range(0, 2, 2):
             locs1 = ax.get_children()[i].get_offsets()
             locs2 = ax.get_children()[i+1].get_offsets()
@@ -267,15 +269,16 @@ def plot_across_subjects(dict_pd_merged, figurePath, selected_networks, yticks=N
                 y = [locs1[i, 1], locs2[i, 1]]
                 ax.plot(x, y, color="black", alpha=0.2)
                 
-        # Connect 2nd to 3rd set
-        for i in range(1, 3, 2):
-            locs2 = ax.get_children()[i].get_offsets()
-            locs3 = ax.get_children()[i+1].get_offsets()
-            for j in range(locs2.shape[0]):
-                x = [locs2[j, 0], locs3[j, 0]]
-                y = [locs2[j, 1], locs3[j, 1]]
-                ax.plot(x, y, color="black", alpha=0.2)
-    
+        if num_models > 2:
+            # Connect 2nd to 3rd set
+            for i in range(1, 3, 2):
+                locs2 = ax.get_children()[i].get_offsets()
+                locs3 = ax.get_children()[i+1].get_offsets()
+                for j in range(locs2.shape[0]):
+                    x = [locs2[j, 0], locs3[j, 0]]
+                    y = [locs2[j, 1], locs3[j, 1]]
+                    ax.plot(x, y, color="black", alpha=0.2)
+        
     sns.barplot(data=subject_avg_pd, x='Network', y='perf', hue='Model', palette=color_palette, 
                 alpha=0.5, errorbar=None, hue_order=hue_order, order=order, ax=ax, legend=False, width=width)
     

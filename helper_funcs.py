@@ -34,7 +34,6 @@ def pearson_corr_schrimpf_style(y_test_folds, y_hat_folds):
     :param list y_hat_folds: length num_folds, each element shape num_sentences x num_voxels per folds
     '''
     
-    
     num_folds = len(y_test_folds)
     
     num_voxels = y_test_folds[0].shape[1]
@@ -575,7 +574,7 @@ def obtain_val_predictions(alphas, X_train, y_train, pereira_cv):
     
 def run_himalayas(X_train, y_train, X_test, 
                   y_test, alphas, device, train_labels, feature_grouper, n_iter, 
-                  use_kernelized, dataset, selected_exp, first_second_half, 
+                  use_kernelized, dataset, selected_exp=None, first_second_half=None, 
                   linear_reg=False):
     
     
@@ -614,7 +613,6 @@ def run_himalayas(X_train, y_train, X_test,
         n_alphas_batch = len(alphas)
         targets_batch = y_train.shape[1]
         
-           
     scaler = StandardScaler()
     X_train = scaler.fit_transform(X_train)
     X_test = scaler.transform(X_test)
@@ -623,8 +621,7 @@ def run_himalayas(X_train, y_train, X_test,
         model = LinearRegression(fit_intercept=True)
         model.fit(X_train, y_train)
         y_pred = model.predict(X_test)
-        return np.zeros_like(y_pred), np.zeros_like(y_pred), np.zeros_like(y_pred), y_pred, np.zeros_like(y_pred)
-    
+        
     else:
         
         if use_kernelized:
@@ -633,6 +630,7 @@ def run_himalayas(X_train, y_train, X_test,
             model = MultipleKernelRidgeCV(kernels="precomputed", solver="random_search",
                                         cv=cv, fit_intercept=True, early_stop_y_idxs=None,
                                         solver_params=solver_params)
+            
         else:
             
             model = GroupRidgeCV(groups="input", fit_intercept=True, cv=cv, 
@@ -640,28 +638,32 @@ def run_himalayas(X_train, y_train, X_test,
                                         'n_alphas_batch': n_alphas_batch, 'n_targets_batch': targets_batch})
  
 
-    pipe = make_pipeline(feature_grouper, model)
-    _ = pipe.fit(X_train, y_train)
-    
-    # compute val out of sample R2 to determine best layer
-    # val_r2_os is of shape num_gammas x num_voxels, 
-    # (or num_voxels if only one feature space was used)
-    val_r2_os = model.cv_scores_.cpu().numpy().squeeze()  
-    
-    if len(val_r2_os.shape) == 2:
-        # select best gamma for each voxel 
-        val_r2_os = np.max(val_r2_os, axis=0)
+        pipe = make_pipeline(feature_grouper, model)
+        _ = pipe.fit(X_train, y_train)
+        
+        # compute val out of sample R2 to determine best layer
+        # val_r2_os is of shape num_gammas x num_voxels, 
+        # (or num_voxels if only one feature space was used)
+        #val_r2_os = model.cv_scores_.cpu().numpy().squeeze()  
+        
+        #if len(val_r2_os.shape) == 2:
+            # select best gamma for each voxel 
+        #    val_r2_os = np.max(val_r2_os, axis=0)
 
-    # compute test mse 
-    y_pred = pipe.predict(X_test)
-    mse_test = mean_squared_error(y_pred.cpu().numpy(), y_test, multioutput = 'raw_values')
+        # compute test mse 
+        y_pred = pipe.predict(X_test)
+        y_pred = y_pred.cpu().numpy()
+
+    mse_test = mean_squared_error(y_pred, y_test, multioutput = 'raw_values')
     mse_test_intercept, mse_test_intercept_non_avg = compute_mse_intercept_test(y_train, y_test)
 
-    R2_fold = 1-mse_test/mse_test_intercept
     
-    print("Mean test perf: ", np.nanmean(R2_fold))
+    # R2 values are not good with linear, printing them is useless
+    if linear_reg == False:
+        R2_fold = 1-mse_test/mse_test_intercept
+        print("Mean test perf: ", np.nanmean(R2_fold))
     
-    return mse_test, mse_test_intercept, val_r2_os, y_pred.cpu().numpy(), mse_test_intercept_non_avg
+    return mse_test, mse_test_intercept, y_pred, mse_test_intercept_non_avg
 
 def preprocess_himalayas(n_features_list, use_kernelized):
         
@@ -681,7 +683,7 @@ def preprocess_himalayas(n_features_list, use_kernelized):
         return column_kernelizer
     
     else:
-        print("USING REGULAR RIDGE")
+        print("USING NON KERNEL")
         scalers = [(name,'passthrough', slice_)
                     for name, slice_ in zip(feature_names, slices)]
         column_scaler = ColumnTransformerNoStack(scalers)

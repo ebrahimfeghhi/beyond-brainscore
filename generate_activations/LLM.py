@@ -49,20 +49,19 @@ if dataset == 'pereira':
     data_labels = np.load(f"{basePath_data}{dataset}/dataset/data_labels_{dataset}.npy") 
     
 if dataset == 'fedorenko':
-    fed_path = f"{basePath}{dataset}_data/sentences_ordered.txt"
+    fed_path = f"{basePath_data}{dataset}/text/sentences_ordered.txt"
     with open(fed_path, "r") as file:
         # Read the contents line by line into a list
         experiment_txt = [line.strip() for line in file]
-    data_labels = np.load(f"{basePath}data_processed/{dataset}/data_labels_{dataset}.npy")
+    data_labels = np.load(f"{basePath_data}{dataset}/dataset/data_labels_{dataset}.npy") 
     
 if dataset == 'blank':
-    blank_data = np.load(f"{basePath}{dataset}_data/story_data_dict.npz")
+    blank_data = np.load(f"{basePath_data}{dataset}/text/story_data_dict.npz")
     experiment_txt = []
     data_labels = []
     for key, val in blank_data.items():
         experiment_txt.extend(val)
         data_labels.extend(np.repeat(key, len(val)))
-    
     
 # load models 
 if 'gpt' in model_str:
@@ -374,7 +373,7 @@ else:
 if decontext:
     model_str = f"{model_str}-decontext"
 
-savePath = f'{savePath}data_processed/{dataset}/LLM_acts'
+savePath = f'{savePath}data_processed/{dataset}/acts'
 
 # create folder to save data if it doesn't already exist
 if os.path.isdir(savePath):

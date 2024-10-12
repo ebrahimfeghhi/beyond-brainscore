@@ -19,7 +19,8 @@ def himalaya_regression_caller(model: Union[str, dict, np.ndarray],
                                exp: str ='both', save_results: bool = True, 
                                save_y_hat: bool = True, save_new: bool= False, 
                                device: Union[str, int] = 'cpu', untrained: bool = False,
-                               results_folder: str = '/data/LLMs/brainscore', linear_reg: bool = False):
+                               results_folder: str = '/data/LLMs/brainscore', linear_reg: bool = False, 
+                               shuffled: bool = False):
     
     '''
     This function performs banded regression based on the himalaya package. 
@@ -62,6 +63,8 @@ def himalaya_regression_caller(model: Union[str, dict, np.ndarray],
     results_folder: str specifying where to save data
     
     linear_reg: If true, set alphas to 0 
+    
+    shuffled: If true, use shuffled train-test splits
     '''
 
     
@@ -69,7 +72,7 @@ def himalaya_regression_caller(model: Union[str, dict, np.ndarray],
 
     if isinstance(model, str):
         print("Running model: ", model)
-        X_all_layers = dict(np.load(f'{data_folder}/LLM_acts/X_{model}.npz'))
+        X_all_layers = dict(np.load(f'{data_folder}/acts/X_{model}.npz'))
     # if a numpy array was passed, turn it into a dict
     else:
         # change to dict if a numpy array was passed
@@ -82,11 +85,11 @@ def himalaya_regression_caller(model: Union[str, dict, np.ndarray],
 
     if isinstance(y, str):
         if len(y) == 0:
-            if exp is not None:
+            if exp is not None and dataset=='pereira':
                 # load neural data and data labels (used for designing splits)
                 y = np.load(f'{data_folder}/dataset/y_{dataset}_{exp}.npy')
             else:
-                y = np.load(f'{data_folder}/y_{dataset}.npy')
+                y = np.load(f'{data_folder}/dataset/y_{dataset}.npy')
         else:
             y = np.load(f'{data_folder}/y_{y}.npy')
     else:
@@ -115,20 +118,31 @@ def himalaya_regression_caller(model: Union[str, dict, np.ndarray],
     if not os.path.exists(full_results_folder):
         os.makedirs(full_results_folder)
 
-    # alpha values used for ridge regression
-    if not linear_reg:
-        alphas = np.exp2(np.arange(-5, 35))
-        alphas = np.hstack((0,alphas))
-    else:
-        alphas = np.array([1e-8])
+
+    alphas = np.exp2(np.arange(-5, 35))
+    alphas = np.hstack((0,alphas))
 
     test_fold_size = []
     
     r2_storage = []
-    val_r2_storage = []
-
+    if shuffled:
+        # shuffling the data labels means splits won't be generated on contiguous splits 
+        print("SHUFFLING DATA")
+        np.random.seed(42)
+        if dataset == 'pereira':
+            # performing shuffling for data labels within each experiment
+            data_labels_384 = data_labels[243:]
+            data_labels_243 = data_labels[:243]
+            np.random.shuffle(data_labels_384)
+            np.random.shuffle(data_labels_243)
+            data_labels = np.concatenate((data_labels_243, data_labels_384))
+        else:
+            np.random.shuffle(data_labels)  
+            
+        full_results_folder = f"{full_results_folder}/shuffled"
+            
     for layer_name, X in X_all_layers.items():
-
+        
         print(f"X shape: {X.shape}")
         
         if len(X.shape) == 1:
@@ -154,7 +168,7 @@ def himalaya_regression_caller(model: Union[str, dict, np.ndarray],
 
         # use kernel method to speed things up when features > samples
         if num_features > num_samples:
-            use_kernelized = True
+            use_kernelized = False
         else:
             use_kernelized = False
 
@@ -166,25 +180,23 @@ def himalaya_regression_caller(model: Union[str, dict, np.ndarray],
         
         if dataset == 'pereira':
             
-           val_stored, mse_stored_intercept_only, mse_stored, y_hat_folds, mse_stored_intercept_non_avg, y_test_folds, test_fold_size = \
+           mse_stored_intercept_only, mse_stored, y_hat_folds, mse_stored_intercept_non_avg, y_test_folds, test_fold_size = \
                             construct_splits_pereira(X, y, data_labels, alphas, device, feature_grouper, 
                              n_iter, use_kernelized, dataset, exp, linear_reg=linear_reg)
         
         elif dataset == 'fedorenko':
             
-            val_stored, mse_stored_intercept_only, mse_stored, y_hat_folds, y_test_folds, test_fold_size = \
+            mse_stored_intercept_only, mse_stored, y_hat_folds, mse_stored_intercept_non_avg, y_test_folds, test_fold_size = \
                 construct_splits_fedorenko(X, y, data_labels, alphas, device, feature_grouper, 
-                             n_iter, use_kernelized, dataset, split_size=32)
+                             n_iter, use_kernelized, dataset, split_size=32, linear_reg=linear_reg)
             
           
         elif dataset == 'blank':
             
-           val_stored, mse_stored_intercept_only, mse_stored, y_hat_folds, y_test_folds, test_fold_size = \
+           mse_stored_intercept_only, mse_stored, y_hat_folds, mse_stored_intercept_non_avg, y_test_folds, test_fold_size = \
                construct_splits_blank(X, y, data_labels, alphas, device, feature_grouper, 
-                             n_iter, use_kernelized, dataset)
-                
-        # num_folds x number of brain units (voxels, electrodes,...)
-        val_stored = np.vstack(val_stored)
+                             n_iter, use_kernelized, dataset, linear_reg=linear_reg)
+
         mse_stored_intercept = np.vstack(mse_stored_intercept_only)
         mse_stored = np.vstack(mse_stored)
         
@@ -212,7 +224,7 @@ def himalaya_regression_caller(model: Union[str, dict, np.ndarray],
         out_of_sample_r2 = 1 - pooled_mse/pooled_mse_intercept
         print("R2 mean: ", np.nanmean(out_of_sample_r2))
         print("Pearson r median: ", np.nanmedian(pearson_corr))
-        
+
         if save_results:
 
             file_name = f"{dataset}_{model}_{layer_name}_{n_iter}"
@@ -225,7 +237,7 @@ def himalaya_regression_caller(model: Union[str, dict, np.ndarray],
                 
             complete_file_name = f"{file_name}.npz"
         
-            results_stored = {'val_perf': val_stored,  'pnum': features_list, 
+            results_stored = {'pnum': features_list, 
                             'out_of_sample_r2': out_of_sample_r2, 'pearson_r': pearson_corr}
 
             if save_y_hat:
@@ -245,9 +257,8 @@ def himalaya_regression_caller(model: Union[str, dict, np.ndarray],
             
         else:
             
-            val_r2_storage.append(val_stored)
             r2_storage.append(out_of_sample_r2)
         
         
-    return r2_storage, val_r2_storage
+    return r2_storage
                             
