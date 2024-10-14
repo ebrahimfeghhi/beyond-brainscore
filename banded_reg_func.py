@@ -66,6 +66,10 @@ def himalaya_regression_caller(model: Union[str, dict, np.ndarray],
     
     shuffled: If true, use shuffled train-test splits
     '''
+    
+    if len(exp) == 0 and dataset == 'pereira':
+        print("Need to pass in experiment string, 384 or 243, for pereira dataset")
+        return 0 
 
     
     data_folder = f"{data_folder}/{dataset}"
@@ -140,6 +144,8 @@ def himalaya_regression_caller(model: Union[str, dict, np.ndarray],
             np.random.shuffle(data_labels)  
             
         full_results_folder = f"{full_results_folder}/shuffled"
+    else:
+        print("CONTIGUOUS SPLITS")
             
     for layer_name, X in X_all_layers.items():
         
@@ -206,10 +212,15 @@ def himalaya_regression_caller(model: Union[str, dict, np.ndarray],
         y_hat_folds = np.vstack(y_hat_folds)
         mse_stored_intercept_non_avg = np.vstack(mse_stored_intercept_non_avg)
         y_test_folds = np.vstack(y_test_folds)
+        
+        if len(exp) != 0:
+            exp_str = f'_{exp}'
+        else:
+            exp_str = exp
   
         # save y_test and mse of intercept model if not already saved
-        y_test_ordered_filename = f'/data/LLMs/brainscore/results_{dataset}/y_test_ordered_{exp}.npy'
-        mse_intercept_filename = f'/data/LLMs/brainscore/results_{dataset}/mse_intercept_{exp}.npy'
+        y_test_ordered_filename = f'/data/LLMs/brainscore/results_{dataset}/y_test_ordered{exp_str}.npy'
+        mse_intercept_filename = f'/data/LLMs/brainscore/results_{dataset}/mse_intercept{exp_str}.npy'
         
         if ~os.path.isfile(y_test_ordered_filename):  
             np.save(y_test_ordered_filename, y_test_folds)

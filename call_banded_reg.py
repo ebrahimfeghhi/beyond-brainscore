@@ -32,7 +32,7 @@ parser.add_argument("--niter", type=int, required=False, default=1, help="Number
 parser.add_argument("--dataset", type=str, help="pereira, fedorenko, or blank", default='pereira')
 parser.add_argument("--intercept", action='store_true', help="save intercept model only")
 parser.add_argument("--save_new", action='store_true', help="save under new name")
-parser.add_argument("--exp", type=str, default='384', help='384, 243, or both, for pereira only')
+parser.add_argument("--exp", type=str, default='', help='384, 243, or both, for pereira only')
 parser.add_argument("--data_folder", type=str, default='/data/LLMs/data_processed', help='where to look for data')
 parser.add_argument("--device", type=int, default=2, help="-1 for cpu, otherwise specify gpu device")
 parser.add_argument("--untrained", action='store_true', default=False, help="If true, save to untrained folder")

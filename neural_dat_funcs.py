@@ -144,7 +144,7 @@ def construct_splits_blank(X, y, data_labels, alphas, device, feature_grouper,
         X_test = np.squeeze(X[test_indices])
         y_test = np.squeeze(y[test_indices])
         
-        mse_test, mse_intercept, y_pred, y_pred, mse_intercept_non_avg = run_himalayas(X_train, 
+        mse_test, mse_intercept, y_pred, mse_intercept_non_avg = run_himalayas(X_train, 
                                     y_train, X_test, y_test, alphas, device, 
                                     train_labels, feature_grouper, n_iter, use_kernelized, 
                                     dataset, linear_reg=linear_reg)

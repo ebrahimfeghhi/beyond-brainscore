@@ -33,11 +33,15 @@ model_str = args.model
 untrained = args.untrained
 model_num = args.model_num
 decontext = args.decontext
-save_words = False
 print("Untrained: ", untrained)
 print("generating activations for: ", model_str)
 
 basePath_data = '/data/LLMs/data_processed/'
+
+def count_words(text):
+    # Split the text into words based on spaces and count them
+    words = text.split()
+    return len(words)
 
 # load linguistic stimuli 
 if dataset == 'pereira':
@@ -49,12 +53,21 @@ if dataset == 'pereira':
     data_labels = np.load(f"{basePath_data}{dataset}/dataset/data_labels_{dataset}.npy") 
     
 if dataset == 'fedorenko':
+    
     fed_path = f"{basePath_data}{dataset}/text/sentences_ordered.txt"
+    
     with open(fed_path, "r") as file:
         # Read the contents line by line into a list
         experiment_txt = [line.strip() for line in file]
-    data_labels = np.load(f"{basePath_data}{dataset}/dataset/data_labels_{dataset}.npy") 
+
+    words_list = []
+    for sentence in experiment_txt:
+        for word in sentence.split():
+            words_list.append(word)
+    experiment_txt = words_list
     
+    data_labels = np.repeat(np.arange(52), 8)
+
 if dataset == 'blank':
     blank_data = np.load(f"{basePath_data}{dataset}/text/story_data_dict.npz")
     experiment_txt = []
@@ -81,7 +94,6 @@ if 'gpt' in model_str:
     embedding_matrix = model.transformer.wte 
     positional_matrix = model.transformer.wpe
     
-    
 elif 'roberta' in model_str:
     
     tokenizer = RobertaTokenizer.from_pretrained(model_str)
@@ -90,37 +102,6 @@ elif 'roberta' in model_str:
     model = model.to(device)    
     embedding_matrix = model.get_input_embeddings().weight.data
     positional_matrix = model.embeddings.position_embeddings.weight.data
-
-    
-def split_multipunc_tokens(toks):
-    
-    '''
-    :param list toks: tokens from an LLM tokenizer
-    
-    The purpose of this function is to split tokens that are composed of only multiple punctuation marks.
-    For instance " '. ". These tokens are problematic when trying to align tokens to words. 
-    
-    For instance, if we have the string: " 'car'. ", then the words list will contain ['car', '.'] (this is because
-    the word lists separates periods and commas into their own elements, so not really a word list...). 
-    If the last apostrophe and period are combined into a token, it is impossible to find an 
-    alignment between tokens and words. 
-    '''
-    
-    import string
-    
-    new_tokens = []
-    
-    for s in toks:
-        
-        if all(char in string.punctuation for char in s) and len(s) > 1:
-            print("Splitting token: ", s)
-            breakpoint()
-            for char in s:
-                new_tokens.append(char)
-        else:
-            new_tokens.append(s)
-            
-    return new_tokens
 
 def pool_representations(dataset, contextual_embeddings, static_embeddings, 
                          static_embeddings_pos_only, static_embeddings_no_pos):
@@ -134,31 +115,20 @@ def pool_representations(dataset, contextual_embeddings, static_embeddings,
     :param ndarray static_embeddings_pos_only: positional embeddings
     :param ndarray static_embeddings_no_pos: static embeddings with no positional embeddings
     '''
-    
-    if dataset == 'pereira' or dataset == 'blank':
-        
-        # last token pooling
-        activity_sent = contextual_embeddings[-1]
-        # sum pooling
-        activity_sent_sp = np.sum(contextual_embeddings, axis=0)
-        static_activity_pos_embed = np.sum(static_embeddings, axis=0)
-        static_activity_pos = np.sum(static_embeddings_pos_only, axis=0)
-        static_activity_embed = np.sum(static_embeddings_no_pos, axis=0)
-        
-    elif dataset == 'fedorenko':
-        
-        activity_sent = contextual_embeddings
-        activity_sent_sp = None
-        static_activity_pos_embed = static_embeddings
-        static_activity_pos = static_embeddings_pos_only
-        static_activity_embed = static_embeddings_no_pos
-            
+
+    # last token pooling
+    activity_sent = contextual_embeddings[-1]
+    # sum pooling
+    activity_sent_sp = np.sum(contextual_embeddings, axis=0)
+    static_activity_pos_embed = np.sum(static_embeddings, axis=0)
+    static_activity_pos = np.sum(static_embeddings_pos_only, axis=0)
+    static_activity_embed = np.sum(static_embeddings_no_pos, axis=0)
+
     return activity_sent, activity_sent_sp, static_activity_pos_embed, static_activity_pos, static_activity_embed
         
     
-
 def get_model_activity(previous_text, current_text, embedding_matrix, 
-                               positional_matrix, tokenizer, model_str, dataset, save_words, 
+                               positional_matrix, tokenizer, model_str, dataset, 
                                max_context_size=512):
     
     '''
@@ -169,16 +139,24 @@ def get_model_activity(previous_text, current_text, embedding_matrix,
     :param tokenizer: tokenize sentence
     :param str model_str: model used to generate activations
     :param str dataset: neural dataset 
-    :param bool save_words: if true, average across tokens for multi-token words
     :param int max_context_size: max context size for LLM (in tokens)
     '''
-    
-    # tokenize text 
+
+    # separately tokenize current and previous tokens so that it's easier
+    # to sum/avg pool across current tokens 
     curr_tokens = tokenizer.tokenize(current_text)
-    #curr_tokens = split_multipunc_tokens(curr_tokens)
     num_ct = len(curr_tokens)
     prev_tokens = tokenizer.tokenize(previous_text)
+    full_text = previous_text + current_text
     tokens = prev_tokens + curr_tokens
+    tokens_all = tokenizer.tokenize(full_text)
+    
+    # make sure separating current and previous text
+    # doesn't lead to different tokenization outputs
+    if tokens != tokens_all:
+        print("Be caferful, tokenization is different")
+        breakpoint()
+        
     tokens = tokens[-max_context_size:]
     token_ids = tokenizer.convert_tokens_to_ids(tokens)
     
@@ -218,77 +196,23 @@ def get_model_activity(previous_text, current_text, embedding_matrix,
         outputs = outputs[:, 1:-1, :]
         
     # only take tokens corresponding to the current text
-    static_embed_pos = static_embed_pos[-num_ct:]
-    static_pos = static_pos[-num_ct:]
-    static_embed = static_embed[-num_ct:]
-    outputs = outputs[:, -num_ct:]
-    
-    # in this case, we just pool across tokens 
-    if save_words == False:
-        
-        activity_sent, activity_sent_sp, static_activity_pos_embed, static_activity_pos, static_activity_embed = \
-        pool_representations(dataset, outputs.cpu().detach().numpy().swapaxes(0,1), static_embed_pos.cpu().detach().numpy(), 
-        static_pos.cpu().detach().numpy(), static_embed.cpu().detach().numpy())
-        
-        non_averaged_static = static_embed_pos.cpu().detach().numpy()
-    
-    # average tokens for multi-token words (after separating periods and commas)
+    if len(tokens) > 1:
+        static_embed_pos = static_embed_pos[-num_ct:]
+        static_pos = static_pos[-num_ct:]
+        static_embed = static_embed[-num_ct:]
+        outputs = outputs[:, -num_ct:]
     else:
-        
-        tokens_curr_cleaned = [t.replace("Ġ", '') for t in curr_tokens] 
-        
-        words = separate_words_commas_periods(current_text)
-        
-        align = Alignment.from_strings(words, tokens_curr_cleaned)
-        tokens_to_words_alignment = align.y2x.data
-        
-        # list of lists of length len words, 
-        # each element contains the token indices that map to a word
-        tokens_to_word_list = group_tokens(tokens_to_words_alignment)
-        
-        assert len(tokens_to_word_list) == len(words), print("Alignment failed")
+        outputs = torch.unsqueeze(outputs, dim=1)
+        static_pos = torch.unsqueeze(static_pos, dim=0)
+        static_embed_pos = torch.unsqueeze(static_embed_pos, dim=0)
+        static_embed = torch.unsqueeze(static_embed, dim=0)
 
-        activity_word_level_embed = []  
-        activity_word_level_pos = []
-        activity_word_level_pos_embed = []
-        activity_word_level = []
-        
-        for idx, w in enumerate(tokens_to_word_list):
-            
-            is_punc = is_punctuation(words[idx])
-                    
-            if len(w) > 1:
-                # take the mean of tokens within a word if it has multiple tokens 
-                word_activity_embed = torch.squeeze(torch.mean(static_embed[w], axis=0))
-                word_activity_pos = torch.squeeze(torch.mean(static_pos[w], axis=0))
-                word_activity_pos_embed = torch.squeeze(torch.mean(static_embed_pos[w], axis=0))
-                word_activity = torch.squeeze(torch.mean(outputs[:, w], axis=1))
-            else:
-                word_activity_embed = torch.squeeze(static_embed[w])
-                word_activity_pos = torch.squeeze(static_pos[w])
-                word_activity_pos_embed = torch.squeeze(static_embed_pos[w])
-                word_activity = torch.squeeze(outputs[:, w])
-                
-            # don't add punctuation to static embeddings for trained embeddings since that
-            # worsens the performance of static embeddings 
-            if is_punc:
-                activity_word_level.append(word_activity.cpu().detach().numpy())
-            else:
-                activity_word_level.append(word_activity.cpu().detach().numpy())
-                activity_word_level_pos_embed.append(word_activity_pos_embed.cpu().detach().numpy())
-                activity_word_level_pos.append(word_activity_pos.cpu().detach().numpy())
-                activity_word_level_embed.append(word_activity_embed.cpu().detach().numpy())
-                
-        activity_word_level_pos_embed = np.array(activity_word_level_pos_embed)
-        activity_word_level_pos = np.array(activity_word_level_pos)
-        activity_word_level_embed = np.array(activity_word_level_embed)
-        activity_word_level = np.array(activity_word_level)
-        
-        activity_sent, activity_sent_sp, static_activity_pos_embed, static_activity_pos, static_activity_embed = \
-        pool_representations(dataset, activity_word_level, activity_word_level_pos_embed, activity_word_level_pos, activity_word_level_embed)
-        
-        non_averaged_static = activity_word_level_pos_embed
-        
+    activity_sent, activity_sent_sp, static_activity_pos_embed, static_activity_pos, static_activity_embed = \
+    pool_representations(dataset, outputs.cpu().detach().numpy().swapaxes(0,1), static_embed_pos.cpu().detach().numpy(), 
+    static_pos.cpu().detach().numpy(), static_embed.cpu().detach().numpy())
+    
+    non_averaged_static = static_embed_pos.cpu().detach().numpy()
+
     return static_activity_pos_embed, static_activity_pos, static_activity_embed, activity_sent, activity_sent_sp, non_averaged_static
 
 
@@ -307,11 +231,10 @@ print("GENERATING ACTIVATIONS")
 
 for txt, dl in zip(experiment_txt, data_labels):
 
-    
     # remove right spaces
     txt = txt.rstrip()
     
-    # if new passage reset context
+    # if new passage/sentence/story, then reset context
     # also reset context if running in decontextualized mode
     if dl != current_label or decontext:
         # reset the previous context 
@@ -320,11 +243,11 @@ for txt, dl in zip(experiment_txt, data_labels):
 
     current_text = f' {txt}'
 
-    if dataset == 'fedorenko':
-        current_text = current_text.replace('.', '')
+    #if dataset == 'fedorenko':
+    #    current_text = current_text.replace('.', '')
     
     static_pos_embed_rep, static_pos_rep, static_embed_rep, contextual_rep, contextual_rep_sp, static_non_avg = get_model_activity(previous_text, 
-                current_text, embedding_matrix, positional_matrix, tokenizer, model_str=model_str, dataset=dataset, save_words=save_words)
+                current_text, embedding_matrix, positional_matrix, tokenizer, model_str=model_str, dataset=dataset)
 
     previous_text += current_text
 
@@ -336,40 +259,19 @@ for txt, dl in zip(experiment_txt, data_labels):
     static_pos_embed_activity_non_avg.append(static_non_avg)
     num_words_or_tokens.append(static_non_avg.shape[0])
 
-if dataset == 'pereira' or dataset == 'blank':
-    
-    contextual_activity_stacked = np.stack(contextual_activity)
-    contextual_activity_stacked_sp = np.stack(contextual_activity_sp)
-    static_pos_embed_activity_stacked = np.stack(static_pos_embed_activity)
-    static_pos_embed_activity_non_avgs_stacked = np.vstack(static_pos_embed_activity_non_avg)
+contextual_activity_stacked = np.stack(contextual_activity)
+contextual_activity_stacked_sp = np.stack(contextual_activity_sp)
+static_pos_embed_activity_stacked = np.stack(static_pos_embed_activity)
+static_pos_embed_activity_non_avgs_stacked = np.vstack(static_pos_embed_activity_non_avg)
+static_pos_activity_stacked = np.stack(static_pos_activity)
+static_embed_activity_stacked = np.stack(static_embed_activity)
 
-    static_pos_activity_stacked = np.stack(static_pos_activity)
-    static_embed_activity_stacked = np.stack(static_embed_activity)
-    
-    contextual_dict = {}
-    contextual_dict_sp = {}
-    for ln in range(contextual_activity_stacked.shape[1]):
-        contextual_dict[f'layer_{ln}'] = contextual_activity_stacked[:, ln]
-        contextual_dict_sp[f'layer_{ln}'] = contextual_activity_stacked_sp[:, ln]
-    
-elif dataset == 'fedorenko':
-    
-    static_embed_activity_stacked = np.vstack(static_embed_activity)
-    static_pos_activity_stacked = np.vstack(static_pos_activity)
-    static_pos_embed_activity_stacked = np.vstack(static_pos_embed_activity)
-    contextual_activity_stacked = np.vstack(contextual_activity)
-    
-    contextual_dict = {}
-    for ln in range(contextual_activity_stacked.shape[1]):
-        contextual_dict[f'layer_{ln}'] = contextual_activity_stacked[:, ln]
-    
-    contextual_dict_sp = None
-    
-if save_words == True:
-    word_str = '-word'
-else:
-    word_str = ''
-    
+contextual_dict = {}
+contextual_dict_sp = {}
+for ln in range(contextual_activity_stacked.shape[1]):
+    contextual_dict[f'layer_{ln}'] = contextual_activity_stacked[:, ln]
+    contextual_dict_sp[f'layer_{ln}'] = contextual_activity_stacked_sp[:, ln]
+
 if decontext:
     model_str = f"{model_str}-decontext"
 
@@ -381,17 +283,12 @@ if os.path.isdir(savePath):
 else:
     os.makedirs(savePath)
     
-np.save(f'{savePath}sent_length{word_str}', num_words_or_tokens)
+np.save(f'{savePath}sent_length', num_words_or_tokens)
 
 # last token method
-np.savez(f'{savePath}/X_{model_str}{word_str}{model_num}', **contextual_dict)
-
-# sum pooling method
-if contextual_dict_sp is not None:
-    np.savez(f'{savePath}/X_{model_str}-sp{word_str}', **contextual_dict_sp)
-    
-if dataset == 'blank' or dataset == 'pereira':
-    np.savez(f'{savePath}/X_{model_str}-sp-static-non-avg{word_str}', **{'layer1': static_pos_embed_activity_non_avgs_stacked})
-    np.savez(f'{savePath}/X_{model_str}-sp-static{word_str}', **{'layer1': static_pos_embed_activity_stacked})
-    np.savez(f'{savePath}/X_{model_str}-sp-static-pos{word_str}', **{'layer1': static_pos_activity_stacked})
-    np.savez(f'{savePath}/X_{model_str}-sp-static-embed{word_str}', **{'layer1': static_embed_activity_stacked})
+np.savez(f'{savePath}/X_{model_str}{model_num}', **contextual_dict)
+np.savez(f'{savePath}/X_{model_str}{model_num}-sp', **contextual_dict_sp)
+np.savez(f'{savePath}/X_{model_str}{model_num}-sp-static-non-avg', **{'layer1': static_pos_embed_activity_non_avgs_stacked})
+np.savez(f'{savePath}/X_{model_str}{model_num}-sp-static', **{'layer1': static_pos_embed_activity_stacked})
+np.savez(f'{savePath}/X_{model_str}{model_num}-sp-static-pos', **{'layer1': static_pos_activity_stacked})
+np.savez(f'{savePath}/X_{model_str}{model_num}-sp-static-embed', **{'layer1': static_embed_activity_stacked})
