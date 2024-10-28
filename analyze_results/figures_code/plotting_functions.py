@@ -210,7 +210,8 @@ def load_model_to_pd(model_name, layer_name, niters, br_labels, subject_labels, 
 def plot_across_subjects(dict_pd_merged, figurePath, selected_networks, yticks=None, saveName=None,
                          color_palette=None, hue_order=None, 
                          order=None, clip_zero=True, draw_lines=False, plot_legend=False, plot_legend_under=False, ms=10, width=0.8, 
-                         LLM_perf=None, ylabel=True, median=False, ylabel_str=r'$R^2$'):
+                         LLM_perf=None, ylabel=True, median=False, ylabel_str=r'$R^2$', legend_fontsize=25, remove_yaxis=False, 
+                         subject_avg_pd=None):
     
     '''
         :param DataFrame dict_pd_merged: pandas df with the following columns: [subjects, Network, Model, perf]
@@ -230,23 +231,38 @@ def plot_across_subjects(dict_pd_merged, figurePath, selected_networks, yticks=N
         :param [float, None] LLM_perf: if a float, plots performance of LLM as a dashed line grey line
         :param bool ylabel: if false, don't plot y-axis label
         :param str ylabel_str: what string to plot for ylabel
+        :param int legend_fontsize: how large to make the text for the legend 
+        :param bool remove_yaxis: 
+        :param DataFrame subject_avg_pd: if 
         
         Plots performance, where each dot is a subject and bar is the mean across subjects. Hue is model and 
         x-axis is network. 
     '''
     
-    if clip_zero:
-        dict_pd_merged['perf'] = np.where(dict_pd_merged['perf']<0, 0, dict_pd_merged['perf'])
- 
-    dict_pd_with_all = dict_pd_merged.copy()
-    pattern = '|'.join(selected_networks)
-    dict_pd_merged = dict_pd_merged.loc[dict_pd_merged['Network'].str.contains(pattern)]
+    lw = 3
+    line_extend = 0.15
+
+    
+    if subject_avg_pd is None:
         
-    if median:
-        print("Taking median value across voxels with a participant")
-        subject_avg_pd = dict_pd_merged.groupby(['subjects', 'Network', 'Model']).median()
+        if clip_zero:
+            print("Clipping 0 values")
+            dict_pd_merged['perf'] = np.where(dict_pd_merged['perf']<0, 0, dict_pd_merged['perf'])
+    
+        dict_pd_with_all = dict_pd_merged.copy()
+        pattern = '|'.join(selected_networks)
+        dict_pd_merged = dict_pd_merged.loc[dict_pd_merged['Network'].str.contains(pattern)]
+        
+        if median:
+            print("Taking median value across voxels with a participant")
+            subject_avg_pd = dict_pd_merged.groupby(['subjects', 'Network', 'Model']).median()
+        else:
+            subject_avg_pd = dict_pd_merged.groupby(['subjects', 'Network', 'Model']).mean()
+
+            
     else:
-        subject_avg_pd = dict_pd_merged.groupby(['subjects', 'Network', 'Model']).mean()
+        dict_pd_merged = None
+        dict_pd_with_all = None
     
     #plt.figure(figsize=(14,10))
     sns.set_theme()
@@ -255,20 +271,36 @@ def plot_across_subjects(dict_pd_merged, figurePath, selected_networks, yticks=N
     
     fig, ax = plt.subplots(1,1, figsize=(4, 6))
     
-    sns.stripplot(data=subject_avg_pd, x='Network', y='perf', hue='Model', dodge=True, palette=color_palette, 
-                   size=ms, hue_order=hue_order, order=order, ax=ax,  legend=plot_legend)
+    # position x axis at y = 0
+    ax.spines['bottom'].set_position(('data', 0))
     
-
+    sns.stripplot(data=subject_avg_pd, x='Network', y='perf', hue='Model', dodge=True, palette=color_palette, 
+                   size=ms, hue_order=hue_order, order=order, ax=ax,  legend=False, alpha=0.4)
+    
     if draw_lines:
-        num_models = np.unique(dict_pd_merged['Model']).shape[0]
+        num_models = np.unique(subject_avg_pd.reset_index()['Model']).shape[0]
         for i in range(0, 2, 2):
             locs1 = ax.get_children()[i].get_offsets()
             locs2 = ax.get_children()[i+1].get_offsets()
+            
             for i in range(locs1.shape[0]):
-                x = [locs1[i, 0], locs2[i, 0]]
-                y = [locs1[i, 1], locs2[i, 1]]
-                ax.plot(x, y, color="black", alpha=0.2)
+                x = [locs1[i, 0], locs2[i, 0]] # x marker for model1 and model2
+                y = [locs1[i, 1], locs2[i, 1]] # y marker for model1 and model2 (performance)
+                ax.plot(x, y, color="black", alpha=0.2) # draw a line between model1 and model2
                 
+        m1_x_avg = locs1[:,0].mean()
+        m2_x_avg = locs2[:,0].mean()
+        m1_median = np.median(locs1[:,1])
+        m1_mean = locs1[:,1].mean()
+        m2_median = np.median(locs2[:,1])
+        m2_mean = locs2[:, 1].mean()
+        
+        ax.plot([m1_x_avg-line_extend, m1_x_avg+line_extend], [m1_median, m1_median], color=color_palette[0], linewidth=lw, linestyle='--')
+        ax.plot([m1_x_avg-line_extend, m1_x_avg+line_extend], [m1_mean, m1_mean], color=color_palette[0], linewidth=lw, linestyle='-')
+        
+        ax.plot([m2_x_avg-line_extend, m2_x_avg+line_extend], [m2_median, m2_median], color=color_palette[1], linewidth=lw, linestyle='--')
+        ax.plot([m2_x_avg-line_extend, m2_x_avg+line_extend], [m2_mean, m2_mean], color=color_palette[1], linewidth=lw, linestyle='-')
+        
         if num_models > 2:
             # Connect 2nd to 3rd set
             for i in range(1, 3, 2):
@@ -278,10 +310,19 @@ def plot_across_subjects(dict_pd_merged, figurePath, selected_networks, yticks=N
                     x = [locs2[j, 0], locs3[j, 0]]
                     y = [locs2[j, 1], locs3[j, 1]]
                     ax.plot(x, y, color="black", alpha=0.2)
-        
-    sns.barplot(data=subject_avg_pd, x='Network', y='perf', hue='Model', palette=color_palette, 
-                alpha=0.5, errorbar=None, hue_order=hue_order, order=order, ax=ax, legend=False, width=width)
-    
+                    
+            m3_x_avg = locs3[:, 0].mean()
+            m3_median = locs3[:,1].median()
+            m3_mean = locs3[:, 1].mean()
+            
+    else:
+        locs1 = ax.get_children()[0].get_offsets()
+        m1_x_avg = locs1[:,0].mean() 
+        m1_median = np.median(locs1[:,1])
+        m1_mean = locs1[:,1].mean()
+        ax.plot([m1_x_avg-line_extend, m1_x_avg+line_extend], [m1_median, m1_median], color=color_palette[0], linewidth=lw, linestyle='--')
+        ax.plot([m1_x_avg-line_extend, m1_x_avg+line_extend], [m1_mean, m1_mean], color=color_palette[0], linewidth=lw, linestyle='-')
+            
     if LLM_perf is not None:
         plt.axhline(LLM_perf, linestyle='--', color='gray', linewidth=4)
     
@@ -289,14 +330,18 @@ def plot_across_subjects(dict_pd_merged, figurePath, selected_networks, yticks=N
     
     if plot_legend:
         if plot_legend_under:
-            plt.legend(fontsize=25,frameon=False, bbox_to_anchor=(0.2, -0.10))
+            plt.legend(fontsize=legend_fontsize,frameon=False, bbox_to_anchor=(0.2, -0.10))
         else:
-            plt.legend(fontsize=20,frameon=False, bbox_to_anchor=(1, 1), loc='upper left')
+            plt.legend(fontsize=legend_fontsize,frameon=False, bbox_to_anchor=(1, 1), loc='upper left')
 
-    if ylabel:
-        ax.set_ylabel(ylabel_str, fontsize=35)
-    else:
-        ax.set_ylabel('')
+
+    ax.set_ylabel(ylabel_str, fontsize=40)
+    
+    # Handle y-axis visibility
+    if remove_yaxis:
+        ax.spines['left'].set_visible(False)
+        ax.yaxis.set_visible(False)
+        ax.set_yticks([])
         
     ax.set_xticks([])
     ax.set_xlabel('')
@@ -304,11 +349,15 @@ def plot_across_subjects(dict_pd_merged, figurePath, selected_networks, yticks=N
         ax.set_yticks(yticks)
     plt.tick_params(axis='x', labelsize=30) 
     plt.tick_params(axis='y', labelsize=30) 
+    
+    x_min, x_max = ax.get_xlim()
+    ax.set_xlim(x_min - 0.1, x_max + 0.1)
    
     if saveName is not None:
         plt.savefig(f'{figurePath}{saveName}.pdf', bbox_inches='tight')
         plt.savefig(f'{figurePath}{saveName}.png', bbox_inches='tight', dpi=300)
     plt.show()
+    plt.close()
     
     return subject_avg_pd, dict_pd_merged, dict_pd_with_all
 
