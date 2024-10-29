@@ -41,6 +41,7 @@ pycparser==2.21
 pyparsing==3.1.2
 PySocks==1.7.1
 pytest==8.2.2
+python==3.11.4
 python-dateutil==2.9.0.post0
 requests==2.32.2
 ruamel.yaml==0.17.21
