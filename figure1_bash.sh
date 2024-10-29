@@ -4,7 +4,7 @@ ENV_NAME="llm_brain"
 conda activate "$ENV_NAME"
 
 # Arrays of options
-datasets=("fedorenko" "blank")
+datasets=("pereira")
 models=("gpt2-xl-sp" "gpt2-xl-mp")
 linear_reg_options=("--linear_reg")
 shuffled_options=("" "--shuffled")

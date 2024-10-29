@@ -75,7 +75,7 @@ def compute_R2(model_dict, neural_data, dataset, resultsFolder, exp='both', use_
                 if len(values) > 1 or 'gpt' in model_name:
                     model_name = f'{model_name}_{val}'
             
-            model_res = np.load(f"{resultsFolder}{dataset}_{key}_{val}.npz")
+            conmodel_res = np.load(f"{resultsFolder}{dataset}_{key}_{val}.npz")
             out_of_sample_r2 = model_res['out_of_sample_r2']
     
             r2_vals.extend(out_of_sample_r2)

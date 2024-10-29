@@ -15,7 +15,7 @@ from helper_funcs import preprocess_himalayas, pearson_corr_schrimpf_style
 def himalaya_regression_caller(model: Union[str, dict, np.ndarray], 
                                y: Union[str, np.ndarray] = '', data_labels: Union[str, np.ndarray] = '', 
                                features_list: list = [], n_iter: int = 1, 
-                               dataset: str = 'pereira', data_folder: str ='/data/LLMs/data_processed/', 
+                               dataset: str = 'pereira', data_folder: str ='/data/LLMs/data_processed', 
                                exp: str ='both', save_results: bool = True, 
                                save_y_hat: bool = True, save_new: bool= False, 
                                device: Union[str, int] = 'cpu', untrained: bool = False,
