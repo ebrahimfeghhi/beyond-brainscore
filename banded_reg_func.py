@@ -20,7 +20,7 @@ def himalaya_regression_caller(model: Union[str, dict, np.ndarray],
                                save_y_hat: bool = True, save_new: bool= False, 
                                device: Union[str, int] = 'cpu', untrained: bool = False,
                                results_folder: str = '/data/LLMs/brainscore', linear_reg: bool = False, 
-                               shuffled: bool = False):
+                               shuffled: bool = False, approx_linear: bool = False):
     
     '''
     This function performs banded regression based on the himalaya package. 
@@ -65,13 +65,15 @@ def himalaya_regression_caller(model: Union[str, dict, np.ndarray],
     linear_reg: If true, set alphas to 0 
     
     shuffled: If true, use shuffled train-test splits
+    
+    approx_linear: If true, set alpha to a super small value (1e-10) so we can 
+    use GPU optimized ridge regression.
     '''
     
     if len(exp) == 0 and dataset == 'pereira':
         print("Need to pass in experiment string, 384 or 243, for pereira dataset")
         return 0 
 
-    
     data_folder = f"{data_folder}/{dataset}"
 
     if isinstance(model, str):
@@ -122,9 +124,11 @@ def himalaya_regression_caller(model: Union[str, dict, np.ndarray],
     if not os.path.exists(full_results_folder):
         os.makedirs(full_results_folder)
 
-
-    alphas = np.exp2(np.arange(-5, 35))
-    alphas = np.hstack((0,alphas))
+    if approx_linear:
+        alphas = np.array([1e-30])
+    else:
+        alphas = np.exp2(np.arange(-5, 35))
+        alphas = np.hstack((0,alphas))
 
     test_fold_size = []
     
@@ -242,6 +246,9 @@ def himalaya_regression_caller(model: Union[str, dict, np.ndarray],
             
             if linear_reg:
                 file_name = f"{file_name}_noL2"
+            
+            if approx_linear:
+                file_name = f"{file_name}_approxnoL2"
                 
             if dataset == 'pereira':
                 file_name = f"{file_name}_{exp}"

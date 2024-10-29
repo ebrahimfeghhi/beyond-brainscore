@@ -4,9 +4,9 @@ ENV_NAME="llm_brain"
 conda activate "$ENV_NAME"
 
 # Arrays of options
-datasets=("pereira" "fedorenko")
-models=("OASM-all-sigma" "gpt2-xl")
-linear_reg_options=("" "--linear_reg")
+datasets=("fedorenko" "blank")
+models=("gpt2-xl-sp" "gpt2-xl-mp")
+linear_reg_options=("--linear_reg")
 shuffled_options=("" "--shuffled")
 exp_options=("384" "243")
 
@@ -25,16 +25,21 @@ for dataset in "${datasets[@]}"; do
                 if [[ "$dataset" == "pereira" ]]; then
                     for exp in "${exp_options[@]}"; do
                         # Construct the command with --exp option
-                        cmd="python call_banded_reg.py --dataset $dataset --model $model $linear_reg $shuffled --exp $exp"
+                        cmd="python call_banded_reg.py --dataset $dataset --model $model $linear_reg $shuffled --exp $exp --device 1"
                         
                         # Run the command
                         echo "Running: $cmd"
                         eval "$cmd"
                     done
                 else
+
                     # Construct the command without --exp option
-                    cmd="python call_banded_reg.py --dataset $dataset --model $model $linear_reg $shuffled"
-                    
+                    if [["$dataset" == "fedorenko"]]; then
+                        cmd="python call_banded_reg.py --dataset $dataset --model $model $linear_reg $shuffled --device 1"
+                    else
+                        cmd="python call_banded_reg.py --dataset $dataset --model $model $linear_reg $shuffled --device 1"
+                    fi 
+
                     # Run the command
                     echo "Running: $cmd"
                     eval "$cmd"

@@ -103,28 +103,19 @@ elif 'roberta' in model_str:
     embedding_matrix = model.get_input_embeddings().weight.data
     positional_matrix = model.embeddings.position_embeddings.weight.data
 
-def pool_representations(dataset, contextual_embeddings, static_embeddings, 
-                         static_embeddings_pos_only, static_embeddings_no_pos):
+def pool_representations(contextual_embeddings):
     
     '''
-    :param str dataset: pereira, blank, or fedorenko
     :param ndarray contextual embeddings: contextual embeddings from an LLM,
     of shape num_tokens/num_words x num_layers x embed_size 
-    :param ndarray static embeddings: static embeddings from an LLM, of shape
-    num_tokens/num_words x embed_size
-    :param ndarray static_embeddings_pos_only: positional embeddings
-    :param ndarray static_embeddings_no_pos: static embeddings with no positional embeddings
     '''
 
     # last token pooling
     activity_sent = contextual_embeddings[-1]
-    # sum pooling
     activity_sent_sp = np.sum(contextual_embeddings, axis=0)
-    static_activity_pos_embed = np.sum(static_embeddings, axis=0)
-    static_activity_pos = np.sum(static_embeddings_pos_only, axis=0)
-    static_activity_embed = np.sum(static_embeddings_no_pos, axis=0)
-
-    return activity_sent, activity_sent_sp, static_activity_pos_embed, static_activity_pos, static_activity_embed
+    activity_sent_mp = np.mean(contextual_embeddings, axis=0)
+    
+    return activity_sent, activity_sent_sp, activity_sent_mp
         
     
 def get_model_activity(previous_text, current_text, embedding_matrix, 
@@ -169,19 +160,7 @@ def get_model_activity(previous_text, current_text, embedding_matrix,
     tensor_input = tensor_input.to(device)    
     
     with torch.no_grad():
-        
-        if 'gpt' in model_str:
-            static_embed = embedding_matrix(tensor_input)
-            static_pos = positional_matrix.weight[np.arange(len(tensor_input[0])), :].unsqueeze(0)   
-            
-        elif 'roberta' in model_str:
-            static_embed  = embedding_matrix[tensor_input, :]
-            static_pos = positional_matrix[np.arange(len(tensor_input[0])), :].unsqueeze(0)
-            
-        static_embed_pos = torch.squeeze(static_embed + static_pos) # ctx_size x embed_size 
-        static_pos = torch.squeeze(static_pos)
-        static_embed = torch.squeeze(static_embed)
-        
+    
         outputs = model(tensor_input, output_hidden_states=True, output_attentions=True)
         outputs = outputs.hidden_states
         # number of layers x context size x embedding size
@@ -190,38 +169,24 @@ def get_model_activity(previous_text, current_text, embedding_matrix,
     # remove <s> and </s> tokens because we only want to sum across 
     # words/punctuation marks for bert-style models.
     if 'roberta' in model_str:
-        static_embed_pos = static_embed_pos[1:-1]
-        static_pos = static_pos[1:-1]
-        static_embed = static_embed[1:-1]
         outputs = outputs[:, 1:-1, :]
         
     # only take tokens corresponding to the current text
     if len(tokens) > 1:
-        static_embed_pos = static_embed_pos[-num_ct:]
-        static_pos = static_pos[-num_ct:]
-        static_embed = static_embed[-num_ct:]
         outputs = outputs[:, -num_ct:]
     else:
         outputs = torch.unsqueeze(outputs, dim=1)
-        static_pos = torch.unsqueeze(static_pos, dim=0)
-        static_embed_pos = torch.unsqueeze(static_embed_pos, dim=0)
-        static_embed = torch.unsqueeze(static_embed, dim=0)
+        
+    activity_sent, activity_sent_sp, activity_sent_mp = \
+    pool_representations(outputs.cpu().detach().numpy().swapaxes(0,1))
 
-    activity_sent, activity_sent_sp, static_activity_pos_embed, static_activity_pos, static_activity_embed = \
-    pool_representations(dataset, outputs.cpu().detach().numpy().swapaxes(0,1), static_embed_pos.cpu().detach().numpy(), 
-    static_pos.cpu().detach().numpy(), static_embed.cpu().detach().numpy())
-    
-    non_averaged_static = static_embed_pos.cpu().detach().numpy()
-
-    return static_activity_pos_embed, static_activity_pos, static_activity_embed, activity_sent, activity_sent_sp, non_averaged_static
+    return activity_sent, activity_sent_sp, activity_sent_mp
 
 
-static_embed_activity = []
-static_pos_embed_activity = []
-static_pos_embed_activity_non_avg = []
-static_pos_activity = []
+
 contextual_activity = []
 contextual_activity_sp = []
+contextual_activity_mp = []
 previous_text =  '' 
 current_label = data_labels[0]
 total_words = 0 
@@ -241,36 +206,34 @@ for txt, dl in zip(experiment_txt, data_labels):
         previous_text = ''
         current_label = dl
 
-    current_text = f' {txt}'
-
+    if len(previous_text) == 0:
+        current_text = txt
+    else:
+        current_text = f' {txt}'
     #if dataset == 'fedorenko':
     #    current_text = current_text.replace('.', '')
     
-    static_pos_embed_rep, static_pos_rep, static_embed_rep, contextual_rep, contextual_rep_sp, static_non_avg = get_model_activity(previous_text, 
+    contextual_rep, contextual_rep_sp, contextual_rep_mp = get_model_activity(previous_text, 
                 current_text, embedding_matrix, positional_matrix, tokenizer, model_str=model_str, dataset=dataset)
 
     previous_text += current_text
 
-    static_pos_embed_activity.append(static_pos_embed_rep)
-    static_pos_activity.append(static_pos_rep)
-    static_embed_activity.append(static_embed_rep)
+
     contextual_activity.append(contextual_rep)
     contextual_activity_sp.append(contextual_rep_sp)
-    static_pos_embed_activity_non_avg.append(static_non_avg)
-    num_words_or_tokens.append(static_non_avg.shape[0])
+    contextual_activity_mp.append(contextual_rep_mp)
 
 contextual_activity_stacked = np.stack(contextual_activity)
 contextual_activity_stacked_sp = np.stack(contextual_activity_sp)
-static_pos_embed_activity_stacked = np.stack(static_pos_embed_activity)
-static_pos_embed_activity_non_avgs_stacked = np.vstack(static_pos_embed_activity_non_avg)
-static_pos_activity_stacked = np.stack(static_pos_activity)
-static_embed_activity_stacked = np.stack(static_embed_activity)
+contextual_activity_stacked_mp = np.stack(contextual_activity_mp)
 
 contextual_dict = {}
 contextual_dict_sp = {}
+contextual_dict_mp = {}
 for ln in range(contextual_activity_stacked.shape[1]):
     contextual_dict[f'layer_{ln}'] = contextual_activity_stacked[:, ln]
     contextual_dict_sp[f'layer_{ln}'] = contextual_activity_stacked_sp[:, ln]
+    contextual_dict_mp[f'layer_{ln}'] = contextual_activity_stacked_mp[:, ln]
 
 if decontext:
     model_str = f"{model_str}-decontext"
@@ -288,7 +251,4 @@ np.save(f'{savePath}sent_length', num_words_or_tokens)
 # last token method
 np.savez(f'{savePath}/X_{model_str}{model_num}', **contextual_dict)
 np.savez(f'{savePath}/X_{model_str}{model_num}-sp', **contextual_dict_sp)
-np.savez(f'{savePath}/X_{model_str}{model_num}-sp-static-non-avg', **{'layer1': static_pos_embed_activity_non_avgs_stacked})
-np.savez(f'{savePath}/X_{model_str}{model_num}-sp-static', **{'layer1': static_pos_embed_activity_stacked})
-np.savez(f'{savePath}/X_{model_str}{model_num}-sp-static-pos', **{'layer1': static_pos_activity_stacked})
-np.savez(f'{savePath}/X_{model_str}{model_num}-sp-static-embed', **{'layer1': static_embed_activity_stacked})
+np.savez(f'{savePath}/X_{model_str}{model_num}-mp', **contextual_dict_mp)
