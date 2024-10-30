@@ -107,11 +107,11 @@ def find_best_layer(layer_range, noL2_str, exp, resultsPath, subjects, dataset, 
         
     return layer_perf_dict, best_layer, layer_perf_best    
 
-noL2_arr = [False]
+noL2_arr = [False, True]
 shuffled_arr = [False, True]
 dataset_arr = ['pereira', 'fedorenko', 'blank']
 perf_arr = ['pearson_r', 'out_of_sample_r2']
-feature_extraction = ['', '-sp', '-mp']
+feature_extraction = ['']
 
 for perf in perf_arr:
     for noL2 in noL2_arr:
@@ -280,10 +280,12 @@ for perf in perf_arr:
                     median = True
                     clip_zero = False
                     perf_str = 'Pearson r'
+                    ymax = 0.5
                 else:
                     median = False
                     clip_zero = True
                     perf_str = r'$R^2$'
+                    ymax = 0.1
                     
                 if shuffled:
                     cidx_p = 9
@@ -305,7 +307,7 @@ for perf in perf_arr:
                     
                     subject_avg_pd, dict_pd_merged, dict_pd_with_all = plot_across_subjects(results_simple_gpt2xl.copy(), figurePath=figurePath, selected_networks=['language'],
                                                             saveName=f'{dataset}{noL2_str}{shuffled_str}_both', 
-                                                            yticks=[0, 0.07], order=['language'], clip_zero=clip_zero, color_palette=palette, 
+                                                            yticks=[0, ymax], order=['language'], clip_zero=clip_zero, color_palette=palette, 
                                                             draw_lines=False, ms=15, plot_legend=plot_legend, 
                                                             plot_legend_under=False, width=0.7, median=median, ylabel_str=perf_str, legend_fontsize=30)
                 else:
@@ -322,13 +324,13 @@ for perf in perf_arr:
                         #max_val = round(results_simple_gpt2xl['perf'].max() + 0.1*results_simple_gpt2xl['perf'].max(), 2)
                         subject_avg_pd, dict_pd_merged, dict_pd_with_all = plot_across_subjects(results_simple_gpt2xl.copy(), figurePath=figurePath, selected_networks=['language'],
                                                                 saveName=f'{dataset}{noL2_str}{shuffled_str}', 
-                                                                yticks=[0, 0.5], order=['language'], clip_zero=clip_zero, color_palette=[default_palette[1], default_palette[cidx_fb]], 
+                                                                yticks=[0, ymax], order=['language'], clip_zero=clip_zero, color_palette=palette, 
                                                                 draw_lines=False, ms=15, plot_legend=plot_legend, 
                                                                 plot_legend_under=False, width=0.7, median=median, ylabel_str='', legend_fontsize=30)
                     else:
                         subject_avg_pd, dict_pd_merged, dict_pd_with_all = plot_across_subjects(results_dict_gpt2.copy(), figurePath=figurePath, selected_networks=['language'],
                                                                 saveName=f'{dataset}{noL2_str}{shuffled_str}', 
-                                                                yticks=[0,0.5], order=['language'], clip_zero=clip_zero, color_palette=[default_palette[1], default_palette[cidx_fb]], 
+                                                                yticks=[0, ymax], order=['language'], clip_zero=clip_zero, color_palette=palette, 
                                                                 draw_lines=False, ms=15, plot_legend=False, 
                                                                 plot_legend_under=False, width=0.7, median=median, ylabel_str='')
                         

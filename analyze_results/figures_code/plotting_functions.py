@@ -209,7 +209,7 @@ def load_model_to_pd(model_name, layer_name, niters, br_labels, subject_labels, 
 
 def plot_across_subjects(dict_pd_merged, figurePath, selected_networks, yticks=None, saveName=None,
                          color_palette=None, hue_order=None, 
-                         order=None, clip_zero=True, draw_lines=False, plot_legend=False, plot_legend_under=False, ms=10, width=0.8, 
+                         order=None, clip_zero=True, draw_lines=False, plot_legend=False, plot_legend_under=False, ms=6, width=0.8, 
                          LLM_perf=None, ylabel=True, median=False, ylabel_str=r'$R^2$', legend_fontsize=25, remove_yaxis=False, 
                          subject_avg_pd=None):
     
@@ -240,7 +240,7 @@ def plot_across_subjects(dict_pd_merged, figurePath, selected_networks, yticks=N
     '''
     
     lw = 3
-    line_extend = 0.15
+    line_extend = 0.08
 
     
     if subject_avg_pd is None:
@@ -275,56 +275,24 @@ def plot_across_subjects(dict_pd_merged, figurePath, selected_networks, yticks=N
     ax.spines['bottom'].set_position(('data', 0))
     
     sns.stripplot(data=subject_avg_pd, x='Network', y='perf', hue='Model', dodge=True, palette=color_palette, 
-                   size=ms, hue_order=hue_order, order=order, ax=ax,  legend=True, alpha=0.6)
-    sns.barplot(data=subject_avg_pd, x='Network', y='perf', hue='Model', palette=color_palette, 
-        hue_order=hue_order, order=order, ax=ax, legend=True, alpha=0.2)
+                   size=ms, hue_order=hue_order, order=order, ax=ax, legend=plot_legend, alpha=0.4)
 
-    if draw_lines:
-        num_models = np.unique(subject_avg_pd.reset_index()['Model']).shape[0]
-        for i in range(0, 2, 2):
-            locs1 = ax.get_children()[i].get_offsets()
-            locs2 = ax.get_children()[i+1].get_offsets()
-            
-            for i in range(locs1.shape[0]):
-                x = [locs1[i, 0], locs2[i, 0]] # x marker for model1 and model2
-                y = [locs1[i, 1], locs2[i, 1]] # y marker for model1 and model2 (performance)
-                ax.plot(x, y, color="black", alpha=0.2) # draw a line between model1 and model2
-                
-        m1_x_avg = locs1[:,0].mean()
-        m2_x_avg = locs2[:,0].mean()
-        m1_median = np.median(locs1[:,1])
-        m1_mean = locs1[:,1].mean()
-        m2_median = np.median(locs2[:,1])
-        m2_mean = locs2[:, 1].mean()
-        
-        ax.plot([m1_x_avg-line_extend, m1_x_avg+line_extend], [m1_median, m1_median], color=color_palette[0], linewidth=lw, linestyle='--')
-        ax.plot([m1_x_avg-line_extend, m1_x_avg+line_extend], [m1_mean, m1_mean], color=color_palette[0], linewidth=lw, linestyle='-')
-        
-        ax.plot([m2_x_avg-line_extend, m2_x_avg+line_extend], [m2_median, m2_median], color=color_palette[1], linewidth=lw, linestyle='--')
-        ax.plot([m2_x_avg-line_extend, m2_x_avg+line_extend], [m2_mean, m2_mean], color=color_palette[1], linewidth=lw, linestyle='-')
-        
-        if num_models > 2:
-            # Connect 2nd to 3rd set
-            for i in range(1, 3, 2):
-                locs2 = ax.get_children()[i].get_offsets()
-                locs3 = ax.get_children()[i+1].get_offsets()
-                for j in range(locs2.shape[0]):
-                    x = [locs2[j, 0], locs3[j, 0]]
-                    y = [locs2[j, 1], locs3[j, 1]]
-                    ax.plot(x, y, color="black", alpha=0.2)
-                    
-            m3_x_avg = locs3[:, 0].mean()
-            m3_median = locs3[:,1].median()
-            m3_mean = locs3[:, 1].mean()
-            
-    else:
-        locs1 = ax.get_children()[0].get_offsets()
-        m1_x_avg = locs1[:,0].mean() 
-        m1_median = np.median(locs1[:,1])
-        m1_mean = locs1[:,1].mean()
-        ax.plot([m1_x_avg-line_extend, m1_x_avg+line_extend], [m1_median, m1_median], color=color_palette[0], linewidth=lw, linestyle='--')
-        ax.plot([m1_x_avg-line_extend, m1_x_avg+line_extend], [m1_mean, m1_mean], color=color_palette[0], linewidth=lw, linestyle='-')
-            
+    num_models = np.unique(subject_avg_pd.reset_index()['Model']).shape[0]
+    locs_dict = {}
+    for i in range(num_models):
+        locs_dict[i] = ax.get_children()[i].get_offsets() # save loc_dicts for drawing lines, which I don't do anymore in new figure version
+        x_avg = locs_dict[i][:, 0].mean()
+        median_model = np.median(locs_dict[i][:, 1])
+        mean_model = np.mean(locs_dict[i][:, 1])
+        ax.plot([x_avg-line_extend, x_avg+line_extend], [median_model, median_model], color='black', linewidth=lw, linestyle='-')
+        ax.plot([x_avg-line_extend, x_avg+line_extend], [mean_model, mean_model], color='gray', linewidth=lw, linestyle='-') 
+    
+    #if draw_lines:
+    #    for i in range(locs1.shape[0]):
+    #        x = [locs1[i, 0], locs2[i, 0]] # x marker for model1 and model2
+    #        y = [locs1[i, 1], locs2[i, 1]] # y marker for model1 and model2 (performance)
+    #        ax.plot(x, y, color="black", alpha=0.2) # draw a line between model1 and model2
+ 
     if LLM_perf is not None:
         plt.axhline(LLM_perf, linestyle='--', color='gray', linewidth=4)
     
