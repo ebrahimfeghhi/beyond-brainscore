@@ -275,8 +275,10 @@ def plot_across_subjects(dict_pd_merged, figurePath, selected_networks, yticks=N
     ax.spines['bottom'].set_position(('data', 0))
     
     sns.stripplot(data=subject_avg_pd, x='Network', y='perf', hue='Model', dodge=True, palette=color_palette, 
-                   size=ms, hue_order=hue_order, order=order, ax=ax,  legend=False, alpha=0.4)
-    
+                   size=ms, hue_order=hue_order, order=order, ax=ax,  legend=True, alpha=0.6)
+    sns.barplot(data=subject_avg_pd, x='Network', y='perf', hue='Model', palette=color_palette, 
+        hue_order=hue_order, order=order, ax=ax, legend=True, alpha=0.2)
+
     if draw_lines:
         num_models = np.unique(subject_avg_pd.reset_index()['Model']).shape[0]
         for i in range(0, 2, 2):

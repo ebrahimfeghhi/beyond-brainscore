@@ -50,11 +50,10 @@ def find_best_sigma(sigma_range, noL2_str, exp, resultsPath, dataset, subjects, 
             
             
         OASM_subj = pd.DataFrame({'perf': OASM_perf, 'subject': subjects})
-        
         if perf == 'pearson_r':
-            perf_avg = np.median(OASM_subj.groupby['subject'].median())
+            perf_avg = np.median(OASM_subj.groupby(['subject']).median())
         else:
-            perf_avg = np.mean(OASM_subj.groupby['subject'].mean())
+            perf_avg = np.mean(OASM_subj.groupby(['subject']).mean())
     
         # make sure it's not nan, happens sometimes when sigma is low 
         # not totally sure why 
@@ -69,17 +68,19 @@ def find_best_sigma(sigma_range, noL2_str, exp, resultsPath, dataset, subjects, 
     return sigma_perf_dict, best_sigma, OASM_perf_best
 
 def find_best_layer(layer_range, noL2_str, exp, resultsPath, subjects, dataset, perf='pearson_r', 
-                    lang_indices = None):
+                    lang_indices = None, feature_extraction = ''):
     
 
     layer_perf_dict = {}
     
     if dataset == 'pereira':
         subjects = subjects[lang_indices]
+        
+        
     
     for l in layer_range:
-    
-        layer_perf =  np.load(f'{resultsPath}/{dataset}_gpt2-xl_layer_{l}_1{noL2_str}{exp}.npz')[perf]
+        
+        layer_perf =  np.load(f'{resultsPath}/{dataset}_gpt2-xl{feature_extraction}_layer_{l}_1{noL2_str}{exp}.npz')[perf]
         
         if perf != 'pearson_r':
             layer_perf = np.clip(layer_perf, 0, np.inf)
@@ -101,15 +102,16 @@ def find_best_layer(layer_range, noL2_str, exp, resultsPath, subjects, dataset, 
             
     best_layer = max(layer_perf_dict, key=layer_perf_dict.get)
     
-    layer_perf_best =  np.load(f'{resultsPath}/{dataset}_gpt2-xl_layer_{best_layer}_1{noL2_str}{exp}.npz')[perf]
+    layer_perf_best =  np.load(f'{resultsPath}/{dataset}_gpt2-xl{feature_extraction}_layer_{best_layer}_1{noL2_str}{exp}.npz')[perf]
     layer_perf_best = np.nan_to_num(layer_perf_best, 0)
         
     return layer_perf_dict, best_layer, layer_perf_best    
 
 noL2_arr = [False]
-shuffled_arr = [False]
-dataset_arr = ['pereira']
-perf_arr = ['out_of_sample_r2']
+shuffled_arr = [False, True]
+dataset_arr = ['pereira', 'fedorenko', 'blank']
+perf_arr = ['pearson_r', 'out_of_sample_r2']
+feature_extraction = ['', '-sp', '-mp']
 
 for perf in perf_arr:
     for noL2 in noL2_arr:
@@ -202,30 +204,45 @@ for perf in perf_arr:
                         simple_perf =  np.load(f'{resultsPath_dataset}/{dataset}_soft+grow_layer1_1{noL2_str}.npz')[perf]
                         
                 
+                results_dict_gpt2 = {'perf':[], 'subjects': [], 'Network': [], 
+                                'Model': []}
+                
                 if dataset == 'pereira':
-                    gpt2_xl_384_dict, gpt2_xl_384_bl, gpt2_xl_384_bl_perf = find_best_layer(np.arange(0,49), noL2_str=noL2_str, exp='_384', 
-                                                                    resultsPath=resultsPath_dataset, lang_indices=lang_indices_384, dataset=dataset, 
-                                                                    subjects=subjects_dict['384'], perf=perf)
-                    gpt2_xl_243_dict, gpt2_xl_243_bl, gpt2_xl_243_bl_perf = find_best_layer(np.arange(0,49), noL2_str=noL2_str, exp='_243', 
-                                                                    resultsPath=resultsPath_dataset, lang_indices=lang_indices_243, dataset=dataset, 
-                                                                    subjects=subjects_dict['243'], perf=perf)
+           
+                    for fe in feature_extraction:
+                        
+                        gpt2_xl_384_dict, gpt2_xl_384_bl, gpt2_xl_384_bl_perf = find_best_layer(np.arange(0,49), noL2_str=noL2_str, exp='_384', 
+                                                                        resultsPath=resultsPath_dataset, lang_indices=lang_indices_384, dataset=dataset, 
+                                                                        subjects=subjects_dict['384'], perf=perf, feature_extraction=fe)
+                        gpt2_xl_243_dict, gpt2_xl_243_bl, gpt2_xl_243_bl_perf = find_best_layer(np.arange(0,49), noL2_str=noL2_str, exp='_243', 
+                                                                        resultsPath=resultsPath_dataset, lang_indices=lang_indices_243, dataset=dataset, 
+                                                                        subjects=subjects_dict['243'], perf=perf, feature_extraction=fe)
+                        
+                        results_dict_gpt2['perf'].extend(gpt2_xl_384_bl_perf)
+                        results_dict_gpt2['perf'].extend(gpt2_xl_243_bl_perf)
+                        results_dict_gpt2['subjects'].extend(subjects_dict['384'])
+                        results_dict_gpt2['subjects'].extend(subjects_dict['243'])
+                        results_dict_gpt2['Network'].extend(br_labels_dict['384'])
+                        results_dict_gpt2['Network'].extend(br_labels_dict['243'])
+                        results_dict_gpt2['Model'].extend(np.repeat(f'GPT2-XL{fe}', num_vox_dict['384']))
+                        results_dict_gpt2['Model'].extend(np.repeat(f'GPT2-XL{fe}', num_vox_dict['243']))
+                        
+            
                 else:
-                    gpt2_xl_dict, gpt2_xl_bl, gpt2_xl_bl_perf = find_best_layer(np.arange(0,49), noL2_str=noL2_str, exp='', 
-                                            subjects=subjects_arr, resultsPath=resultsPath_dataset, dataset=dataset, perf=perf)
+                    for fe in feature_extraction:
+                        gpt2_xl_dict, gpt2_xl_bl, gpt2_xl_bl_perf = find_best_layer(np.arange(0,49), noL2_str=noL2_str, exp='', 
+                                                subjects=subjects_arr, resultsPath=resultsPath_dataset, dataset=dataset, perf=perf, feature_extraction=fe)
+                        
+                        num_brain_units = gpt2_xl_bl_perf.shape[0]
+                        
+                        results_dict_gpt2['perf'].extend(gpt2_xl_bl_perf)
+                        results_dict_gpt2['subjects'].extend(subjects_arr)
+                        results_dict_gpt2['Network'].extend(np.repeat('language', num_brain_units))
+                        results_dict_gpt2['Model'].extend(np.repeat(f'GPT2-XL{fe}', num_brain_units))
+                        
+                results_dict_gpt2 = pd.DataFrame(results_dict_gpt2)
+                results_dict_simple = None    
 
-                
-                if dataset == 'pereira':
-                    plt.plot(gpt2_xl_384_dict.keys(), gpt2_xl_384_dict.values(), label='384')
-                    plt.plot(gpt2_xl_243_dict.keys(), gpt2_xl_243_dict.values(), label='243')
-                else:
-                    plt.plot(gpt2_xl_dict.keys(), gpt2_xl_dict.values())
-                plt.legend()
-                plt.xlabel("Layer number")
-                plt.ylabel("Median pearson r across language voxels")
-                plt.savefig(f"{figurePath}across_layer/across_layer_GPT2XL_{dataset}{noL2_str}{shuffled_str}")
-                plt.close()
-                
-        
                 if dataset == 'pereira':
                     
                     if shuffled:
@@ -240,13 +257,8 @@ for perf in perf_arr:
                         results_dict_simple_243 = pd.DataFrame({'perf': simple_perf_243, 'subjects': subjects_dict['243'], 
                                         'Network': br_labels_dict['243'], 'Model': np.repeat('SP+SL', num_vox_dict['243'])})
                         
-                    results_dict_gpt2_384 = pd.DataFrame({'perf': gpt2_xl_384_bl_perf, 'subjects': subjects_dict['384'], 
-                                    'Network': br_labels_dict['384'], 'Model': np.repeat('GPT2-XL', num_vox_dict['384'])})
-                    results_dict_gpt2_243 = pd.DataFrame({'perf': gpt2_xl_243_bl_perf, 'subjects': subjects_dict['243'], 
-                                    'Network': br_labels_dict['243'], 'Model': np.repeat('GPT2-XL', num_vox_dict['243'])})
-
-                    results_simple_gpt2xl_243 = pd.concat((results_dict_simple_243, results_dict_gpt2_243))
-                    results_simple_gpt2xl_384 = pd.concat((results_dict_simple_384, results_dict_gpt2_384))
+                    results_dict_simple = pd.concat((results_dict_simple_384, results_dict_simple_243))
+    
                     
                 else:
                     num_brain_units = gpt2_xl_bl_perf.shape[0]
@@ -260,12 +272,9 @@ for perf in perf_arr:
                             results_dict_simple = pd.DataFrame({'perf': simple_perf, 'subjects': subjects_arr, 'Network': np.repeat('language', num_brain_units),
                                                     'Model': np.repeat('WP', num_brain_units)})
 
-                    results_dict_gpt2 = pd.DataFrame({'perf': gpt2_xl_bl_perf, 'subjects': subjects_arr, 'Network': np.repeat('language', num_brain_units),
-                                                    'Model': np.repeat('GPT2-XL', num_brain_units)})
-                    
-                    if shuffled or dataset == 'fedorenko':
-                        results_simple_gpt2xl = pd.concat((results_dict_simple, results_dict_gpt2))
-                    
+
+                if results_dict_simple is not None:
+                    results_simple_gpt2xl = pd.concat((results_dict_simple, results_dict_gpt2))
                 
                 if perf == 'pearson_r':
                     median = True
@@ -282,29 +291,22 @@ for perf in perf_arr:
                 else:
                     cidx_p = 7
                     cidx_fb = 6
+                                    
+                # Define shades of blue and an orange color
+                palette = sns.color_palette(["#1E90FF", "#4169E1", "#0000CD", "#FFA500"]) 
                     
             
                 if dataset == 'pereira':
-                    
-                    max_val_243 = round(results_dict_simple_243['perf'].max() + 0.1*results_dict_simple_243['perf'].max(), 2)
-                    max_val_384 = round(results_dict_simple_384['perf'].max() + 0.1*results_dict_simple_384['perf'].max(), 2)
                                         
                     if noL2:
                         plot_legend = True
                     else:
-                        plot_legend = False
+                        plot_legend = True
                     
-                    
-                    subject_avg_pd_243, dict_pd_merged_243, dict_pd_with_all_243 = plot_across_subjects(results_simple_gpt2xl_243.copy(), figurePath=figurePath, selected_networks=['language'],
-                                                                saveName=f'{dataset}{noL2_str}{shuffled_str}_243', 
-                                                                yticks=[0, 0.5], order=['language'], clip_zero=clip_zero, color_palette=[default_palette[1], default_palette[cidx_p]], 
-                                                                draw_lines=True, ms=15, plot_legend=False,
-                                                                plot_legend_under=False, width=0.7, median=median, ylabel_str='')
-                    
-                    subject_avg_pd_384, dict_pd_merged_384, dict_pd_with_all_384 = plot_across_subjects(results_simple_gpt2xl_384.copy(), figurePath=figurePath, selected_networks=['language'],
-                                                            saveName=f'{dataset}{noL2_str}{shuffled_str}_384', 
-                                                            yticks=[0, 0.5], order=['language'], clip_zero=clip_zero, color_palette=[default_palette[1], default_palette[cidx_p]], 
-                                                            draw_lines=True, ms=15, plot_legend=plot_legend, 
+                    subject_avg_pd, dict_pd_merged, dict_pd_with_all = plot_across_subjects(results_simple_gpt2xl.copy(), figurePath=figurePath, selected_networks=['language'],
+                                                            saveName=f'{dataset}{noL2_str}{shuffled_str}_both', 
+                                                            yticks=[0, 0.07], order=['language'], clip_zero=clip_zero, color_palette=palette, 
+                                                            draw_lines=False, ms=15, plot_legend=plot_legend, 
                                                             plot_legend_under=False, width=0.7, median=median, ylabel_str=perf_str, legend_fontsize=30)
                 else:
                     
@@ -317,15 +319,13 @@ for perf in perf_arr:
                             plot_legend = False
                             
                             
-                        max_val = round(results_simple_gpt2xl['perf'].max() + 0.1*results_simple_gpt2xl['perf'].max(), 2)
+                        #max_val = round(results_simple_gpt2xl['perf'].max() + 0.1*results_simple_gpt2xl['perf'].max(), 2)
                         subject_avg_pd, dict_pd_merged, dict_pd_with_all = plot_across_subjects(results_simple_gpt2xl.copy(), figurePath=figurePath, selected_networks=['language'],
                                                                 saveName=f'{dataset}{noL2_str}{shuffled_str}', 
                                                                 yticks=[0, 0.5], order=['language'], clip_zero=clip_zero, color_palette=[default_palette[1], default_palette[cidx_fb]], 
-                                                                draw_lines=True, ms=15, plot_legend=plot_legend, 
+                                                                draw_lines=False, ms=15, plot_legend=plot_legend, 
                                                                 plot_legend_under=False, width=0.7, median=median, ylabel_str='', legend_fontsize=30)
                     else:
-
-                        max_val = round(results_dict_gpt2['perf'].max() + 0.1*results_dict_gpt2['perf'].max(), 2)
                         subject_avg_pd, dict_pd_merged, dict_pd_with_all = plot_across_subjects(results_dict_gpt2.copy(), figurePath=figurePath, selected_networks=['language'],
                                                                 saveName=f'{dataset}{noL2_str}{shuffled_str}', 
                                                                 yticks=[0,0.5], order=['language'], clip_zero=clip_zero, color_palette=[default_palette[1], default_palette[cidx_fb]], 
