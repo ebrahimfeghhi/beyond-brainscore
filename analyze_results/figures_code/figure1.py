@@ -107,15 +107,18 @@ def find_best_layer(layer_range, noL2_str, exp, resultsPath, subjects, dataset, 
         
     return layer_perf_dict, best_layer, layer_perf_best    
 
-noL2_arr = [False, True]
+noL2_arr = [False]
 shuffled_arr = [False, True]
 dataset_arr = ['pereira', 'fedorenko', 'blank']
 perf_arr = ['pearson_r', 'out_of_sample_r2']
-feature_extraction = ['']
+feature_extraction = ['', '-sp', '-mp']
 
 for perf in perf_arr:
     for noL2 in noL2_arr:
         for shuffled in shuffled_arr:
+            
+            fig, ax = plt.subplots(1, 3, figsize=(15, 6))
+            
             for dataset in dataset_arr:
                 
                 if noL2:
@@ -180,17 +183,17 @@ for perf in perf_arr:
                         sigma_perf_dict, best_sigma, OASM_perf_best_sigma = find_best_sigma(sigma_values, noL2_str=noL2_str, exp='', 
                                                             subjects=subjects_arr, resultsPath=resultsPath_dataset, dataset=dataset, perf=perf)
                         
-                    if dataset == 'pereira':
-                        plt.plot(sigma_perf_dict_384.keys(), sigma_perf_dict_384.values(), label='384')
-                        plt.plot(sigma_perf_dict_243.keys(), sigma_perf_dict_243.values(), label='243')
-                    else:
-                        plt.plot(sigma_perf_dict.keys(), sigma_perf_dict.values())
+                    #if dataset == 'pereira':
+                    #    plt.plot(sigma_perf_dict_384.keys(), sigma_perf_dict_384.values(), label='384')
+                    #    plt.plot(sigma_perf_dict_243.keys(), sigma_perf_dict_243.values(), label='243')
+                    #else:
+                    #    plt.plot(sigma_perf_dict.keys(), sigma_perf_dict.values())
                         
-                    plt.legend()
-                    plt.xlabel("Sigma values")
-                    plt.ylabel("Median pearson r across language voxels")
-                    plt.savefig(f"{figurePath}across_layer/across_layer_OASM_{dataset}{noL2_str}{shuffled_str}")
-                    plt.close()
+                    #plt.legend()
+                    #plt.xlabel("Sigma values")
+                    #plt.ylabel("Median pearson r across language voxels")
+                    #plt.savefig(f"{figurePath}across_layer/across_layer_OASM_{dataset}{noL2_str}{shuffled_str}")
+                    #plt.close()
                 
                 else:
                     
@@ -296,8 +299,14 @@ for perf in perf_arr:
                                     
                 # Define shades of blue and an orange color
                 palette = sns.color_palette(["#1E90FF", "#4169E1", "#0000CD", "#FFA500"]) 
-                    
-            
+                                
+                if dataset == 'pereira':
+                    index = 0
+                if dataset == 'fedorenko':
+                    index = 1
+                if dataset == 'blank':
+                    index = 2
+
                 if dataset == 'pereira':
                                         
                     if noL2:
@@ -305,11 +314,11 @@ for perf in perf_arr:
                     else:
                         plot_legend = True
                     
-                    subject_avg_pd, dict_pd_merged, dict_pd_with_all = plot_across_subjects(results_simple_gpt2xl.copy(), figurePath=figurePath, selected_networks=['language'],
+                    subject_avg_pd, dict_pd_merged, dict_pd_with_all = plot_across_subjects(results_simple_gpt2xl.copy(), figurePath=figurePath,  selected_networks=['language'],
                                                             saveName=f'{dataset}{noL2_str}{shuffled_str}_both', 
                                                             yticks=[0, ymax], order=['language'], clip_zero=clip_zero, color_palette=palette, 
                                                             draw_lines=False, ms=15, plot_legend=plot_legend, 
-                                                            plot_legend_under=False, width=0.7, median=median, ylabel_str=perf_str, legend_fontsize=30)
+                                                            plot_legend_under=False, width=0.7, median=median, ylabel_str=perf_str, legend_fontsize=30, ax=ax, index=index)
                 else:
                     
                     if shuffled or dataset == 'fedorenko':
@@ -319,21 +328,23 @@ for perf in perf_arr:
                             plot_legend = True
                         else:
                             plot_legend = False
-                            
-                            
+                          
                         #max_val = round(results_simple_gpt2xl['perf'].max() + 0.1*results_simple_gpt2xl['perf'].max(), 2)
                         subject_avg_pd, dict_pd_merged, dict_pd_with_all = plot_across_subjects(results_simple_gpt2xl.copy(), figurePath=figurePath, selected_networks=['language'],
                                                                 saveName=f'{dataset}{noL2_str}{shuffled_str}', 
                                                                 yticks=[0, ymax], order=['language'], clip_zero=clip_zero, color_palette=palette, 
                                                                 draw_lines=False, ms=15, plot_legend=plot_legend, 
-                                                                plot_legend_under=False, width=0.7, median=median, ylabel_str='', legend_fontsize=30)
+                                                                plot_legend_under=False, width=0.7, median=median, ylabel_str='', legend_fontsize=30, ax=ax, index=index)
                     else:
+                        
                         subject_avg_pd, dict_pd_merged, dict_pd_with_all = plot_across_subjects(results_dict_gpt2.copy(), figurePath=figurePath, selected_networks=['language'],
                                                                 saveName=f'{dataset}{noL2_str}{shuffled_str}', 
                                                                 yticks=[0, ymax], order=['language'], clip_zero=clip_zero, color_palette=palette, 
                                                                 draw_lines=False, ms=15, plot_legend=False, 
-                                                                plot_legend_under=False, width=0.7, median=median, ylabel_str='')
-                        
+                                                                plot_legend_under=False, width=0.7, median=median, ylabel_str='', ax=ax, index=index)
+                
+                fig.savefig(f'{figurePath}figure1_{noL2_str}{shuffled_str}.png')
+                fig.savefig(f'{figurePath}figure1_{noL2_str}{shuffled_str}.pdf',  bbox_inches='tight')
                                             
 
                             

@@ -207,9 +207,8 @@ def load_model_to_pd(model_name, layer_name, niters, br_labels, subject_labels, 
     
     return dict_pd_merged
 
-def plot_across_subjects(dict_pd_merged, figurePath, selected_networks, yticks=None, saveName=None,
-                         color_palette=None, hue_order=None, 
-                         order=None, clip_zero=True, draw_lines=False, plot_legend=False, plot_legend_under=False, ms=6, width=0.8, 
+def plot_across_subjects(dict_pd_merged, figurePath, selected_networks, ax=None, index=None, yticks=None, saveName=None,
+                         color_palette=None, hue_order=None, order=None, clip_zero=True, draw_lines=False, plot_legend=False, plot_legend_under=False, ms=6, width=0.8, 
                          LLM_perf=None, ylabel=True, median=False, ylabel_str=r'$R^2$', legend_fontsize=25, remove_yaxis=False, 
                          subject_avg_pd=None):
     
@@ -217,6 +216,8 @@ def plot_across_subjects(dict_pd_merged, figurePath, selected_networks, yticks=N
         :param DataFrame dict_pd_merged: pandas df with the following columns: [subjects, Network, Model, perf]
         :param str figurePath: where to store figure
         :param list selected_networks: plot data from these networks
+        :param ax: matplotlib ax 
+        :param int index: which index to plot 
         :param [list, None] yticks: yticks for figure, if None they are set automatically by matplotlib
         :param [str, None] saveName: if str, name of figure, if None nothing is saved
         :param [list, None] color_palette: colors for hues
@@ -269,23 +270,29 @@ def plot_across_subjects(dict_pd_merged, figurePath, selected_networks, yticks=N
     sns.set_style("white")
     sns.despine()
     
-    fig, ax = plt.subplots(1,1, figsize=(4, 6))
+    if ax is None:
+        fig, ax = plt.subplots(1,1,figsize=(4,6))
     
-    # position x axis at y = 0
-    ax.spines['bottom'].set_position(('data', 0))
-    
+    if index is None:
+        index = 0
+        
+    ax[index].spines['bottom'].set_position(('data', 0))
+
     sns.stripplot(data=subject_avg_pd, x='Network', y='perf', hue='Model', dodge=True, palette=color_palette, 
-                   size=ms, hue_order=hue_order, order=order, ax=ax, legend=plot_legend, alpha=0.4)
+                   size=ms, hue_order=hue_order, order=order, ax=ax[index], legend=plot_legend, alpha=0.4)
 
     num_models = np.unique(subject_avg_pd.reset_index()['Model']).shape[0]
     locs_dict = {}
     for i in range(num_models):
-        locs_dict[i] = ax.get_children()[i].get_offsets() # save loc_dicts for drawing lines, which I don't do anymore in new figure version
+        try:
+            locs_dict[i] = ax[index].get_children()[i].get_offsets() # save loc_dicts for drawing lines, which I don't do anymore in new figure version
+        except:
+            breakpoint()
         x_avg = locs_dict[i][:, 0].mean()
         median_model = np.median(locs_dict[i][:, 1])
         mean_model = np.mean(locs_dict[i][:, 1])
-        ax.plot([x_avg-line_extend, x_avg+line_extend], [median_model, median_model], color='black', linewidth=lw, linestyle='-')
-        ax.plot([x_avg-line_extend, x_avg+line_extend], [mean_model, mean_model], color='gray', linewidth=lw, linestyle='-') 
+        ax[index].plot([x_avg-line_extend, x_avg+line_extend], [median_model, median_model], color='black', linewidth=lw, linestyle='-')
+        ax[index].plot([x_avg-line_extend, x_avg+line_extend], [mean_model, mean_model], color='gray', linewidth=lw, linestyle='-') 
     
     #if draw_lines:
     #    for i in range(locs1.shape[0]):
@@ -300,34 +307,37 @@ def plot_across_subjects(dict_pd_merged, figurePath, selected_networks, yticks=N
     
     if plot_legend:
         if plot_legend_under:
-            plt.legend(fontsize=legend_fontsize,frameon=False, bbox_to_anchor=(0.2, -0.10))
+            plt.legend(fontsize=legend_fontsize, frameon=False, bbox_to_anchor=(0.2, -0.10))
         else:
-            plt.legend(fontsize=legend_fontsize,frameon=False, bbox_to_anchor=(1, 1), loc='upper left')
+            plt.legend(fontsize=legend_fontsize, frameon=False, bbox_to_anchor=(1, 1), loc='upper left')
 
 
-    ax.set_ylabel(ylabel_str, fontsize=40)
+    ax[index].set_ylabel(ylabel_str, fontsize=40)
     
     # Handle y-axis visibility
     if remove_yaxis:
-        ax.spines['left'].set_visible(False)
-        ax.yaxis.set_visible(False)
-        ax.set_yticks([])
+        ax[index].spines['left'].set_visible(False)
+        ax[index].yaxis.set_visible(False)
+        ax[index].set_yticks([])
         
-    ax.set_xticks([])
-    ax.set_xlabel('')
+    ax[index].set_xticks([])
+    ax[index].set_xlabel('')
+    
     if yticks is not None:
-        ax.set_yticks(yticks)
+        ax[index].set_yticks(yticks)
+        
     plt.tick_params(axis='x', labelsize=30) 
     plt.tick_params(axis='y', labelsize=30) 
     
-    x_min, x_max = ax.get_xlim()
-    ax.set_xlim(x_min - 0.1, x_max + 0.1)
+    x_min, x_max = ax[index].get_xlim()
+    ax[index].set_xlim(x_min - 0.1, x_max + 0.1)
    
-    if saveName is not None:
-        plt.savefig(f'{figurePath}{saveName}.pdf', bbox_inches='tight')
-        plt.savefig(f'{figurePath}{saveName}.png', bbox_inches='tight', dpi=300)
-    plt.show()
-    plt.close()
+    #if saveName is not None:
+    #    plt.savefig(f'{figurePath}{saveName}.pdf', bbox_inches='tight')
+    #    plt.savefig(f'{figurePath}{saveName}.png', bbox_inches='tight', dpi=300)
+        
+    #plt.show()
+    #plt.close()
     
     return subject_avg_pd, dict_pd_merged, dict_pd_with_all
 
