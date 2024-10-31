@@ -207,10 +207,10 @@ def load_model_to_pd(model_name, layer_name, niters, br_labels, subject_labels, 
     
     return dict_pd_merged
 
-def plot_across_subjects(dict_pd_merged, figurePath, selected_networks, ax=None, index=None, yticks=None, saveName=None,
+def plot_across_subjects(dict_pd_merged, figurePath, dataset, selected_networks, ax=None, index=None, yticks=None, saveName=None,
                          color_palette=None, hue_order=None, order=None, clip_zero=True, draw_lines=False, plot_legend=False, plot_legend_under=False, ms=6, width=0.8, 
                          LLM_perf=None, ylabel=True, median=False, ylabel_str=r'$R^2$', legend_fontsize=25, remove_yaxis=False, 
-                         subject_avg_pd=None):
+                         subject_avg_pd=None, plot_xlabel=False):
     
     '''
         :param DataFrame dict_pd_merged: pandas df with the following columns: [subjects, Network, Model, perf]
@@ -276,7 +276,7 @@ def plot_across_subjects(dict_pd_merged, figurePath, selected_networks, ax=None,
     if index is None:
         index = 0
         
-    ax[index].spines['bottom'].set_position(('data', 0))
+    #ax[index].spines['bottom'].set_position(('data', 0))
 
     sns.stripplot(data=subject_avg_pd, x='Network', y='perf', hue='Model', dodge=True, palette=color_palette, 
                    size=ms, hue_order=hue_order, order=order, ax=ax[index], legend=plot_legend, alpha=0.4)
@@ -284,10 +284,7 @@ def plot_across_subjects(dict_pd_merged, figurePath, selected_networks, ax=None,
     num_models = np.unique(subject_avg_pd.reset_index()['Model']).shape[0]
     locs_dict = {}
     for i in range(num_models):
-        try:
-            locs_dict[i] = ax[index].get_children()[i].get_offsets() # save loc_dicts for drawing lines, which I don't do anymore in new figure version
-        except:
-            breakpoint()
+        locs_dict[i] = ax[index].get_children()[i].get_offsets() # save loc_dicts for drawing lines, which I don't do anymore in new figure version
         x_avg = locs_dict[i][:, 0].mean()
         median_model = np.median(locs_dict[i][:, 1])
         mean_model = np.mean(locs_dict[i][:, 1])
@@ -314,21 +311,24 @@ def plot_across_subjects(dict_pd_merged, figurePath, selected_networks, ax=None,
 
     ax[index].set_ylabel(ylabel_str, fontsize=40)
     
-    # Handle y-axis visibility
+    if yticks is not None:
+        ax[index].set_yticks(yticks)
+        ax[index].set_yticklabels(yticks, fontsize=30)
+
     if remove_yaxis:
         ax[index].spines['left'].set_visible(False)
         ax[index].yaxis.set_visible(False)
         ax[index].set_yticks([])
         
     ax[index].set_xticks([])
-    ax[index].set_xlabel('')
     
-    if yticks is not None:
-        ax[index].set_yticks(yticks)
-        
+    if plot_xlabel:
+        ax[index].set_xlabel(dataset, fontsize=30)
+    else:
+        ax[index].set_xlabel('')
+    
     plt.tick_params(axis='x', labelsize=30) 
-    plt.tick_params(axis='y', labelsize=30) 
-    
+
     x_min, x_max = ax[index].get_xlim()
     ax[index].set_xlim(x_min - 0.1, x_max + 0.1)
    

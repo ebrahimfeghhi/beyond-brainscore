@@ -107,7 +107,7 @@ def find_best_layer(layer_range, noL2_str, exp, resultsPath, subjects, dataset, 
         
     return layer_perf_dict, best_layer, layer_perf_best    
 
-noL2_arr = [False]
+noL2_arr = [False, True]
 shuffled_arr = [False, True]
 dataset_arr = ['pereira', 'fedorenko', 'blank']
 perf_arr = ['pearson_r', 'out_of_sample_r2']
@@ -283,68 +283,112 @@ for perf in perf_arr:
                     median = True
                     clip_zero = False
                     perf_str = 'Pearson r'
-                    ymax = 0.5
+                    plot_xlabel = False
                 else:
                     median = False
                     clip_zero = True
                     perf_str = r'$R^2$'
-                    ymax = 0.1
-                    
+                    plot_xlabel = True
+
                 if shuffled:
                     cidx_p = 9
                     cidx_fb = 9
                 else:
                     cidx_p = 7
                     cidx_fb = 6
-                                    
+                    
+                
+                if perf == 'pearson_r' and shuffled:
+                    ymax = 0.7
+                if perf == 'pearson_r' and shuffled == False:
+                    ymax = 0.4
+                if perf == 'out_of_sample_r2' and shuffled:
+                    ymax = 0.3
+                if perf == 'out_of_sample_r2' and shuffled == False:
+                    ymax = 0.12
+                    
+                  
                 # Define shades of blue and an orange color
-                palette = sns.color_palette(["#1E90FF", "#4169E1", "#0000CD", "#FFA500"]) 
-                                
+                if shuffled:
+                    palette = sns.color_palette(["#1E90FF", "#4169E1", "#0000CD", "#FFA500"]) 
+                    
+                elif dataset == 'pereira':
+                    palette = sns.color_palette(["#1E90FF", "#4169E1", "#0000CD", "#008000"])  # "#008000" is green
+                    
+                elif dataset == 'fedorenko':
+                    palette = sns.color_palette(["#1E90FF", "#4169E1", "#0000CD", "#FF69B4"]) 
+                      
                 if dataset == 'pereira':
                     index = 0
+                    remove_y_axis = False
+                    dataset_label = 'Pereira2016'
+        
                 if dataset == 'fedorenko':
                     index = 1
+                    remove_y_axis = True 
+                    dataset_label = 'Fed2016'
+            
                 if dataset == 'blank':
                     index = 2
+                    remove_y_axis = True
+                    dataset_label = 'Blank2014'
+                    
+    
+                plot_legend = False
 
                 if dataset == 'pereira':
-                                        
-                    if noL2:
-                        plot_legend = True
-                    else:
-                        plot_legend = True
+
                     
                     subject_avg_pd, dict_pd_merged, dict_pd_with_all = plot_across_subjects(results_simple_gpt2xl.copy(), figurePath=figurePath,  selected_networks=['language'],
-                                                            saveName=f'{dataset}{noL2_str}{shuffled_str}_both', 
+                                                            dataset=dataset_label, saveName=f'{dataset}{noL2_str}{shuffled_str}_both', 
                                                             yticks=[0, ymax], order=['language'], clip_zero=clip_zero, color_palette=palette, 
                                                             draw_lines=False, ms=15, plot_legend=plot_legend, 
-                                                            plot_legend_under=False, width=0.7, median=median, ylabel_str=perf_str, legend_fontsize=30, ax=ax, index=index)
+                                                            plot_legend_under=False, width=0.7, median=median, ylabel_str=perf_str, legend_fontsize=30, ax=ax, index=index, 
+                                                            remove_yaxis=remove_y_axis, plot_xlabel=plot_xlabel)
                 else:
                     
                     if shuffled or dataset == 'fedorenko':
-                        
-                        # contiguous fed linear, add legend for WP   
-                        if dataset == 'fedorenko' and noL2:
-                            plot_legend = True
-                        else:
-                            plot_legend = False
+                    
                           
                         #max_val = round(results_simple_gpt2xl['perf'].max() + 0.1*results_simple_gpt2xl['perf'].max(), 2)
                         subject_avg_pd, dict_pd_merged, dict_pd_with_all = plot_across_subjects(results_simple_gpt2xl.copy(), figurePath=figurePath, selected_networks=['language'],
-                                                                saveName=f'{dataset}{noL2_str}{shuffled_str}', 
+                                                                dataset=dataset_label, saveName=f'{dataset}{noL2_str}{shuffled_str}', 
                                                                 yticks=[0, ymax], order=['language'], clip_zero=clip_zero, color_palette=palette, 
                                                                 draw_lines=False, ms=15, plot_legend=plot_legend, 
-                                                                plot_legend_under=False, width=0.7, median=median, ylabel_str='', legend_fontsize=30, ax=ax, index=index)
+                                                                plot_legend_under=False, width=0.7, median=median, ylabel_str='', legend_fontsize=30, ax=ax, index=index, 
+                                                                remove_yaxis=remove_y_axis, plot_xlabel=plot_xlabel)
                     else:
                         
                         subject_avg_pd, dict_pd_merged, dict_pd_with_all = plot_across_subjects(results_dict_gpt2.copy(), figurePath=figurePath, selected_networks=['language'],
-                                                                saveName=f'{dataset}{noL2_str}{shuffled_str}', 
+                                                                dataset=dataset_label, saveName=f'{dataset}{noL2_str}{shuffled_str}', 
                                                                 yticks=[0, ymax], order=['language'], clip_zero=clip_zero, color_palette=palette, 
                                                                 draw_lines=False, ms=15, plot_legend=False, 
-                                                                plot_legend_under=False, width=0.7, median=median, ylabel_str='', ax=ax, index=index)
+                                                                plot_legend_under=False, width=0.7, median=median, ylabel_str='', ax=ax, index=index, 
+                                                                remove_yaxis=remove_y_axis, plot_xlabel=plot_xlabel)
                 
-                fig.savefig(f'{figurePath}figure1_{noL2_str}{shuffled_str}.png')
-                fig.savefig(f'{figurePath}figure1_{noL2_str}{shuffled_str}.pdf',  bbox_inches='tight')
+                
+                # for some reason that I don't understand the y axis is not removed through the function with the Fed plots
+                # so I just do it manually here (fed is always index 1)
+                ax[1].spines['left'].set_visible(False)   # Hide the left spine
+                ax[1].yaxis.set_visible(False)            # Hide the y-axis
+                ax[1].set_yticks([])                      # Remove yticks
+                ax[1].set_yticklabels([])                 # Remove ytick labels (if any)
+                
+                if noL2:
+                    ax[1].legend(loc="upper left")  # Adjust 'loc' as needed
+                    
+                plt.legend(fontsize=20, frameon=False, bbox_to_anchor=(1, 1), loc='upper left')
+                
+                
+                # also realigning the x axis here, just easier to do it outside the function 
+                for i in range(3):
+                    ax[i].set_ylim(0, ymax)                  # Set y-limits to be the same
+                    ax[i].spines['bottom'].set_position(('data', 0))  # Place the x-axis at y=0
+                    ax[i].set_ylabel('')
+                    ax[i].set_xlabel('')
+
+                fig.savefig(f'{figurePath}figure1{noL2_str}{shuffled_str}.png')
+                fig.savefig(f'{figurePath}figure1{noL2_str}{shuffled_str}.pdf',  bbox_inches='tight')
                                             
 
                             
