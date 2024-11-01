@@ -1,10 +1,9 @@
 from banded_reg_func import himalaya_regression_caller
 
-datasets = ['pereira', 'blank', 'fedorenko']
+datasets = ['pereira', 'fedorenko', 'blank']
 models = ['gpt2-xl', 'gpt2-xl-sp', 'gpt2-xl-mp']
 linear_reg_options = [False] # if False, do L2 regularized regression
 shuffled_options = [False, True]
-exp_options = ['384', '243']
 
 data_folder = '/data/LLMs/data_processed'
 device = 1

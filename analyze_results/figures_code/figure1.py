@@ -1,111 +1,13 @@
 import numpy as np
 base = '/home2/ebrahim/beyond-brainscore/'
 from matplotlib import pyplot as plt
-import os
 from sklearn.metrics import mean_squared_error
 import sys
 sys.path.append(base)
-from plotting_functions import plot_across_subjects, plot_test_perf_across_layers, save_fMRI_simple, pass_info_plot_hist2d, find_rows_without_nan
-from trained_results_funcs import create_pd_selected_models, find_best, max_across_selected_models
-from trained_untrained_results_funcs import max_across_nested
-from scipy.stats import pearsonr
+from plotting_functions import plot_across_subjects
 import seaborn as sns
 import pandas as pd
-import matplotlib
-from scipy.stats import ttest_rel, ttest_1samp
-import nibabel as nib
-from nilearn import plotting
-from nilearn import surface
-from nilearn import datasets
-import plotly
-import brainio
-
-def find_best_sigma(sigma_range, noL2_str, exp, resultsPath, dataset, subjects, perf='pearson_r',
-                    lang_indices=None):
-    
-    '''
-    Finds best sigma value for OASM by taking the mean/median across subjects, and then taking 
-    the mean across subjects.
-    '''
-
-    sigma_perf_dict = {}
-    
-    if dataset == 'pereira':
-        subjects = subjects[lang_indices]
-    
-    for s in sigma_range:
-        
-        s = round(s,3)
-        
-        # load in performance of OASM across voxels/electrodes/ROIs
-        OASM_perf =  np.load(f'{resultsPath}/{dataset}_OASM-all-sigma_{s}_1{noL2_str}{exp}.npz')[perf]
-        
-        OASM_perf = np.nan_to_num(OASM_perf, 0)
-    
-        
-        # if pereira, take median across language network voxels
-        # otherwise simply take the median
-        if dataset == 'pereira':
-            OASM_perf = OASM_perf[lang_indices]
-            
-            
-        OASM_subj = pd.DataFrame({'perf': OASM_perf, 'subject': subjects})
-        if perf == 'pearson_r':
-            perf_avg = np.median(OASM_subj.groupby(['subject']).median())
-        else:
-            perf_avg = np.mean(OASM_subj.groupby(['subject']).mean())
-    
-        # make sure it's not nan, happens sometimes when sigma is low 
-        # not totally sure why 
-        if ~np.isnan(perf_avg):
-            sigma_perf_dict[s] = perf_avg
-        
-    best_sigma = max(sigma_perf_dict, key=sigma_perf_dict.get)
-    
-    OASM_perf_best =  np.load(f'{resultsPath}/{dataset}_OASM-all-sigma_{best_sigma}_1{noL2_str}{exp}.npz')[perf]
-    OASM_perf_best = np.nan_to_num(OASM_perf_best, 0)
-        
-    return sigma_perf_dict, best_sigma, OASM_perf_best
-
-def find_best_layer(layer_range, noL2_str, exp, resultsPath, subjects, dataset, perf='pearson_r', 
-                    lang_indices = None, feature_extraction = ''):
-    
-
-    layer_perf_dict = {}
-    
-    if dataset == 'pereira':
-        subjects = subjects[lang_indices]
-        
-        
-    
-    for l in layer_range:
-        
-        layer_perf =  np.load(f'{resultsPath}/{dataset}_gpt2-xl{feature_extraction}_layer_{l}_1{noL2_str}{exp}.npz')[perf]
-        
-        if perf != 'pearson_r':
-            layer_perf = np.clip(layer_perf, 0, np.inf)
-        
-        layer_perf = np.nan_to_num(layer_perf, nan=0)
-        
-        if dataset == 'pereira':
-            layer_perf = layer_perf[lang_indices]
-            
-            
-        layer_subject = pd.DataFrame({'perf': layer_perf, 'subject': subjects})    
-    
-        if perf == 'pearson_r':
-            perf_avg = np.median(layer_subject.groupby(['subject']).median())
-        else:
-            perf_avg = np.mean(layer_subject.groupby(['subject']).mean())
-        
-        layer_perf_dict[l] = perf_avg
-            
-    best_layer = max(layer_perf_dict, key=layer_perf_dict.get)
-    
-    layer_perf_best =  np.load(f'{resultsPath}/{dataset}_gpt2-xl{feature_extraction}_layer_{best_layer}_1{noL2_str}{exp}.npz')[perf]
-    layer_perf_best = np.nan_to_num(layer_perf_best, 0)
-        
-    return layer_perf_dict, best_layer, layer_perf_best    
+from trained_results_funcs import find_best_layer, find_best_sigma
 
 noL2_arr = [False, True]
 shuffled_arr = [False, True]
@@ -140,7 +42,6 @@ for perf in perf_arr:
                 data_processed_folder = f'/data/LLMs/data_processed/{dataset}/dataset'
                 figurePath = '/home2/ebrahim/beyond-brainscore/analyze_results/figures_code/figures/new_figures/figure1/'
                 figurePath = f'{figurePath}{perf}/'
-                default_palette = sns.color_palette('deep')   
 
         
                 # load information regarding number of voxels, subjects, and functional network localization for each experiment into a dictionary
