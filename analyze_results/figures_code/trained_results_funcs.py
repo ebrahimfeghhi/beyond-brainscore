@@ -4,7 +4,7 @@ from trained_untrained_results_funcs import max_across_nested
 
 
 def find_best_sigma(sigma_range, noL2_str, exp, resultsPath, dataset, subjects, perf='pearson_r',
-                    lang_indices=None):
+                    selected_network_indices=None):
     
     '''
     Finds best sigma value for OASM by taking the mean/median across subjects, and then taking 
@@ -14,7 +14,7 @@ def find_best_sigma(sigma_range, noL2_str, exp, resultsPath, dataset, subjects, 
     sigma_perf_dict = {}
     
     if dataset == 'pereira':
-        subjects = subjects[lang_indices]
+        subjects = subjects[selected_network_indices]
     
     for s in sigma_range:
         
@@ -25,12 +25,10 @@ def find_best_sigma(sigma_range, noL2_str, exp, resultsPath, dataset, subjects, 
         
         OASM_perf = np.nan_to_num(OASM_perf, 0)
     
-        
         # if pereira, take median across language network voxels
         # otherwise simply take the median
         if dataset == 'pereira':
-            OASM_perf = OASM_perf[lang_indices]
-            
+            OASM_perf = OASM_perf[selected_network_indices]
             
         OASM_subj = pd.DataFrame({'perf': OASM_perf, 'subject': subjects})
         if perf == 'pearson_r':
@@ -51,15 +49,13 @@ def find_best_sigma(sigma_range, noL2_str, exp, resultsPath, dataset, subjects, 
     return sigma_perf_dict, best_sigma, OASM_perf_best
 
 def find_best_layer(layer_range, noL2_str, exp, resultsPath, subjects, dataset, perf='pearson_r', 
-                    lang_indices = None, feature_extraction = ''):
+                    selected_network_indices = None, feature_extraction = ''):
     
 
     layer_perf_dict = {}
     
     if dataset == 'pereira':
-        subjects = subjects[lang_indices]
-        
-        
+        subjects = subjects[selected_network_indices]
     
     for l in layer_range:
         
@@ -71,7 +67,7 @@ def find_best_layer(layer_range, noL2_str, exp, resultsPath, subjects, dataset, 
         layer_perf = np.nan_to_num(layer_perf, nan=0)
         
         if dataset == 'pereira':
-            layer_perf = layer_perf[lang_indices]
+            layer_perf = layer_perf[selected_network_indices]
             
             
         layer_subject = pd.DataFrame({'perf': layer_perf, 'subject': subjects})    

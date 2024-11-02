@@ -15,6 +15,9 @@ dataset_arr = ['pereira', 'fedorenko', 'blank']
 perf_arr = ['pearson_r', 'out_of_sample_r2']
 feature_extraction = ['', '-sp', '-mp']
 
+save_best_sigma = {}
+save_best_layer = {}
+
 for perf in perf_arr:
     for noL2 in noL2_arr:
         for shuffled in shuffled_arr:
@@ -25,13 +28,19 @@ for perf in perf_arr:
                 
                 if noL2:
                     noL2_str = '_noL2'
+                    noL2_save_str = '_lin'
                 else:
                     noL2_str = ''
+                    noL2_save_str = '_ridge'
                     
                 if shuffled:
                     shuffled_str = '_shuffled'
+                    shuffled_save_str = '_shuffled'
+                    
                 else:
                     shuffled_str = ''
+                    shuffled_save_str = '_contig'
+                    
 
                 
                 resultsPath_dataset_nonshuffled = f'/data/LLMs/brainscore/results_{dataset}'
@@ -39,6 +48,7 @@ for perf in perf_arr:
                     resultsPath_dataset = f'/data/LLMs/brainscore/results_{dataset}/shuffled'
                 else:
                     resultsPath_dataset = resultsPath_dataset_nonshuffled
+                    
                 data_processed_folder = f'/data/LLMs/data_processed/{dataset}/dataset'
                 figurePath = '/home2/ebrahim/beyond-brainscore/analyze_results/figures_code/figures/new_figures/figure1/'
                 figurePath = f'{figurePath}{perf}/'
@@ -75,15 +85,23 @@ for perf in perf_arr:
                                 
                     if dataset == 'pereira':
                         sigma_perf_dict_384, best_sigma_384, OASM_perf_best_sigma_384 = find_best_sigma(sigma_values, noL2_str=noL2_str, exp='_384', subjects=subjects_dict['384'], 
-                                                                        resultsPath=resultsPath_dataset, dataset=dataset, lang_indices=lang_indices_384, 
+                                                                        resultsPath=resultsPath_dataset, dataset=dataset, selected_network_indices=lang_indices_384, 
                                                                         perf=perf)   
                         sigma_perf_dict_243, best_sigma_243, OASM_perf_best_sigma_243 = find_best_sigma(sigma_values, noL2_str=noL2_str, exp='_243', subjects=subjects_dict['243'], 
-                                                                        resultsPath=resultsPath_dataset, dataset=dataset, lang_indices=lang_indices_243, 
+                                                                        resultsPath=resultsPath_dataset, dataset=dataset, selected_network_indices=lang_indices_243, 
                                                                         perf=perf)
+                        
+
+                    
+                        save_best_sigma[f"{dataset}_384_{perf}{shuffled_save_str}{noL2_save_str}"] = best_sigma_384
+                        save_best_sigma[f"{dataset}_243_{perf}{shuffled_save_str}{noL2_save_str}"] = best_sigma_243
                     else:
                         sigma_perf_dict, best_sigma, OASM_perf_best_sigma = find_best_sigma(sigma_values, noL2_str=noL2_str, exp='', 
                                                             subjects=subjects_arr, resultsPath=resultsPath_dataset, dataset=dataset, perf=perf)
                         
+                        save_best_sigma[f"{dataset}_{perf}{shuffled_save_str}{noL2_save_str}"] = best_sigma
+                        
+                    
                     #if dataset == 'pereira':
                     #    plt.plot(sigma_perf_dict_384.keys(), sigma_perf_dict_384.values(), label='384')
                     #    plt.plot(sigma_perf_dict_243.keys(), sigma_perf_dict_243.values(), label='243')
@@ -116,10 +134,10 @@ for perf in perf_arr:
                     for fe in feature_extraction:
                         
                         gpt2_xl_384_dict, gpt2_xl_384_bl, gpt2_xl_384_bl_perf = find_best_layer(np.arange(0,49), noL2_str=noL2_str, exp='_384', 
-                                                                        resultsPath=resultsPath_dataset, lang_indices=lang_indices_384, dataset=dataset, 
+                                                                        resultsPath=resultsPath_dataset, selected_network_indices=lang_indices_384, dataset=dataset, 
                                                                         subjects=subjects_dict['384'], perf=perf, feature_extraction=fe)
                         gpt2_xl_243_dict, gpt2_xl_243_bl, gpt2_xl_243_bl_perf = find_best_layer(np.arange(0,49), noL2_str=noL2_str, exp='_243', 
-                                                                        resultsPath=resultsPath_dataset, lang_indices=lang_indices_243, dataset=dataset, 
+                                                                        resultsPath=resultsPath_dataset, selected_network_indices=lang_indices_243, dataset=dataset, 
                                                                         subjects=subjects_dict['243'], perf=perf, feature_extraction=fe)
                         
                         results_dict_gpt2['perf'].extend(gpt2_xl_384_bl_perf)
@@ -130,6 +148,11 @@ for perf in perf_arr:
                         results_dict_gpt2['Network'].extend(br_labels_dict['243'])
                         results_dict_gpt2['Model'].extend(np.repeat(f'GPT2-XL{fe}', num_vox_dict['384']))
                         results_dict_gpt2['Model'].extend(np.repeat(f'GPT2-XL{fe}', num_vox_dict['243']))
+                        
+                        
+                        
+                        save_best_layer[f"{dataset}_384_{perf}{shuffled_save_str}{noL2_save_str}{fe}"] = gpt2_xl_384_bl
+                        save_best_layer[f"{dataset}_243_{perf}{shuffled_save_str}{noL2_save_str}{fe}"] = gpt2_xl_243_bl
                         
             
                 else:
@@ -143,6 +166,9 @@ for perf in perf_arr:
                         results_dict_gpt2['subjects'].extend(subjects_arr)
                         results_dict_gpt2['Network'].extend(np.repeat('language', num_brain_units))
                         results_dict_gpt2['Model'].extend(np.repeat(f'GPT2-XL{fe}', num_brain_units))
+                        
+                        save_best_layer[f"{dataset}_{perf}{shuffled_save_str}{noL2_save_str}{fe}"] = gpt2_xl_bl
+                        
                         
                 results_dict_gpt2 = pd.DataFrame(results_dict_gpt2)
                 results_dict_simple = None    
@@ -244,7 +270,7 @@ for perf in perf_arr:
                                                             dataset=dataset_label, saveName=f'{dataset}{noL2_str}{shuffled_str}_both', 
                                                             yticks=[0, ymax], order=['language'], clip_zero=clip_zero, color_palette=palette, 
                                                             draw_lines=False, ms=15, plot_legend=plot_legend, 
-                                                            plot_legend_under=False, width=0.7, median=median, ylabel_str=perf_str, legend_fontsize=30, ax=ax, index=index, 
+                                                            plot_legend_under=False, width=0.7, median=median, ylabel_str=perf_str, legend_fontsize=30, ax_select=ax[index],
                                                             remove_yaxis=remove_y_axis, plot_xlabel=plot_xlabel)
                 else:
                     
@@ -256,7 +282,7 @@ for perf in perf_arr:
                                                                 dataset=dataset_label, saveName=f'{dataset}{noL2_str}{shuffled_str}', 
                                                                 yticks=[0, ymax], order=['language'], clip_zero=clip_zero, color_palette=palette, 
                                                                 draw_lines=False, ms=15, plot_legend=plot_legend, 
-                                                                plot_legend_under=False, width=0.7, median=median, ylabel_str='', legend_fontsize=30, ax=ax, index=index, 
+                                                                plot_legend_under=False, width=0.7, median=median, ylabel_str='', legend_fontsize=30, ax_select=ax[index],
                                                                 remove_yaxis=remove_y_axis, plot_xlabel=plot_xlabel)
                     else:
                         
@@ -264,8 +290,7 @@ for perf in perf_arr:
                                                                 dataset=dataset_label, saveName=f'{dataset}{noL2_str}{shuffled_str}', 
                                                                 yticks=[0, ymax], order=['language'], clip_zero=clip_zero, color_palette=palette, 
                                                                 draw_lines=False, ms=15, plot_legend=False, 
-                                                                plot_legend_under=False, width=0.7, median=median, ylabel_str='', ax=ax, index=index, 
-                                                                remove_yaxis=remove_y_axis, plot_xlabel=plot_xlabel)
+                                                                plot_legend_under=False, width=0.7, median=median, ylabel_str='', ax_select=ax[index], remove_yaxis=remove_y_axis, plot_xlabel=plot_xlabel)
                 
                 
                 # for some reason that I don't understand the y axis is not removed through the function with the Fed plots
@@ -295,6 +320,8 @@ for perf in perf_arr:
                             
 
 
+np.savez('best_layer_sigma_info/best_sigma', **save_best_sigma)
+np.savez('best_layer_sigma_info/best_gpt2xl_layer', **save_best_layer)
 
 
 

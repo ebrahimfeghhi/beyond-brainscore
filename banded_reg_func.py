@@ -147,7 +147,7 @@ def himalaya_regression_caller(model: Union[str, dict, np.ndarray],
         else:
             np.random.shuffle(data_labels)  
             
-        full_results_folder = f"{full_results_folder}/shuffled"
+        full_results_folder = f"{full_results_folder}shuffled/"
     else:
         print("CONTIGUOUS SPLITS")
             
@@ -178,7 +178,7 @@ def himalaya_regression_caller(model: Union[str, dict, np.ndarray],
 
         # use kernel method to speed things up when features > samples
         if num_features > num_samples:
-            use_kernelized = False
+            use_kernelized = False # getting cuda asynch errors with kernel
         else:
             use_kernelized = False
 
@@ -222,10 +222,15 @@ def himalaya_regression_caller(model: Union[str, dict, np.ndarray],
         else:
             exp_str = exp
   
-        # save y_test and mse of intercept model if not already saved
-        y_test_ordered_filename = f'/data/LLMs/brainscore/results_{dataset}/y_test_ordered{exp_str}.npy'
-        mse_intercept_filename = f'/data/LLMs/brainscore/results_{dataset}/mse_intercept{exp_str}.npy'
+        y_test_ordered_filename = f'{full_results_folder}/y_test_ordered{exp_str}.npy'
+        mse_intercept_filename = f'{full_results_folder}/mse_intercept{exp_str}.npy'
         
+        breakpoint()
+        
+        # 0.749345
+        # 0.0003783214
+        # 1.819124 
+
         if ~os.path.isfile(y_test_ordered_filename):  
             np.save(y_test_ordered_filename, y_test_folds)
         if ~os.path.isfile(mse_intercept_filename):
