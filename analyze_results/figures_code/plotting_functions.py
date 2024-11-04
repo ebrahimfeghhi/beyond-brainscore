@@ -208,6 +208,8 @@ def load_model_to_pd(model_name, layer_name, niters, br_labels, subject_labels, 
     return dict_pd_merged
 
 
+
+
 def plot_across_subjects(dict_pd_merged, figurePath, dataset, selected_networks, ax_select=None, yticks=None, saveName=None,
                          color_palette=None, hue_order=None, order=None, clip_zero=True, draw_lines=False, plot_legend=False, plot_legend_under=False, ms=6, width=0.8, 
                          LLM_perf=None, ylabel=True, median=False, ylabel_str=r'$R^2$', legend_fontsize=25, remove_yaxis=False, 
@@ -269,8 +271,9 @@ def plot_across_subjects(dict_pd_merged, figurePath, dataset, selected_networks,
     sns.set_style("white")
     sns.despine()
     
-
-    #ax_select.spines['bottom'].set_position(('data', 0))
+    if ax_select == None:
+        _, ax_select = plt.subplots(1,1, figsize=(10,6))
+    
 
     sns.stripplot(data=subject_avg_pd, x=x_var, y='perf', hue=hue_var, dodge=True, palette=color_palette, 
                    size=ms, hue_order=hue_order, order=order, ax=ax_select, legend=plot_legend, alpha=0.4)
@@ -282,14 +285,17 @@ def plot_across_subjects(dict_pd_merged, figurePath, dataset, selected_networks,
         x_avg = locs_dict[i][:, 0].mean()
         median_model = np.median(locs_dict[i][:, 1])
         mean_model = np.mean(locs_dict[i][:, 1])
-        ax_select.plot([x_avg-line_extend, x_avg+line_extend], [median_model, median_model], color='black', linewidth=lw, linestyle='-')
-        ax_select.plot([x_avg-line_extend, x_avg+line_extend], [mean_model, mean_model], color='gray', linewidth=lw, linestyle='-') 
+        ax_select.plot([x_avg-line_extend, x_avg+line_extend], [median_model, median_model], color='grey', linewidth=lw, linestyle='-')
+        ax_select.plot([x_avg-line_extend, x_avg+line_extend], [mean_model, mean_model], color='black', linewidth=lw, linestyle='-') 
     
-    #if draw_lines:
-    #    for i in range(locs1.shape[0]):
-    #        x = [locs1[i, 0], locs2[i, 0]] # x marker for model1 and model2
-    #        y = [locs1[i, 1], locs2[i, 1]] # y marker for model1 and model2 (performance)
-    #        ax.plot(x, y, color="black", alpha=0.2) # draw a line between model1 and model2
+    if draw_lines:
+        for i in range(int(num_models*len(selected_networks))-1):
+            locs1 = locs_dict[i]
+            locs2 = locs_dict[i+1]
+            for j in range(locs1.shape[0]):
+                x = [locs1[j, 0], locs2[j, 0]]
+                y = [locs1[j, 1], locs2[j, 1]]
+                ax_select.plot(x, y, color="black", alpha=0.2)
  
     if LLM_perf is not None:
         plt.axhline(LLM_perf, linestyle='--', color='gray', linewidth=4)
@@ -313,26 +319,17 @@ def plot_across_subjects(dict_pd_merged, figurePath, dataset, selected_networks,
         ax_select.spines['left'].set_visible(False)
         ax_select.yaxis.set_visible(False)
         ax_select.set_yticks([])
-        
-
     
     if plot_xlabel == False:
         ax_select.set_xticks([])
         ax_select.set_xlabel('')
         
     
-    
     plt.tick_params(axis='x', labelsize=30) 
 
     x_min, x_max = ax_select.get_xlim()
     ax_select.set_xlim(x_min - 0.1, x_max + 0.1)
    
-    #if saveName is not None:
-    #    plt.savefig(f'{figurePath}{saveName}.pdf', bbox_inches='tight')
-    #    plt.savefig(f'{figurePath}{saveName}.png', bbox_inches='tight', dpi=300)
-        
-    #plt.show()
-    #plt.close()
     
     return subject_avg_pd, dict_pd_merged, dict_pd_with_all
 

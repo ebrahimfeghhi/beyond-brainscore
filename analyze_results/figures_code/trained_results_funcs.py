@@ -53,6 +53,7 @@ def find_best_layer(layer_range, noL2_str, exp, resultsPath, subjects, dataset, 
     
 
     layer_perf_dict = {}
+    layer_perf_dict_mean = {}
     
     if dataset == 'pereira':
         subjects = subjects[selected_network_indices]
@@ -69,22 +70,21 @@ def find_best_layer(layer_range, noL2_str, exp, resultsPath, subjects, dataset, 
         if dataset == 'pereira':
             layer_perf = layer_perf[selected_network_indices]
             
-            
         layer_subject = pd.DataFrame({'perf': layer_perf, 'subject': subjects})    
-    
-        if perf == 'pearson_r':
-            perf_avg = np.median(layer_subject.groupby(['subject']).median())
-        else:
-            perf_avg = np.mean(layer_subject.groupby(['subject']).mean())
+
+        perf_avg = np.median(layer_subject.groupby(['subject']).median())
+        perf_avg_mean = np.mean(layer_subject.groupby(['subject']).median())
         
         layer_perf_dict[l] = perf_avg
-            
+        layer_perf_dict_mean[l] = perf_avg_mean
+        
+        
     best_layer = max(layer_perf_dict, key=layer_perf_dict.get)
     
     layer_perf_best =  np.load(f'{resultsPath}/{dataset}_gpt2-xl{feature_extraction}_layer_{best_layer}_1{noL2_str}{exp}.npz')[perf]
     layer_perf_best = np.nan_to_num(layer_perf_best, 0)
         
-    return layer_perf_dict, best_layer, layer_perf_best   
+    return [layer_perf_dict, layer_perf_dict_mean], best_layer, layer_perf_best   
 
 
 def return_frac_var_explained(submodel, submodel_with_LLM, LLM_perf):

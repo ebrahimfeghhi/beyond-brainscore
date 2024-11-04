@@ -24,7 +24,9 @@ for d in datasets:
 
     for m in models:
         banded_model = f"{m}_OASM"
+        
         for lr in linear_reg_options:
+            
             for shuffled in shuffled_options:
               
                 # save y hat for L2 regularized so we can perform statistical testing

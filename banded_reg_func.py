@@ -225,7 +225,6 @@ def himalaya_regression_caller(model: Union[str, dict, np.ndarray],
         y_test_ordered_filename = f'{full_results_folder}/y_test_ordered{exp_str}.npy'
         mse_intercept_filename = f'{full_results_folder}/mse_intercept{exp_str}.npy'
         
-        breakpoint()
         
         # 0.749345
         # 0.0003783214
