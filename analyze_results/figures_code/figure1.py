@@ -215,7 +215,7 @@ for perf in perf_arr:
                     median = False
                     clip_zero = True
                     perf_str = r'$R^2$'
-                    plot_xlabel = True
+                    plot_xlabel = False
 
                 if shuffled:
                     cidx_p = 9
