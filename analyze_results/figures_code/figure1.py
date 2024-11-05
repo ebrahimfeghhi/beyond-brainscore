@@ -148,11 +148,10 @@ for perf in perf_arr:
                         results_dict_gpt2['Network'].extend(br_labels_dict['243'])
                         results_dict_gpt2['Model'].extend(np.repeat(f'GPT2-XL{fe}', num_vox_dict['384']))
                         results_dict_gpt2['Model'].extend(np.repeat(f'GPT2-XL{fe}', num_vox_dict['243']))
-                        
-                        
-                        
                         save_best_layer[f"{dataset}_384_{perf}{shuffled_save_str}{noL2_save_str}{fe}"] = gpt2_xl_384_bl
                         save_best_layer[f"{dataset}_243_{perf}{shuffled_save_str}{noL2_save_str}{fe}"] = gpt2_xl_243_bl
+                        
+                         
                         
             
                 else:
@@ -292,7 +291,7 @@ for perf in perf_arr:
                                                                 draw_lines=False, ms=15, plot_legend=False, 
                                                                 plot_legend_under=False, width=0.7, median=median, ylabel_str='', ax_select=ax[index], remove_yaxis=remove_y_axis, plot_xlabel=plot_xlabel)
                 
-                
+                    
                 # for some reason that I don't understand the y axis is not removed through the function with the Fed plots
                 # so I just do it manually here (fed is always index 1)
                 ax[1].spines['left'].set_visible(False)   # Hide the left spine
@@ -305,7 +304,6 @@ for perf in perf_arr:
                     
                 plt.legend(fontsize=20, frameon=False, bbox_to_anchor=(1, 1), loc='upper left')
                 
-                
                 # also realigning the x axis here, just easier to do it outside the function 
                 for i in range(3):
                     ax[i].set_ylim(0, ymax)                  # Set y-limits to be the same
@@ -316,9 +314,6 @@ for perf in perf_arr:
                 fig.savefig(f'{figurePath}figure1{noL2_str}{shuffled_str}.png')
                 fig.savefig(f'{figurePath}figure1{noL2_str}{shuffled_str}.pdf',  bbox_inches='tight')
                                             
-
-                            
-
 
 np.savez('best_layer_sigma_info/best_sigma', **save_best_sigma)
 np.savez('best_layer_sigma_info/best_gpt2xl_layer', **save_best_layer)
