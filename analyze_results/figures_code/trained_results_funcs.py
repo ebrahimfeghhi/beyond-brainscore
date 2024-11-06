@@ -31,6 +31,7 @@ def find_best_sigma(sigma_range, noL2_str, exp, resultsPath, dataset, subjects, 
             OASM_perf = OASM_perf[selected_network_indices]
             
         OASM_subj = pd.DataFrame({'perf': OASM_perf, 'subject': subjects})
+        
         if perf == 'pearson_r':
             perf_avg = np.median(OASM_subj.groupby(['subject']).median())
         else:
@@ -49,7 +50,7 @@ def find_best_sigma(sigma_range, noL2_str, exp, resultsPath, dataset, subjects, 
     return sigma_perf_dict, best_sigma, OASM_perf_best
 
 def find_best_layer(layer_range, noL2_str, exp, resultsPath, subjects, dataset, perf='pearson_r', 
-                    selected_network_indices = None, feature_extraction = ''):
+                    selected_network_indices = None, feature_extraction = '', model_name='gpt2-xl', seed_number=None):
     
 
     layer_perf_dict = {}
@@ -57,10 +58,15 @@ def find_best_layer(layer_range, noL2_str, exp, resultsPath, subjects, dataset, 
     
     if dataset == 'pereira':
         subjects = subjects[selected_network_indices]
+        
+    if seed_number is not None:
+        seed_str = f"_m{seed_number}"
+    else:
+        seed_str = ''
     
     for l in layer_range:
         
-        layer_perf =  np.load(f'{resultsPath}/{dataset}_gpt2-xl{feature_extraction}_layer_{l}_1{noL2_str}{exp}.npz')[perf]
+        layer_perf = np.load(f'{resultsPath}/{dataset}_{model_name}{feature_extraction}_layer_{l}_1{noL2_str}{exp}{seed_str}.npz')[perf]
         
         if perf != 'pearson_r':
             layer_perf = np.clip(layer_perf, 0, np.inf)
@@ -73,7 +79,7 @@ def find_best_layer(layer_range, noL2_str, exp, resultsPath, subjects, dataset, 
         layer_subject = pd.DataFrame({'perf': layer_perf, 'subject': subjects})    
 
         perf_avg = np.median(layer_subject.groupby(['subject']).median())
-        perf_avg_mean = np.mean(layer_subject.groupby(['subject']).median())
+        perf_avg_mean = np.mean(layer_subject.groupby(['subject']).mean())
         
         layer_perf_dict[l] = perf_avg
         layer_perf_dict_mean[l] = perf_avg_mean
@@ -81,7 +87,7 @@ def find_best_layer(layer_range, noL2_str, exp, resultsPath, subjects, dataset, 
         
     best_layer = max(layer_perf_dict, key=layer_perf_dict.get)
     
-    layer_perf_best =  np.load(f'{resultsPath}/{dataset}_gpt2-xl{feature_extraction}_layer_{best_layer}_1{noL2_str}{exp}.npz')[perf]
+    layer_perf_best =  np.load(f'{resultsPath}/{dataset}_{model_name}{feature_extraction}_layer_{best_layer}_1{noL2_str}{exp}{seed_str}.npz')[perf]
     layer_perf_best = np.nan_to_num(layer_perf_best, 0)
         
     return [layer_perf_dict, layer_perf_dict_mean], best_layer, layer_perf_best   

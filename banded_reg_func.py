@@ -1,11 +1,5 @@
 import numpy as np
-import argparse
-import torch 
-from sklearn.preprocessing import StandardScaler
-import sys
-from scipy import stats
 import os
-import torch
 from helper_funcs import combine_MSE_across_folds
 from typing import Union
 from neural_dat_funcs import construct_splits_blank, construct_splits_fedorenko, construct_splits_pereira
@@ -120,9 +114,7 @@ def himalaya_regression_caller(model: Union[str, dict, np.ndarray],
     if untrained:
         full_results_folder = f"{full_results_folder}untrained/"
         print("saving results to: ", full_results_folder)
-
-    if not os.path.exists(full_results_folder):
-        os.makedirs(full_results_folder)
+        
 
     if approx_linear:
         alphas = np.array([1e-30])
@@ -150,6 +142,9 @@ def himalaya_regression_caller(model: Union[str, dict, np.ndarray],
         full_results_folder = f"{full_results_folder}shuffled/"
     else:
         print("CONTIGUOUS SPLITS")
+        
+    if not os.path.exists(full_results_folder):
+        os.makedirs(full_results_folder)
             
     for layer_name, X in X_all_layers.items():
         
