@@ -66,7 +66,7 @@ def find_best_layer(layer_range, noL2_str, exp, resultsPath, subjects, dataset, 
     
     for l in layer_range:
         
-        layer_perf = np.load(f'{resultsPath}/{dataset}_{model_name}{feature_extraction}_layer_{l}_1{noL2_str}{exp}{seed_str}.npz')[perf]
+        layer_perf = np.load(f'{resultsPath}/{dataset}_{model_name}{feature_extraction}{seed_str}_layer_{l}_1{noL2_str}{exp}.npz')[perf]
         
         if perf != 'pearson_r':
             layer_perf = np.clip(layer_perf, 0, np.inf)
@@ -87,7 +87,7 @@ def find_best_layer(layer_range, noL2_str, exp, resultsPath, subjects, dataset, 
         
     best_layer = max(layer_perf_dict, key=layer_perf_dict.get)
     
-    layer_perf_best =  np.load(f'{resultsPath}/{dataset}_{model_name}{feature_extraction}_layer_{best_layer}_1{noL2_str}{exp}{seed_str}.npz')[perf]
+    layer_perf_best =  np.load(f'{resultsPath}/{dataset}_{model_name}{feature_extraction}{seed_str}_layer_{best_layer}_1{noL2_str}{exp}.npz')[perf]
     layer_perf_best = np.nan_to_num(layer_perf_best, 0)
         
     return [layer_perf_dict, layer_perf_dict_mean], best_layer, layer_perf_best   
