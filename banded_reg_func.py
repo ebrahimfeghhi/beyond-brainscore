@@ -14,7 +14,7 @@ def himalaya_regression_caller(model: Union[str, dict, np.ndarray],
                                save_y_hat: bool = True, save_new: bool= False, 
                                device: Union[str, int] = 'cpu', untrained: bool = False,
                                results_folder: str = '/data/LLMs/brainscore', linear_reg: bool = False, 
-                               shuffled: bool = False, approx_linear: bool = False):
+                               shuffled: bool = False, custom_linear: bool = False):
     
     '''
     This function performs banded regression based on the himalaya package. 
@@ -60,8 +60,6 @@ def himalaya_regression_caller(model: Union[str, dict, np.ndarray],
     
     shuffled: If true, use shuffled train-test splits
     
-    approx_linear: If true, set alpha to a super small value (1e-10) so we can 
-    use GPU optimized ridge regression.
     '''
     
     if len(exp) == 0 and dataset == 'pereira':
@@ -116,11 +114,8 @@ def himalaya_regression_caller(model: Union[str, dict, np.ndarray],
         print("saving results to: ", full_results_folder)
         
 
-    if approx_linear:
-        alphas = np.array([1e-30])
-    else:
-        alphas = np.exp2(np.arange(-5, 35))
-        alphas = np.hstack((0,alphas))
+    alphas = np.exp2(np.arange(-5, 35))
+    alphas = np.hstack((0,alphas))
 
     test_fold_size = []
     
@@ -244,11 +239,12 @@ def himalaya_regression_caller(model: Union[str, dict, np.ndarray],
             file_name = f"{dataset}_{model}_{layer_name}_{n_iter}"
             
             if linear_reg:
-                file_name = f"{file_name}_noL2"
-            
-            if approx_linear:
-                file_name = f"{file_name}_approxnoL2"
                 
+                if custom_linear:
+                    file_name = f"{file_name}_noL2custom"
+                else:
+                    file_name = f"{file_name}_noL2"
+                    
             if dataset == 'pereira':
                 file_name = f"{file_name}_{exp}"
                 
@@ -268,7 +264,6 @@ def himalaya_regression_caller(model: Union[str, dict, np.ndarray],
                 while os.path.exists(os.path.join(full_results_folder, complete_file_name)):
                     i += 1
                     complete_file_name = f"{file_name}_m{i}.npz"
-                
 
             np.savez(os.path.join(full_results_folder, complete_file_name), **results_stored)
             

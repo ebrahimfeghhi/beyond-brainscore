@@ -1,12 +1,12 @@
 from banded_reg_func import himalaya_regression_caller
 
 datasets = ['pereira', 'fedorenko', 'blank']
-models = ['OASM-all-sigma']
+models = ['gpt2-xl', 'gpt2-xl-mp', 'gpt2-xl-sp', 'OASM-all-sigma']
 linear_reg_options = [True] # if False, do L2 regularized regression
-shuffled_options = [False]
+shuffled_options = [False, True]
 
 data_folder = '/data/LLMs/data_processed'
-device = 0
+device = 1
 
 for d in datasets:
     for m in models:
@@ -18,10 +18,6 @@ for d in datasets:
                     save_y_hat = True
                 else:
                     save_y_hat = False 
-                
-                #if m == 'OASM-all-sigma' and shuffled == False:
-                #    print("Skipping OASM because doing contiguous splits")
-                #    continue
                 
                 if d == 'pereira':
                     exp_options = ['384', '243']
@@ -36,6 +32,6 @@ for d in datasets:
                         n_iter=1, dataset=d, data_folder=data_folder, exp=exp, 
                         save_results=True, save_y_hat=save_y_hat, save_new=False, 
                         device=device, untrained=False, linear_reg=lr, shuffled=shuffled, 
-                        approx_linear=False)
+                        custom_linear=True)
 
                     

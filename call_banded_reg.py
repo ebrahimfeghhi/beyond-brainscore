@@ -40,7 +40,7 @@ parser.add_argument("--y_hat", action='store_true', default=False, help="If true
 parser.add_argument("--linear_reg", action='store_true', default=False, help="If true, run linear regression, as opposed to ridge")
 parser.add_argument("--shuffled", action='store_true', default=False, help="If true, use shuffled train-test splits")
 parser.add_argument("--save_res", type=bool, default=True)
-parser.add_argument("--approx_linear", action='store_true', default=False, help="Set alpha to super small value")
+parser.add_argument("--custom_linear", action='store_true', default=False, help="Custom linear reg")
 
 # Parse the command-line arguments
 args = parser.parse_args()
@@ -57,7 +57,7 @@ y_hat = args.y_hat
 linear_reg = args.linear_reg
 shuffled = args.shuffled
 save_res = args.save_res
-approx_linear = args.approx_linear
+custom_linear = args.custom_linear
 
 if device == -1:
     device = 'cpu'
@@ -68,6 +68,6 @@ or2 = himalaya_regression_caller(model, y='', data_labels='', features_list=f_li
                             n_iter=niter, dataset=dataset, data_folder=data_folder, exp=exp, 
                             save_results=save_res, save_y_hat=y_hat, save_new=save_new, 
                             device=device, untrained=untrained, linear_reg=linear_reg, shuffled=shuffled, 
-                            approx_linear=approx_linear)
+                            custom_linear=custom_linear)
 
 

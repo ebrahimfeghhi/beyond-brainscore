@@ -575,7 +575,7 @@ def obtain_val_predictions(alphas, X_train, y_train, pereira_cv):
 def run_himalayas(X_train, y_train, X_test, 
                   y_test, alphas, device, train_labels, feature_grouper, n_iter, 
                   use_kernelized, dataset, selected_exp=None, first_second_half=None, 
-                  linear_reg=False):
+                  linear_reg=False, customL2=True):
     
     
     '''
@@ -618,9 +618,16 @@ def run_himalayas(X_train, y_train, X_test,
     X_test = scaler.transform(X_test)
         
     if linear_reg:
-        model = LinearRegression(fit_intercept=True)
-        model.fit(X_train, y_train)
-        y_pred = model.predict(X_test)
+        
+        if customL2:
+            w = linear_regression_from_scratch(X_train, y_train, device)
+            y_pred = predict_scratch(X_test, w, device)
+            y_pred = y_pred.cpu().numpy()
+
+        else:
+            model = LinearRegression(fit_intercept=True)
+            model.fit(X_train, y_train)
+            y_pred = model.predict(X_test)
         
     else:
         
@@ -641,16 +648,6 @@ def run_himalayas(X_train, y_train, X_test,
         pipe = make_pipeline(feature_grouper, model)
         _ = pipe.fit(X_train, y_train)
         
-        # compute val out of sample R2 to determine best layer
-        # val_r2_os is of shape num_gammas x num_voxels, 
-        # (or num_voxels if only one feature space was used)
-        #val_r2_os = model.cv_scores_.cpu().numpy().squeeze()  
-        
-        #if len(val_r2_os.shape) == 2:
-            # select best gamma for each voxel 
-        #    val_r2_os = np.max(val_r2_os, axis=0)
-
-        # compute test mse 
         y_pred = pipe.predict(X_test)
         y_pred = y_pred.cpu().numpy()
 
@@ -689,3 +686,58 @@ def preprocess_himalayas(n_features_list, use_kernelized):
         column_scaler = ColumnTransformerNoStack(scalers)
         return column_scaler
 
+# Linear regression function with optional bias term
+def linear_regression_from_scratch(X_train, y_train, add_bias=True, device=2):
+    # Convert inputs to torch tensors if they aren't already
+    X_train = torch.tensor(X_train, dtype=torch.float32).to(device)
+    y_train = torch.tensor(y_train, dtype=torch.float32).to(device)
+    
+    # Optionally add a bias (intercept) term by appending a column of ones to X_train
+    if add_bias:
+        X_train = torch.cat([torch.ones(X_train.shape[0], 1).to(device), X_train], dim=1)
+    
+    # Use pseudo-inverse to handle cases where (X^T * X) might be singular
+    w = torch.linalg.pinv(X_train.T @ X_train) @ X_train.T @ y_train
+    return w
+
+# Function to make predictions using the trained weights
+def predict_scratch(X, w, add_bias=True, device=2):
+    # Convert input to torch tensor if it isn't already
+    X = torch.tensor(X, dtype=torch.float32).to(device)
+    
+    # Optionally add a bias (intercept) term by appending a column of ones to X
+    if add_bias:
+        X = torch.cat([torch.ones(X.shape[0], 1).to(device), X], dim=1)
+    
+    return X @ w
+
+
+def linear_regression_from_scratch(X_train, y_train, add_bias=True, device=2):
+    # Convert inputs to torch tensors if they aren't already
+    X_train = torch.tensor(X_train, dtype=torch.float32).to(device)
+    y_train = torch.tensor(y_train, dtype=torch.float32).to(device)
+
+    # Optionally add a bias (intercept) term by appending a column of ones to X_train
+    if add_bias:
+        y_train_reg = y_train - y_train.mean(0)
+    else:
+        y_train_reg = y_train
+
+    # Use pseudo-inverse to handle cases where (X^T * X) might be singular
+    w = torch.linalg.pinv(X_train.T @ X_train) @ X_train.T @ y_train_reg
+    
+    if add_bias:
+        w = torch.cat((y_train.mean(0).unsqueeze(0), w))
+        
+    return w
+
+# Function to make predictions using the trained weights
+def predict_scratch(X, w, add_bias=True, device=2):
+    # Convert input to torch tensor if it isn't already
+    X = torch.tensor(X, dtype=torch.float32).to(device)
+    
+    # Optionally add a bias (intercept) term by appending a column of ones to X
+    if add_bias:
+        X = torch.cat([torch.ones(X.shape[0], 1).to(device), X], dim=1)
+    
+    return X @ w

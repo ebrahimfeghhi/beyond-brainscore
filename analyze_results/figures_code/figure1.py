@@ -42,7 +42,6 @@ for perf in perf_arr:
                     shuffled_save_str = '_contig'
                     
 
-                
                 resultsPath_dataset_nonshuffled = f'/data/LLMs/brainscore/results_{dataset}'
                 if shuffled:
                     resultsPath_dataset = f'/data/LLMs/brainscore/results_{dataset}/shuffled'
@@ -75,57 +74,44 @@ for perf in perf_arr:
                 else:
                     subjects_arr  = np.load(f"{data_processed_folder}/subjects.npy", allow_pickle=True)
                     
-
-                if shuffled:
-                    # script crashes at sigma of 4.3 in fed due to an issue with linear reg converging
-                    if dataset == 'fedorenko' and shuffled:
-                        sigma_values = np.linspace(0.1, 4.2, 42)
-                    else:
-                        sigma_values = np.linspace(0.1, 4.8, 48)
-                                
-                    if dataset == 'pereira':
-                        sigma_perf_dict_384, best_sigma_384, OASM_perf_best_sigma_384 = find_best_sigma(sigma_values, noL2_str=noL2_str, exp='_384', subjects=subjects_dict['384'], 
-                                                                        resultsPath=resultsPath_dataset, dataset=dataset, selected_network_indices=lang_indices_384, 
-                                                                        perf=perf)   
-                        sigma_perf_dict_243, best_sigma_243, OASM_perf_best_sigma_243 = find_best_sigma(sigma_values, noL2_str=noL2_str, exp='_243', subjects=subjects_dict['243'], 
-                                                                        resultsPath=resultsPath_dataset, dataset=dataset, selected_network_indices=lang_indices_243, 
-                                                                        perf=perf)
-                        
-
-                    
-                        save_best_sigma[f"{dataset}_384_{perf}{shuffled_save_str}{noL2_save_str}"] = best_sigma_384
-                        save_best_sigma[f"{dataset}_243_{perf}{shuffled_save_str}{noL2_save_str}"] = best_sigma_243
-                    else:
-                        sigma_perf_dict, best_sigma, OASM_perf_best_sigma = find_best_sigma(sigma_values, noL2_str=noL2_str, exp='', 
-                                                            subjects=subjects_arr, resultsPath=resultsPath_dataset, dataset=dataset, perf=perf)
-                        
-                        save_best_sigma[f"{dataset}_{perf}{shuffled_save_str}{noL2_save_str}"] = best_sigma
-                        
-                    
-                    #if dataset == 'pereira':
-                    #    plt.plot(sigma_perf_dict_384.keys(), sigma_perf_dict_384.values(), label='384')
-                    #    plt.plot(sigma_perf_dict_243.keys(), sigma_perf_dict_243.values(), label='243')
-                    #else:
-                    #    plt.plot(sigma_perf_dict.keys(), sigma_perf_dict.values())
-                        
-                    #plt.legend()
-                    #plt.xlabel("Sigma values")
-                    #plt.ylabel("Median pearson r across language voxels")
-                    #plt.savefig(f"{figurePath}across_layer/across_layer_OASM_{dataset}{noL2_str}{shuffled_str}")
-                    #plt.close()
-                
+                # script crashes at sigma of 4.3 in fed due to an issue with linear reg converging
+                if dataset == 'fedorenko' and shuffled:
+                    sigma_values = np.linspace(0.1, 4.2, 42)
                 else:
-                    
-                    if dataset == 'pereira':
-                        
-                        simple_perf_384 =  np.load(f'{resultsPath_dataset}/{dataset}_positional_WN_layer1_1{noL2_str}_384.npz')[perf]
-                        simple_perf_243 =  np.load(f'{resultsPath_dataset}/{dataset}_positional_WN_layer1_1{noL2_str}_243.npz')[perf]
-                        
-                    if dataset == 'fedorenko':
-        
-                        simple_perf =  np.load(f'{resultsPath_dataset}/{dataset}_soft+grow_layer1_1{noL2_str}.npz')[perf]
-                        
+                    sigma_values = np.linspace(0.1, 4.8, 48)
+                            
+                if dataset == 'pereira':
+                    sigma_perf_dict_384, best_sigma_384, OASM_perf_best_sigma_384 = find_best_sigma(sigma_values, noL2_str=noL2_str, exp='_384', subjects=subjects_dict['384'], 
+                                                                    resultsPath=resultsPath_dataset, dataset=dataset, selected_network_indices=lang_indices_384, 
+                                                                    perf=perf)   
+                    sigma_perf_dict_243, best_sigma_243, OASM_perf_best_sigma_243 = find_best_sigma(sigma_values, noL2_str=noL2_str, exp='_243', subjects=subjects_dict['243'], 
+                                                                    resultsPath=resultsPath_dataset, dataset=dataset, selected_network_indices=lang_indices_243, 
+                                                                    perf=perf)
                 
+                    save_best_sigma[f"{dataset}_384_{perf}{shuffled_save_str}{noL2_save_str}"] = best_sigma_384
+                    save_best_sigma[f"{dataset}_243_{perf}{shuffled_save_str}{noL2_save_str}"] = best_sigma_243
+                    
+                    results_dict_simple_384 = pd.DataFrame({'perf': OASM_perf_best_sigma_384, 'subjects': subjects_dict['384'], 
+                                    'Network': br_labels_dict['384'], 'Model': np.repeat('OASM', num_vox_dict['384'])})
+                    results_dict_simple_243 = pd.DataFrame({'perf': OASM_perf_best_sigma_243, 'subjects': subjects_dict['243'], 
+                                    'Network': br_labels_dict['243'], 'Model': np.repeat('OASM', num_vox_dict['243'])})
+                            
+                    results_dict_simple = pd.concat((results_dict_simple_384, results_dict_simple_243))
+                    
+                else:
+                    sigma_perf_dict, best_sigma, OASM_perf_best_sigma = find_best_sigma(sigma_values, noL2_str=noL2_str, exp='', 
+                                                        subjects=subjects_arr, resultsPath=resultsPath_dataset, dataset=dataset, perf=perf)
+                    
+                    save_best_sigma[f"{dataset}_{perf}{shuffled_save_str}{noL2_save_str}"] = best_sigma
+    
+                    num_brain_units = OASM_perf_best_sigma.shape[0]
+        
+                    results_dict_simple = pd.DataFrame({'perf': OASM_perf_best_sigma, 'subjects': subjects_arr, 'Network': np.repeat('language', num_brain_units),
+                                                    'Model': np.repeat('OASM', num_brain_units)})
+                   
+                
+                    
+            
                 results_dict_gpt2 = {'perf':[], 'subjects': [], 'Network': [], 
                                 'Model': []}
                 
@@ -150,9 +136,6 @@ for perf in perf_arr:
                         results_dict_gpt2['Model'].extend(np.repeat(f'GPT2-XL{fe}', num_vox_dict['243']))
                         save_best_layer[f"{dataset}_384_{perf}{shuffled_save_str}{noL2_save_str}{fe}"] = gpt2_xl_384_bl
                         save_best_layer[f"{dataset}_243_{perf}{shuffled_save_str}{noL2_save_str}{fe}"] = gpt2_xl_243_bl
-                        
-                         
-                        
             
                 else:
                     for fe in feature_extraction:
@@ -170,41 +153,16 @@ for perf in perf_arr:
                         
                         
                 results_dict_gpt2 = pd.DataFrame(results_dict_gpt2)
-                results_dict_simple = None    
-
-                if dataset == 'pereira':
-                    
-                    if shuffled:
-                        results_dict_simple_384 = pd.DataFrame({'perf': OASM_perf_best_sigma_384, 'subjects': subjects_dict['384'], 
-                                        'Network': br_labels_dict['384'], 'Model': np.repeat('OASM', num_vox_dict['384'])})
-                        results_dict_simple_243 = pd.DataFrame({'perf': OASM_perf_best_sigma_243, 'subjects': subjects_dict['243'], 
-                                        'Network': br_labels_dict['243'], 'Model': np.repeat('OASM', num_vox_dict['243'])})
-                        
-                    else:
-                        results_dict_simple_384 = pd.DataFrame({'perf': simple_perf_384, 'subjects': subjects_dict['384'], 
-                                        'Network': br_labels_dict['384'], 'Model': np.repeat('SP+SL', num_vox_dict['384'])})
-                        results_dict_simple_243 = pd.DataFrame({'perf': simple_perf_243, 'subjects': subjects_dict['243'], 
-                                        'Network': br_labels_dict['243'], 'Model': np.repeat('SP+SL', num_vox_dict['243'])})
-                        
-                    results_dict_simple = pd.concat((results_dict_simple_384, results_dict_simple_243))
-    
-                    
-                else:
-                    num_brain_units = gpt2_xl_bl_perf.shape[0]
-                    
-                    if shuffled:
-                        results_dict_simple = pd.DataFrame({'perf': OASM_perf_best_sigma, 'subjects': subjects_arr, 'Network': np.repeat('language', num_brain_units),
-                                                    'Model': np.repeat('OASM', num_brain_units)})
-                    else:
-                        
-                        if dataset == 'fedorenko':
-                            results_dict_simple = pd.DataFrame({'perf': simple_perf, 'subjects': subjects_arr, 'Network': np.repeat('language', num_brain_units),
-                                                    'Model': np.repeat('WP', num_brain_units)})
 
 
-                if results_dict_simple is not None:
-                    results_simple_gpt2xl = pd.concat((results_dict_simple, results_dict_gpt2))
-                
+                results_simple_gpt2xl = pd.concat((results_dict_simple, results_dict_gpt2))
+                    
+                             
+                if shuffled == False and perf == 'pearson_r':
+                    results_simple_gpt2xl_lang = results_simple_gpt2xl.loc[results_simple_gpt2xl.Network=='language']
+                    print(results_simple_gpt2xl_lang.loc[results_simple_gpt2xl_lang.Model=='OASM']['perf'].mean())
+                    breakpoint()
+                    
                 if perf == 'pearson_r':
                     median = True
                     clip_zero = False
@@ -234,15 +192,9 @@ for perf in perf_arr:
                     ymax = 0.12
                     
                   
-                # Define shades of blue and an orange color
-                if shuffled:
-                    palette = sns.color_palette(["#1E90FF", "#4169E1", "#0000CD", "#FFA500"]) 
-                    
-                elif dataset == 'pereira':
-                    palette = sns.color_palette(["#1E90FF", "#4169E1", "#0000CD", "#008000"])  # "#008000" is green
-                    
-                elif dataset == 'fedorenko':
-                    palette = sns.color_palette(["#1E90FF", "#4169E1", "#0000CD", "#FF69B4"]) 
+
+                palette = sns.color_palette(["#1E90FF", "#4169E1", "#0000CD", "#FFA500"]) 
+
                       
                 if dataset == 'pereira':
                     index = 0
@@ -262,37 +214,14 @@ for perf in perf_arr:
     
                 plot_legend = False
 
-                if dataset == 'pereira':
+                    
+                subject_avg_pd, dict_pd_merged, dict_pd_with_all = plot_across_subjects(results_simple_gpt2xl.copy(), figurePath=figurePath,  selected_networks=['language'],
+                                                        dataset=dataset_label, saveName=f'{dataset}{noL2_str}{shuffled_str}_both', 
+                                                        yticks=[0, ymax], order=['language'], clip_zero=clip_zero, color_palette=palette, 
+                                                        draw_lines=False, ms=15, plot_legend=plot_legend, 
+                                                        plot_legend_under=False, width=0.7, median=median, ylabel_str=perf_str, legend_fontsize=30, ax_select=ax[index],
+                                                        remove_yaxis=remove_y_axis, plot_xlabel=plot_xlabel)
 
-                    
-                    subject_avg_pd, dict_pd_merged, dict_pd_with_all = plot_across_subjects(results_simple_gpt2xl.copy(), figurePath=figurePath,  selected_networks=['language'],
-                                                            dataset=dataset_label, saveName=f'{dataset}{noL2_str}{shuffled_str}_both', 
-                                                            yticks=[0, ymax], order=['language'], clip_zero=clip_zero, color_palette=palette, 
-                                                            draw_lines=False, ms=15, plot_legend=plot_legend, 
-                                                            plot_legend_under=False, width=0.7, median=median, ylabel_str=perf_str, legend_fontsize=30, ax_select=ax[index],
-                                                            remove_yaxis=remove_y_axis, plot_xlabel=plot_xlabel)
-                else:
-                    
-                    if shuffled or dataset == 'fedorenko':
-                    
-                          
-                        #max_val = round(results_simple_gpt2xl['perf'].max() + 0.1*results_simple_gpt2xl['perf'].max(), 2)
-                        subject_avg_pd, dict_pd_merged, dict_pd_with_all = plot_across_subjects(results_simple_gpt2xl.copy(), figurePath=figurePath, selected_networks=['language'],
-                                                                dataset=dataset_label, saveName=f'{dataset}{noL2_str}{shuffled_str}', 
-                                                                yticks=[0, ymax], order=['language'], clip_zero=clip_zero, color_palette=palette, 
-                                                                draw_lines=False, ms=15, plot_legend=plot_legend, 
-                                                                plot_legend_under=False, width=0.7, median=median, ylabel_str='', legend_fontsize=30, ax_select=ax[index],
-                                                                remove_yaxis=remove_y_axis, plot_xlabel=plot_xlabel)
-                    else:
-                        
-                        subject_avg_pd, dict_pd_merged, dict_pd_with_all = plot_across_subjects(results_dict_gpt2.copy(), figurePath=figurePath, selected_networks=['language'],
-                                                                dataset=dataset_label, saveName=f'{dataset}{noL2_str}{shuffled_str}', 
-                                                                yticks=[0, ymax], order=['language'], clip_zero=clip_zero, color_palette=palette, 
-                                                                draw_lines=False, ms=15, plot_legend=False, 
-                                                                plot_legend_under=False, width=0.7, median=median, ylabel_str='', ax_select=ax[index], remove_yaxis=remove_y_axis, plot_xlabel=plot_xlabel)
-                
-                    
-                # for some reason that I don't understand the y axis is not removed through the function with the Fed plots
                 # so I just do it manually here (fed is always index 1)
                 ax[1].spines['left'].set_visible(False)   # Hide the left spine
                 ax[1].yaxis.set_visible(False)            # Hide the y-axis

@@ -3,7 +3,7 @@ sys.path.append('/home2/ebrahim/beyond-brainscore/generate_activations/')
 from LLM import generate_activations_LLM
 from banded_reg_func import himalaya_regression_caller
 
-datasets = ['pereira', 'fedorenko']
+datasets = ['fedorenko']
 models = ['gpt2-xl-untrained', 'gpt2-xl-untrained-sp', 'gpt2-xl-untrained-mp']
 shuffled_options = [False]
 start = 0
@@ -30,7 +30,7 @@ for d in datasets:
                     model_name = f"{m}_m{i}_SP+SL"
                     f_list = [1600, 5]
                 else:
-                    model_name = f"{m}_m{i}_WP"
+                    model_name = f"{m}_m{i}_soft+grow"
                     f_list = [1600, 9]
                 
                 for exp in exp_options:
