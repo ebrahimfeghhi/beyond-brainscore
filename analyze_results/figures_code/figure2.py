@@ -23,6 +23,7 @@ perf_arr = ['out_of_sample_r2', 'pearson_r']
 create_banded = False
 create_across_layer = False
 create_sig = True
+compare_trained_untrained = False
 
 exp = ['243', '384']
 
@@ -114,13 +115,12 @@ if create_banded:
             banded_gpt2_OASM = {'perf': [], 'Model': [], 'Network': [], 'subjects': []}
 
             for exp in exp_arr:
-            
                 if len(exp) > 0:
-                    bl = best_layer_gpt2[f"{dataset}_{exp}_out_of_sample_r2_shuffled_ridge{fe}"]
-                    bs = best_sigma[f"{dataset}_{exp}_out_of_sample_r2_shuffled_ridge"]
+                    bl = best_layer_gpt2[f"{dataset}_{exp}_out_of_sample_r2_shuffled{fe}"]
+                    bs = best_sigma[f"{dataset}_{exp}_out_of_sample_r2_shuffled"]
                 else:
-                    bl = best_layer_gpt2[f"{dataset}_out_of_sample_r2_shuffled_ridge{fe}"]
-                    bs = best_sigma[f"{dataset}_out_of_sample_r2_shuffled_ridge"]
+                    bl = best_layer_gpt2[f"{dataset}_out_of_sample_r2_shuffled{fe}"]
+                    bs = best_sigma[f"{dataset}_out_of_sample_r2_shuffled"]
                     
                 if len(exp) > 0:
                 
@@ -136,8 +136,6 @@ if create_banded:
                 
                 num_vals = len(banded_model['out_of_sample_r2'])
                 
-                if dataset == 'blank':
-                    breakpoint()
                 
                 banded_gpt2_OASM['perf'].extend(np.maximum(banded_model['out_of_sample_r2'],gpt2_model['out_of_sample_r2']))
                 banded_gpt2_OASM['perf'].extend(gpt2_model['out_of_sample_r2'])
@@ -185,10 +183,11 @@ if create_across_layer:
     
     layer_pd_dict = {}
     
-    if os.path.exists('/home2/ebrahim/beyond-brainscore/analyze_results/figures_code/figures_data/layer_pd_dict2.pickle'):
+    if os.path.exists('/home2/ebrahim/beyond-brainscore/analyze_results/figures_code/figures_data/layer_pd_dict.pickle'):
           # Save the dictionary to a pickle file
-        with open('/home2/ebrahim/beyond-brainscore/analyze_results/figures_code/figures_data/layer_pd_dict2.pickle', 'rb') as f:
+        with open('/home2/ebrahim/beyond-brainscore/analyze_results/figures_code/figures_data/layer_pd_dict.pickle', 'rb') as f:
             layer_pd_dict = pickle.load(f)
+            print("LOADING PICKLE")
 
     else:
         
@@ -322,6 +321,7 @@ if create_sig:
     ytests_dict = {'pereira': ytest_pereira, 'blank': ytest_blank, 'fedorenko': ytest_fed}
     ytests_dict_shuffled = {'pereira': ytest_pereira_shuffled, 'blank': ytest_blank_shuffled, 'fedorenko': ytest_fed_shuffled}
     subjects_arr_dict = {'blank': subjects_arr_blank, 'fedorenko': subjects_arr_fed}
+    dataset_arr = ['pereira', 'blank', 'fedorenko']
 
     for dataset in dataset_arr:
         
@@ -469,6 +469,9 @@ if create_sig:
                         
                             
             pvalues_pd = pd.DataFrame(pvalues_pd)
+         
+
+        pvalues_pd.to_csv(f'/home2/ebrahim/beyond-brainscore/analyze_results/figures_code/figures_data/pvalues_{dataset}.csv')
         
         shuffled_str_arr = ['shuffled', 'contig']
         pvals_arr = ['pval']
@@ -492,10 +495,17 @@ if create_sig:
                 fraction_under_005_fdr = pvalues_pd_loop.groupby(['subject', 'network', 'fe'])['pval'].apply(lambda x: (x < 0.05).mean()).reset_index()
                 
                 fraction_under_005_fdr = fraction_under_005_fdr.rename(columns={'pval': 'perf', 'network': 'Network', 'fe': 'Model'})
+                
+                if dataset == 'pereira':
+                    dodge = True
+                    color_palette = None
+                else:
+                    dodge = True
+                    color_palette = ['black']
 
-                plot_across_subjects(subject_avg_pd=fraction_under_005_fdr.reset_index(), hue_var='Network', x_var='Model', dict_pd_merged=None, figurePath=None, dataset='pereira', 
+                plot_across_subjects(subject_avg_pd=fraction_under_005_fdr.reset_index(), hue_var='Network', x_var='Model', dict_pd_merged=None, figurePath=None, dataset='dataset', 
                                     selected_networks=['language', 'DMN', 'MD', 'visual', 'auditory'], line_extend=0.05, hue_order=['language', 'DMN', 'MD', 'visual', 'auditory'], 
-                                    ylabel_str='', plot_legend=False, ax_select=ax[i], ms=ms, alpha=0.8)
+                                    ylabel_str='', plot_legend=False, ax_select=ax[i], ms=ms, alpha=0.6, dodge=dodge, color_palette=color_palette) 
 
                 ylim_max = min(round(float(ax[i].get_ylim()[1]),2),1)
                 ax[i].set_yticks((0, ylim_max))
@@ -509,4 +519,6 @@ if create_sig:
         fig.savefig(f"/home2/ebrahim/beyond-brainscore/analyze_results/figures_code/figures/new_figures/figure2/stats/{dataset}.pdf", bbox_inches='tight')
         
             
-                
+if compare_trained_untrained:
+    
+    pass

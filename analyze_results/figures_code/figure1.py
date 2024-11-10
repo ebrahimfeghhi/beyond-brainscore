@@ -9,7 +9,7 @@ import seaborn as sns
 import pandas as pd
 from trained_results_funcs import find_best_layer, find_best_sigma
 
-noL2_arr = [False, True]
+noL2_str_arr = ['_noL2', '_noL2custom', '']
 shuffled_arr = [False, True]
 dataset_arr = ['pereira', 'fedorenko', 'blank']
 perf_arr = ['pearson_r', 'out_of_sample_r2']
@@ -19,29 +19,26 @@ save_best_sigma = {}
 save_best_layer = {}
 
 for perf in perf_arr:
-    for noL2 in noL2_arr:
+    for noL2_str in noL2_str_arr:
         for shuffled in shuffled_arr:
             
             fig, ax = plt.subplots(1, 3, figsize=(15, 6))
             
             for dataset in dataset_arr:
                 
-                if noL2:
-                    noL2_str = '_noL2'
-                    noL2_save_str = '_lin'
+                if len(noL2_str) == 0:
+                    noL2 = False
                 else:
-                    noL2_str = ''
-                    noL2_save_str = '_ridge'
+                    noL2 = True
+
                     
                 if shuffled:
                     shuffled_str = '_shuffled'
                     shuffled_save_str = '_shuffled'
-                    
                 else:
                     shuffled_str = ''
                     shuffled_save_str = '_contig'
                     
-
                 resultsPath_dataset_nonshuffled = f'/data/LLMs/brainscore/results_{dataset}'
                 if shuffled:
                     resultsPath_dataset = f'/data/LLMs/brainscore/results_{dataset}/shuffled'
@@ -52,7 +49,6 @@ for perf in perf_arr:
                 figurePath = '/home2/ebrahim/beyond-brainscore/analyze_results/figures_code/figures/new_figures/figure1/'
                 figurePath = f'{figurePath}{perf}/'
 
-        
                 # load information regarding number of voxels, subjects, and functional network localization for each experiment into a dictionary
                 if dataset ==  'pereira':
 
@@ -62,7 +58,6 @@ for perf in perf_arr:
                     num_vox_dict = {}
                     subjects_dict = {}
                     for e in exp:
-
                         bre = np.load(f'{data_processed_folder}/networks_{e}.npy', allow_pickle=True)
                         br_labels_dict[e] = bre
                         num_vox_dict[e] = bre.shape[0]
@@ -81,15 +76,17 @@ for perf in perf_arr:
                     sigma_values = np.linspace(0.1, 4.8, 48)
                             
                 if dataset == 'pereira':
+                    
                     sigma_perf_dict_384, best_sigma_384, OASM_perf_best_sigma_384 = find_best_sigma(sigma_values, noL2_str=noL2_str, exp='_384', subjects=subjects_dict['384'], 
                                                                     resultsPath=resultsPath_dataset, dataset=dataset, selected_network_indices=lang_indices_384, 
                                                                     perf=perf)   
+                    
                     sigma_perf_dict_243, best_sigma_243, OASM_perf_best_sigma_243 = find_best_sigma(sigma_values, noL2_str=noL2_str, exp='_243', subjects=subjects_dict['243'], 
                                                                     resultsPath=resultsPath_dataset, dataset=dataset, selected_network_indices=lang_indices_243, 
                                                                     perf=perf)
                 
-                    save_best_sigma[f"{dataset}_384_{perf}{shuffled_save_str}{noL2_save_str}"] = best_sigma_384
-                    save_best_sigma[f"{dataset}_243_{perf}{shuffled_save_str}{noL2_save_str}"] = best_sigma_243
+                    save_best_sigma[f"{dataset}_384_{perf}{shuffled_save_str}{noL2_str}"] = best_sigma_384
+                    save_best_sigma[f"{dataset}_243_{perf}{shuffled_save_str}{noL2_str}"] = best_sigma_243
                     
                     results_dict_simple_384 = pd.DataFrame({'perf': OASM_perf_best_sigma_384, 'subjects': subjects_dict['384'], 
                                     'Network': br_labels_dict['384'], 'Model': np.repeat('OASM', num_vox_dict['384'])})
@@ -99,18 +96,17 @@ for perf in perf_arr:
                     results_dict_simple = pd.concat((results_dict_simple_384, results_dict_simple_243))
                     
                 else:
+                    
                     sigma_perf_dict, best_sigma, OASM_perf_best_sigma = find_best_sigma(sigma_values, noL2_str=noL2_str, exp='', 
                                                         subjects=subjects_arr, resultsPath=resultsPath_dataset, dataset=dataset, perf=perf)
                     
-                    save_best_sigma[f"{dataset}_{perf}{shuffled_save_str}{noL2_save_str}"] = best_sigma
+                    save_best_sigma[f"{dataset}_{perf}{shuffled_save_str}{noL2_str}"] = best_sigma
     
                     num_brain_units = OASM_perf_best_sigma.shape[0]
         
                     results_dict_simple = pd.DataFrame({'perf': OASM_perf_best_sigma, 'subjects': subjects_arr, 'Network': np.repeat('language', num_brain_units),
                                                     'Model': np.repeat('OASM', num_brain_units)})
                    
-                
-                    
             
                 results_dict_gpt2 = {'perf':[], 'subjects': [], 'Network': [], 
                                 'Model': []}
@@ -134,8 +130,8 @@ for perf in perf_arr:
                         results_dict_gpt2['Network'].extend(br_labels_dict['243'])
                         results_dict_gpt2['Model'].extend(np.repeat(f'GPT2-XL{fe}', num_vox_dict['384']))
                         results_dict_gpt2['Model'].extend(np.repeat(f'GPT2-XL{fe}', num_vox_dict['243']))
-                        save_best_layer[f"{dataset}_384_{perf}{shuffled_save_str}{noL2_save_str}{fe}"] = gpt2_xl_384_bl
-                        save_best_layer[f"{dataset}_243_{perf}{shuffled_save_str}{noL2_save_str}{fe}"] = gpt2_xl_243_bl
+                        save_best_layer[f"{dataset}_384_{perf}{shuffled_save_str}{noL2_str}{fe}"] = gpt2_xl_384_bl
+                        save_best_layer[f"{dataset}_243_{perf}{shuffled_save_str}{noL2_str}{fe}"] = gpt2_xl_243_bl
             
                 else:
                     for fe in feature_extraction:
@@ -149,19 +145,13 @@ for perf in perf_arr:
                         results_dict_gpt2['Network'].extend(np.repeat('language', num_brain_units))
                         results_dict_gpt2['Model'].extend(np.repeat(f'GPT2-XL{fe}', num_brain_units))
                         
-                        save_best_layer[f"{dataset}_{perf}{shuffled_save_str}{noL2_save_str}{fe}"] = gpt2_xl_bl
+                        save_best_layer[f"{dataset}_{perf}{shuffled_save_str}{noL2_str}{fe}"] = gpt2_xl_bl
                         
                         
                 results_dict_gpt2 = pd.DataFrame(results_dict_gpt2)
 
 
                 results_simple_gpt2xl = pd.concat((results_dict_simple, results_dict_gpt2))
-                    
-                             
-                if shuffled == False and perf == 'pearson_r':
-                    results_simple_gpt2xl_lang = results_simple_gpt2xl.loc[results_simple_gpt2xl.Network=='language']
-                    print(results_simple_gpt2xl_lang.loc[results_simple_gpt2xl_lang.Model=='OASM']['perf'].mean())
-                    breakpoint()
                     
                 if perf == 'pearson_r':
                     median = True
@@ -180,7 +170,6 @@ for perf in perf_arr:
                 else:
                     cidx_p = 7
                     cidx_fb = 6
-                    
                 
                 if perf == 'pearson_r' and shuffled:
                     ymax = 0.7
@@ -191,10 +180,7 @@ for perf in perf_arr:
                 if perf == 'out_of_sample_r2' and shuffled == False:
                     ymax = 0.12
                     
-                  
-
                 palette = sns.color_palette(["#1E90FF", "#4169E1", "#0000CD", "#FFA500"]) 
-
                       
                 if dataset == 'pereira':
                     index = 0
