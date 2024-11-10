@@ -21,8 +21,8 @@ shuffled_arr = ['shuffled', '']
 perf_arr = ['out_of_sample_r2', 'pearson_r']
 
 create_banded = False
-create_across_layer = False
-create_sig = True
+create_across_layer = True
+create_sig = False
 compare_trained_untrained = False
 
 exp = ['243', '384']
@@ -136,7 +136,6 @@ if create_banded:
                 
                 num_vals = len(banded_model['out_of_sample_r2'])
                 
-                
                 banded_gpt2_OASM['perf'].extend(np.maximum(banded_model['out_of_sample_r2'],gpt2_model['out_of_sample_r2']))
                 banded_gpt2_OASM['perf'].extend(gpt2_model['out_of_sample_r2'])
                 banded_gpt2_OASM['perf'].extend(OASM_model['out_of_sample_r2'])
@@ -159,9 +158,20 @@ if create_banded:
                     
             
             banded_gpt2_OASM_pd = pd.DataFrame(banded_gpt2_OASM)
+                        
+            if fe == '':
+                palette = sns.color_palette(["#FFA500", 'purple', 'gray']) 
+            if fe == '-mp':
+                palette = sns.color_palette(["#FFA500", 'purple', 'blue']) 
+            if fe == '-sp':
+                palette = sns.color_palette(["#FFA500", 'purple', "black"]) 
+                
 
-            plot_across_subjects(banded_gpt2_OASM_pd, dataset=dataset, selected_networks=['language'], figurePath=None, clip_zero=True, ms=12, 
-                                ylabel_str='', median=False, line_extend=0.05, draw_lines=True, ax_select=ax[i], hue_order=['OASM', 'Banded', f'GPT2{fe}'])
+            subject_avg_pd, dict_pd_merged, dict_pd_with_all = plot_across_subjects(banded_gpt2_OASM_pd, dataset=dataset, selected_networks=['language'], figurePath=None, clip_zero=True, ms=12, 
+                                ylabel_str='', median=False, line_extend=0.05, draw_lines=True, ax_select=ax[i], hue_order=['OASM', 'Banded', f'GPT2{fe}'], 
+                                color_palette=palette)
+             
+            breakpoint() 
             
             ax[i].set_yticks((0, round(float(ax[0].get_ylim()[1]),2)))
             ax[i].set_yticklabels((0, round(float(ax[0].get_ylim()[1]),2)), fontsize=30)
@@ -260,7 +270,7 @@ if create_across_layer:
             pickle.dump(layer_pd_dict, f)
             
     # Create a custom palette with more distinct shades of blue
-    palette = sns.color_palette(["gray", "#1E90FF", 'black'])
+    palette = sns.color_palette(["gray", "blue", 'black'])
 
     c = 0
     for perf in perf_arr:

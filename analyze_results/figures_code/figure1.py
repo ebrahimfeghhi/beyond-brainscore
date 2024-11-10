@@ -180,7 +180,7 @@ for perf in perf_arr:
                 if perf == 'out_of_sample_r2' and shuffled == False:
                     ymax = 0.12
                     
-                palette = sns.color_palette(["#1E90FF", "#4169E1", "#0000CD", "#FFA500"]) 
+                palette = sns.color_palette(["gray", "blue", 'black', "#FFA500"]) 
                       
                 if dataset == 'pereira':
                     index = 0
@@ -207,6 +207,8 @@ for perf in perf_arr:
                                                         draw_lines=False, ms=15, plot_legend=plot_legend, 
                                                         plot_legend_under=False, width=0.7, median=median, ylabel_str=perf_str, legend_fontsize=30, ax_select=ax[index],
                                                         remove_yaxis=remove_y_axis, plot_xlabel=plot_xlabel)
+                
+                
 
                 # so I just do it manually here (fed is always index 1)
                 ax[1].spines['left'].set_visible(False)   # Hide the left spine
