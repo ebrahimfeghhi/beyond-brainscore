@@ -215,11 +215,7 @@ def himalaya_regression_caller(model: Union[str, dict, np.ndarray],
         y_test_ordered_filename = f'{full_results_folder}/y_test_ordered{exp_str}.npy'
         mse_intercept_filename = f'{full_results_folder}/mse_intercept{exp_str}.npy'
         
-        
-        # 0.749345
-        # 0.0003783214
-        # 1.819124 
-
+    
         if ~os.path.isfile(y_test_ordered_filename):  
             np.save(y_test_ordered_filename, y_test_folds)
         if ~os.path.isfile(mse_intercept_filename):

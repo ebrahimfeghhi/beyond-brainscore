@@ -42,11 +42,6 @@ def generate_activations_LLM(dataset, model_str, untrained, model_num, decontext
 
     basePath_data = '/data/LLMs/data_processed/'
 
-    def count_words(text):
-        # Split the text into words based on spaces and count them
-        words = text.split()
-        return len(words)
-
     # load linguistic stimuli 
     if dataset == 'pereira':
         pereira_path = f"{basePath_data}{dataset}/text/sentences_ordered.txt"
@@ -55,6 +50,7 @@ def generate_activations_LLM(dataset, model_str, untrained, model_num, decontext
             experiment_txt = [line.strip() for line in file]
         # each element is exp-passage_name-passage_num-first half or second half
         data_labels = np.load(f"{basePath_data}{dataset}/dataset/data_labels_{dataset}.npy") 
+        breakpoint()
         
     if dataset == 'fedorenko':
         
@@ -193,7 +189,6 @@ def generate_activations_LLM(dataset, model_str, untrained, model_num, decontext
     contextual_activity_mp = []
     previous_text =  '' 
     current_label = data_labels[0]
-    total_words = 0 
     num_words_or_tokens = []
 
     print("GENERATING ACTIVATIONS")
@@ -257,3 +252,5 @@ def generate_activations_LLM(dataset, model_str, untrained, model_num, decontext
     np.savez(f'{savePath}/X_{model_str}{model_num}', **contextual_dict)
     np.savez(f'{savePath}/X_{model_str}-sp{model_num}', **contextual_dict_sp)
     np.savez(f'{savePath}/X_{model_str}-mp{model_num}', **contextual_dict_mp)
+
+generate_activations_LLM(dataset, model_str, untrained, model_num, decontext, savePath=savePath)
