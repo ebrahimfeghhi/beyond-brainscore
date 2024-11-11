@@ -669,7 +669,6 @@ def preprocess_himalayas(n_features_list, use_kernelized):
         slice(start, end)
         for start, end in zip(start_and_end[:-1], start_and_end[1:])
     ]
-        
     feature_names = [f'feat_{i}' for i in range(len(n_features_list))]
 
     if use_kernelized:

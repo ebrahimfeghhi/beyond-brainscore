@@ -79,6 +79,9 @@ for shuffled in shuffled_arr:
             results_dict_gpt2_untrained = {'perf':[], 'subjects': [], 'Network': [], 
                                         'Model': []}
             
+            results_dict_gpt2_untrained_banded = {'perf':[], 'subjects': [], 'Network': [], 
+                                        'Model': []}
+            
             simple_dict = {'perf':[], 'subjects': [], 'Network': [], 
                                         'Model': []}
             
@@ -116,6 +119,7 @@ for shuffled in shuffled_arr:
                         
                     if d == 'pereira':
                         simple_perf = np.load(f"/data/LLMs/brainscore/results_pereira/pereira_positional_WN_layer1_1{exp}.npz")[perf]
+                        
                     else:
                         simple_perf = np.load(f"/data/LLMs/brainscore/results_fedorenko/fedorenko_soft+grow_layer1_1.npz")[perf]
                         
@@ -128,9 +132,10 @@ for shuffled in shuffled_arr:
                                         
                     for i in range(num_seeds):
                         
+                        banded_perf = np.load(f"/data/LLMs/brainscore/results_pereira/untrained/pereira_gpt2-xl-untrained-sp_m4_SP+SL_layer1_1000_{exp}.npz")[perf]
+                        
                         gpt2_untrained_acts = np.load(f"/data/LLMs/data_processed/{d}/acts/X_gpt2-xl-untrained{fe}_m{i}.npz")
                                     
-                       
                         
                         gpt2_untrained_dict, gpt2_untrained_bl, gpt2_untrained_bl_perf  = find_best_layer(np.arange(49), noL2_str='', exp=exp, 
                                                                     resultsPath=f"{resultsPath_base}results_{d}/untrained/{shuffled}", 
@@ -145,8 +150,12 @@ for shuffled in shuffled_arr:
                         
                         if i == 0:
                             perf_across_seeds = gpt2_untrained_bl_perf
+                            perf_across_seeds_banded = banded_perf
+                            
                         else:
                             perf_across_seeds += gpt2_untrained_bl_perf
+                            perf_across_seeds_banded += banded_perf
+                            
                         
                         #if d == 'pereira':
                         #    banded_model = np.hstack((gpt2_best_acts, SP_SL))
@@ -156,10 +165,19 @@ for shuffled in shuffled_arr:
                         #    banded_model = np.hstack((gpt2_best_acts, WP))
                         #    np.savez(f"/data/LLMs/data_processed/{d}/acts/X_gpt2-xl-untrained{fe}_m{i}_soft+grow", **{'layer1':banded_model})
                             
+                            
+                            
                     results_dict_gpt2_untrained['perf'].extend(perf_across_seeds/num_seeds)
                     results_dict_gpt2_untrained['subjects'].extend(subjects_arr)
                     results_dict_gpt2_untrained['Network'].extend(networks_arr)
-                    results_dict_gpt2_untrained['Model'].extend(np.repeat(f'GPT2XLU{fe}', len(gpt2_untrained_bl_perf)))
+                    results_dict_gpt2_untrained['Model'].extend(np.repeat(f'GPT2XLU{fe}', len(perf_across_seeds)))
+                                                                
+                    banded_perf = np.maximum(perf_across_seeds_banded/num_seeds, perf_across_seeds/num_seeds)
+                    
+                    results_dict_gpt2_untrained_banded['perf'].extend(banded_perf)
+                    results_dict_gpt2_untrained_banded['subjects'].extend(subjects_arr)
+                    results_dict_gpt2_untrained_banded['Network'].extend(networks_arr)
+                    results_dict_gpt2_untrained_banded['Model'].extend(np.repeat(f'Banded', len(banded_perf)))
                                     
                     if d == 'pereira':
                         results_dict_gpt2_untrained['Exp'].extend(np.repeat(exp.strip('_'), num_vox_dict[exp.strip('_')]))
@@ -168,7 +186,8 @@ for shuffled in shuffled_arr:
             simple_dict = pd.DataFrame(simple_dict)
             
             results_combined = pd.concat((results_dict_gpt2_untrained, simple_dict))
-
+            results_combined_with_banded = pd.concat((results_dict_gpt2_untrained, simple_dict, results_dict_gpt2_untrained_banded))
+            
             if len(dataset_arr) == 1:
                 ax_select = ax
             else:
@@ -179,6 +198,7 @@ for shuffled in shuffled_arr:
                                                                 draw_lines=False, ms=15, plot_legend=False,  
                                                                 plot_legend_under=False, width=0.7, median=median, ylabel_str=perf_str, legend_fontsize=30, ax_select=ax_select,
                                                                 remove_yaxis=remove_y_axis, plot_xlabel=plot_xlabel, alpha=0.5)
+            fig2, ax2 = plt.subplots(1,3, )
             
         fig.savefig(f"/home2/ebrahim/beyond-brainscore/analyze_results/figures_code/figures/new_figures/figure5/{perf}_{shuffled}.png")
         fig.savefig(f"/home2/ebrahim/beyond-brainscore/analyze_results/figures_code/figures/new_figures/figure5/{perf}_{shuffled}.pdf", bbox_inches='tight')
