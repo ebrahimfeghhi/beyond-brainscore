@@ -6,6 +6,7 @@ import sys
 sys.path.append(base)
 from plotting_functions import plot_across_subjects
 from trained_results_funcs import find_best_layer, find_best_sigma
+from trained_untrained_results_funcs import calculate_omega
 from untrained_results_funcs import compute_p_val
 import pandas as pd
 import seaborn as sns
@@ -20,8 +21,8 @@ dataset_arr = ['pereira', 'blank', 'fedorenko']
 shuffled_arr = ['shuffled', '']
 perf_arr = ['out_of_sample_r2', 'pearson_r']
 
-create_banded = False
-create_across_layer = True
+create_banded = True
+create_across_layer = False
 create_sig = False
 compare_trained_untrained = False
 
@@ -99,6 +100,8 @@ mse_intercept_pereira_full_shuffled[243:, non_nan_indices_384] = mse_intercept_3
 
 if create_banded:
     
+    omega_metric = {}
+    
     for dataset in dataset_arr:
         
         if dataset == 'pereira':
@@ -113,6 +116,9 @@ if create_banded:
         for i, fe in enumerate(feature_extraction_arr):
         
             banded_gpt2_OASM = {'perf': [], 'Model': [], 'Network': [], 'subjects': []}
+            
+            if dataset == 'pereira':
+                banded_gpt2_OASM['Exp'] = []
 
             for exp in exp_arr:
                 if len(exp) > 0:
@@ -147,6 +153,7 @@ if create_banded:
                 if dataset == 'pereira':
                     banded_gpt2_OASM['Network'].extend(np.tile(br_labels_dict[exp],3))
                     banded_gpt2_OASM['subjects'].extend(np.tile(subjects_dict[exp],3))
+                    banded_gpt2_OASM['Exp'].extend(np.repeat(exp, num_vox_dict[exp]*3))
                     
                 elif dataset == 'fedorenko':
                     banded_gpt2_OASM['Network'].extend(np.tile(['language'], num_vals*3))
@@ -170,9 +177,10 @@ if create_banded:
             subject_avg_pd, dict_pd_merged, dict_pd_with_all = plot_across_subjects(banded_gpt2_OASM_pd, dataset=dataset, selected_networks=['language'], figurePath=None, clip_zero=True, ms=12, 
                                 ylabel_str='', median=False, line_extend=0.05, draw_lines=True, ax_select=ax[i], hue_order=['OASM', 'Banded', f'GPT2{fe}'], 
                                 color_palette=palette)
-             
-            breakpoint() 
             
+            omega = calculate_omega(subject_avg_pd.reset_index(), 'Banded', f'GPT2{fe}', 'OASM')
+            omega_metric[f"{dataset}_{fe}"] = [np.mean(omega['metric']), np.std(omega['metric'])/np.sqrt(len(omega))]
+    
             ax[i].set_yticks((0, round(float(ax[0].get_ylim()[1]),2)))
             ax[i].set_yticklabels((0, round(float(ax[0].get_ylim()[1]),2)), fontsize=30)
 
@@ -187,8 +195,9 @@ if create_banded:
             
         fig.savefig(f"/home2/ebrahim/beyond-brainscore/analyze_results/figures_code/figures/new_figures/figure2/banded/{dataset}_banded", dpi=300, bbox_inches='tight')
         fig.savefig(f"/home2/ebrahim/beyond-brainscore/analyze_results/figures_code/figures/new_figures/figure2/banded/{dataset}_banded.pdf", bbox_inches='tight')
-        
-        
+
+    np.savez("/home2/ebrahim/beyond-brainscore/analyze_results/figures_code/figures_data/oasm_omega_values", **omega_metric)
+    
 if create_across_layer:
     
     layer_pd_dict = {}

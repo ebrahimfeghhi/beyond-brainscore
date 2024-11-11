@@ -89,9 +89,9 @@ for perf in perf_arr:
                     save_best_sigma[f"{dataset}_243_{perf}{shuffled_save_str}{noL2_str}"] = best_sigma_243
                     
                     results_dict_simple_384 = pd.DataFrame({'perf': OASM_perf_best_sigma_384, 'subjects': subjects_dict['384'], 
-                                    'Network': br_labels_dict['384'], 'Model': np.repeat('OASM', num_vox_dict['384'])})
+                                    'Network': br_labels_dict['384'], 'Model': np.repeat('OASM', num_vox_dict['384']), 'Exp': np.repeat('384', num_vox_dict['384'])})
                     results_dict_simple_243 = pd.DataFrame({'perf': OASM_perf_best_sigma_243, 'subjects': subjects_dict['243'], 
-                                    'Network': br_labels_dict['243'], 'Model': np.repeat('OASM', num_vox_dict['243'])})
+                                    'Network': br_labels_dict['243'], 'Model': np.repeat('OASM', num_vox_dict['243']), 'Exp': np.repeat('243', num_vox_dict['243'])})
                             
                     results_dict_simple = pd.concat((results_dict_simple_384, results_dict_simple_243))
                     
@@ -108,10 +108,11 @@ for perf in perf_arr:
                                                     'Model': np.repeat('OASM', num_brain_units)})
                    
             
-                results_dict_gpt2 = {'perf':[], 'subjects': [], 'Network': [], 
-                                'Model': []}
-                
                 if dataset == 'pereira':
+                    
+                    results_dict_gpt2 = {'perf':[], 'subjects': [], 'Network': [], 
+                                'Model': [], 'Exp': []}
+                
            
                     for fe in feature_extraction:
                         
@@ -130,10 +131,17 @@ for perf in perf_arr:
                         results_dict_gpt2['Network'].extend(br_labels_dict['243'])
                         results_dict_gpt2['Model'].extend(np.repeat(f'GPT2-XL{fe}', num_vox_dict['384']))
                         results_dict_gpt2['Model'].extend(np.repeat(f'GPT2-XL{fe}', num_vox_dict['243']))
+                        results_dict_gpt2['Exp'].extend(np.repeat(f'384', num_vox_dict['384']))
+                        results_dict_gpt2['Exp'].extend(np.repeat(f'243', num_vox_dict['243']))
+                        
                         save_best_layer[f"{dataset}_384_{perf}{shuffled_save_str}{noL2_str}{fe}"] = gpt2_xl_384_bl
                         save_best_layer[f"{dataset}_243_{perf}{shuffled_save_str}{noL2_str}{fe}"] = gpt2_xl_243_bl
             
                 else:
+                    
+                    results_dict_gpt2 = {'perf':[], 'subjects': [], 'Network': [], 
+                                'Model': []}
+                    
                     for fe in feature_extraction:
                         gpt2_xl_dict, gpt2_xl_bl, gpt2_xl_bl_perf = find_best_layer(np.arange(0,49), noL2_str=noL2_str, exp='', 
                                                 subjects=subjects_arr, resultsPath=resultsPath_dataset, dataset=dataset, perf=perf, feature_extraction=fe)
@@ -199,10 +207,9 @@ for perf in perf_arr:
                     
     
                 plot_legend = False
-
-                    
+                
                 subject_avg_pd, dict_pd_merged, dict_pd_with_all = plot_across_subjects(results_simple_gpt2xl.copy(), figurePath=figurePath,  selected_networks=['language'],
-                                                        dataset=dataset_label, saveName=f'{dataset}{noL2_str}{shuffled_str}_both', 
+                                                        dataset=dataset, saveName=f'{dataset}{noL2_str}{shuffled_str}_both', 
                                                         yticks=[0, ymax], order=['language'], clip_zero=clip_zero, color_palette=palette, 
                                                         draw_lines=False, ms=15, plot_legend=plot_legend, 
                                                         plot_legend_under=False, width=0.7, median=median, ylabel_str=perf_str, legend_fontsize=30, ax_select=ax[index],

@@ -257,12 +257,20 @@ def plot_across_subjects(dict_pd_merged, figurePath, dataset, selected_networks,
         
         if median:
             print("Taking median value across voxels with a participant")
-            subject_avg_pd = dict_pd_merged.groupby(['subjects', 'Network', 'Model']).median()
-            estimator = 'median'
-        else:
-            subject_avg_pd = dict_pd_merged.groupby(['subjects', 'Network', 'Model']).mean()
-            estimator = 'mean'
+            if dataset == 'pereira':
+                subject_avg_pd = dict_pd_merged.groupby(['subjects', 'Network', 'Model', 'Exp']).median()
+                subject_avg_pd = subject_avg_pd.groupby(['subjects', 'Network', 'Model']).mean()
+            else:
+                subject_avg_pd = dict_pd_merged.groupby(['subjects', 'Network', 'Model']).median()
             
+        else:
+            print("Taking mean value across voxels with a participant")
+            if dataset == 'pereira':
+                subject_avg_pd = dict_pd_merged.groupby(['subjects', 'Network', 'Model', 'Exp']).mean()
+                subject_avg_pd = subject_avg_pd.groupby(['subjects', 'Network', 'Model']).mean()
+            else:
+                subject_avg_pd = dict_pd_merged.groupby(['subjects', 'Network', 'Model']).mean()
+                
     else:
         dict_pd_merged = None
         dict_pd_with_all = None
