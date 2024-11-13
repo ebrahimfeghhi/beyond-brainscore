@@ -4,6 +4,7 @@ from helper_funcs import combine_MSE_across_folds
 from typing import Union
 from neural_dat_funcs import construct_splits_blank, construct_splits_fedorenko, construct_splits_pereira
 from helper_funcs import preprocess_himalayas, pearson_corr_schrimpf_style
+from copy import deepcopy
 
     
 def himalaya_regression_caller(model: Union[str, dict, np.ndarray], 
@@ -143,8 +144,10 @@ def himalaya_regression_caller(model: Union[str, dict, np.ndarray],
             
     for layer_name, X in X_all_layers.items():
         
-        print(f"X shape: {X.shape}")
+        features_list_layer = deepcopy(features_list)
         
+        print(f"X shape: {X.shape}")
+
         if len(X.shape) == 1:
             X = np.expand_dims(X, axis=-1)
         
@@ -159,10 +162,14 @@ def himalaya_regression_caller(model: Union[str, dict, np.ndarray],
         #if num_samples > y.shape[0]:
         #    continue
         
-        if len(features_list)==0:
-            features_list = [num_features]
+        if len(features_list_layer)==0:
+            features_list_layer = [num_features]
             
-        if np.sum(features_list) != num_features:
+        if -1 in features_list_layer:
+            features_list_layer.remove(-1)
+            features_list_layer.append(int(num_features - np.sum(features_list_layer)))
+            
+        if np.sum(features_list_layer) != num_features:
             print("f_list is not compatible with the shape of X.")
             breakpoint()
 
@@ -172,7 +179,7 @@ def himalaya_regression_caller(model: Union[str, dict, np.ndarray],
         else:
             use_kernelized = False
 
-        feature_grouper = preprocess_himalayas(features_list, use_kernelized)
+        feature_grouper = preprocess_himalayas(features_list_layer, use_kernelized)
         
         # store performance for model and null model (just predicts mean of training set)
  

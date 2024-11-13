@@ -72,21 +72,11 @@ def pool_across_seeds(y_test, model_name, exp_list, layer_name, niters, resultsF
     else:
         linear_reg_str = ''
     
-    if seed_last:
-        if load_y_hat:
-            y_hat_across_seeds = [np.load(f'{resultsFolder}pereira_{m}_{l}_{n}{linear_reg_str}_{e}_m{i}.npz')['y_hat'] for i, (m, l, n, e) in enumerate(zip(model_name, layer_name, niters, exp_list))]
-        r2_across_seeds = [np.load(f'{resultsFolder}pereira_{m}_{l}_{n}{linear_reg_str}_{e}_m{i}.npz')['out_of_sample_r2'] for i, (m, l, n, e) in enumerate(zip(model_name, layer_name, niters, exp_list))]
-        
-        if pearson_r:
-            r_across_seeds = [np.load(f'{resultsFolder}pereira_{m}_{l}_{n}{linear_reg_str}_{e}_m{i}.npz')['pearson_r'] for i, (m, l, n, e) in enumerate(zip(model_name, layer_name, niters, exp_list))]
-            
-    else:
-        if load_y_hat:
-            y_hat_across_seeds = [np.load(f'{resultsFolder}pereira_{m}_m{i}_{l}_{n}{linear_reg_str}_{e}.npz')['y_hat'] for i, (m, l, n, e) in enumerate(zip(model_name, layer_name, niters, exp_list))]
-        r2_across_seeds = [np.load(f'{resultsFolder}pereira_{m}_m{i}_{l}_{n}{linear_reg_str}_{e}.npz')['out_of_sample_r2'] for i, (m, l, n, e) in enumerate(zip(model_name, layer_name, niters, exp_list))]
-        
-        if pearson_r:
-            r_across_seeds = [np.load(f'{resultsFolder}pereira_{m}_m{i}_{l}_{n}{linear_reg_str}_{e}.npz')['pearson_r'] for i, (m, l, n, e) in enumerate(zip(model_name, layer_name, niters, exp_list))]
+
+    y_hat_across_seeds = [np.load(f'{resultsFolder}pereira_{m}_{l}_{n}{linear_reg_str}_{e}_m{i}.npz')['y_hat'] for i, (m, l, n, e) in enumerate(zip(model_name, layer_name, niters, exp_list))]
+    r2_across_seeds = [np.load(f'{resultsFolder}pereira_{m}_{l}_{n}{linear_reg_str}_{e}_m{i}.npz')['out_of_sample_r2'] for i, (m, l, n, e) in enumerate(zip(model_name, layer_name, niters, exp_list))]
+    r_across_seeds = [np.load(f'{resultsFolder}pereira_{m}_{l}_{n}{linear_reg_str}_{e}_m{i}.npz')['pearson_r'] for i, (m, l, n, e) in enumerate(zip(model_name, layer_name, niters, exp_list))]
+
         
     if load_y_hat:
         y_hat_np = np.stack(y_hat_across_seeds)

@@ -1,96 +1,9 @@
 import pandas as pd
 import numpy as np
 from trained_untrained_results_funcs import max_across_nested
+from trained_untrained_results_funcs 
 
-
-def find_best_sigma(sigma_range, noL2_str, exp, resultsPath, dataset, subjects, perf='pearson_r',
-                    selected_network_indices=None):
-    
-    '''
-    Finds best sigma value for OASM by taking the mean/median across subjects, and then taking 
-    the mean across subjects.
-    '''
-
-    sigma_perf_dict = {}
-    
-    if dataset == 'pereira':
-        subjects = subjects[selected_network_indices]
-    
-    for s in sigma_range:
-        
-        s = round(s,3)
-        
-        # load in performance of OASM across voxels/electrodes/ROIs
-        OASM_perf =  np.load(f'{resultsPath}/{dataset}_OASM-all-sigma_{s}_1{noL2_str}{exp}.npz')[perf]
-        
-        OASM_perf = np.nan_to_num(OASM_perf, 0)
-    
-        # if pereira, take median across language network voxels
-        # otherwise simply take the median
-        if dataset == 'pereira':
-            OASM_perf = OASM_perf[selected_network_indices]
-            
-        OASM_subj = pd.DataFrame({'perf': OASM_perf, 'subject': subjects})
-        
-        if perf == 'pearson_r':
-            perf_avg = np.median(OASM_subj.groupby(['subject']).median())
-        else:
-            perf_avg = np.mean(OASM_subj.groupby(['subject']).mean())
-    
-        # make sure it's not nan, happens sometimes when sigma is low 
-        # not totally sure why 
-        if ~np.isnan(perf_avg):
-            sigma_perf_dict[s] = perf_avg
-        
-    best_sigma = max(sigma_perf_dict, key=sigma_perf_dict.get)
-    
-    OASM_perf_best =  np.load(f'{resultsPath}/{dataset}_OASM-all-sigma_{best_sigma}_1{noL2_str}{exp}.npz')[perf]
-    OASM_perf_best = np.nan_to_num(OASM_perf_best, 0)
-        
-    return sigma_perf_dict, best_sigma, OASM_perf_best
-
-def find_best_layer(layer_range, noL2_str, exp, resultsPath, subjects, dataset, perf='pearson_r', 
-                    selected_network_indices = None, feature_extraction = '', model_name='gpt2-xl', seed_number=None):
-    
-
-    layer_perf_dict = {}
-    layer_perf_dict_mean = {}
-    
-    if dataset == 'pereira':
-        subjects = subjects[selected_network_indices]
-        
-    if seed_number is not None:
-        seed_str = f"_m{seed_number}"
-    else:
-        seed_str = ''
-    
-    for l in layer_range:
-        
-        layer_perf = np.load(f'{resultsPath}/{dataset}_{model_name}{feature_extraction}{seed_str}_layer_{l}_1{noL2_str}{exp}.npz')[perf]
-        
-        if perf != 'pearson_r':
-            layer_perf = np.clip(layer_perf, 0, np.inf)
-        
-        layer_perf = np.nan_to_num(layer_perf, nan=0)
-        
-        if dataset == 'pereira':
-            layer_perf = layer_perf[selected_network_indices]
-            
-        layer_subject = pd.DataFrame({'perf': layer_perf, 'subject': subjects})    
-
-        perf_avg = np.median(layer_subject.groupby(['subject']).median())
-        perf_avg_mean = np.mean(layer_subject.groupby(['subject']).mean())
-        
-        layer_perf_dict[l] = perf_avg
-        layer_perf_dict_mean[l] = perf_avg_mean
-        
-        
-    best_layer = max(layer_perf_dict, key=layer_perf_dict.get)
-    
-    layer_perf_best =  np.load(f'{resultsPath}/{dataset}_{model_name}{feature_extraction}{seed_str}_layer_{best_layer}_1{noL2_str}{exp}.npz')[perf]
-    layer_perf_best = np.nan_to_num(layer_perf_best, 0)
-        
-    return [layer_perf_dict, layer_perf_dict_mean], best_layer, layer_perf_best   
+ 
 
 
 def return_frac_var_explained(submodel, submodel_with_LLM, LLM_perf):

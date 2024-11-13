@@ -7,7 +7,7 @@ sys.path.append(base)
 from plotting_functions import plot_across_subjects
 import seaborn as sns
 import pandas as pd
-from trained_results_funcs import find_best_layer, find_best_sigma
+from trained_untrained_results_funcs import find_best_layer, find_best_sigma
 
 noL2_str_arr = ['_noL2', '_noL2custom', '']
 shuffled_arr = [False, True]
@@ -31,7 +31,6 @@ for perf in perf_arr:
                 else:
                     noL2 = True
 
-                    
                 if shuffled:
                     shuffled_str = '_shuffled'
                     shuffled_save_str = '_shuffled'
