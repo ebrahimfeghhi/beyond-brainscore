@@ -9,6 +9,42 @@ from trained_untrained_results_funcs import max_across_nested
 Functions used to plot untrained results in Pereira.
 '''
 
+def load_untrained_data(model, exp, i, fe, dat, perf="out_of_sample_r2"):
+    
+    """
+    Attempts to load a specified file with variable layer 'x' from 0 to 9.
+    
+    Parameters:
+        exp (str): Experiment identifier.
+        i (str): Model identifier.
+        fe (str): Feature identifier.
+        d (str): Data identifier.
+        perf (str): Performance key within the .npz file.
+        
+    Returns:
+        np.array or None: Loaded data if a file is found, otherwise None.
+    """
+    
+    data = None  # Initialize variable to store data if loaded successfully
+
+    for x in range(49):  # Try each value of x from 0 to 9
+        file_path = f"/data/LLMs/brainscore/results_{dat}/untrained/{dat}_gpt2-xl-untrained{fe}-var-par{exp}_m{i}_{model}_layer_{x}_1000{exp}.npz"
+        
+        try:
+            # Attempt to load the file
+            data = np.nan_to_num(np.load(file_path)[perf])
+   
+        except:
+            continue
+        
+        
+    if data is None:
+        print("Data is None")
+        breakpoint()
+        
+    return data
+            
+
 def voxel_corrected_LLM_nested_full(perf_stacked_pd, LLM_str, nested_name, full_name, clip_neg=True):
     
     '''

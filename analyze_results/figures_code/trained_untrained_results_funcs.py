@@ -6,8 +6,45 @@ import pandas as pd
 Functions used for both trained and untrained pereira results.
 '''
 
+
+def load_perf(filepath, perf):
+    
+    perf_arr = np.nan_to_num(np.load(filepath)[perf])
+    
+    if perf=='out_of_sample_r2':
+        return np.clip(perf_arr, 0, np.inf)
+    else:
+        return perf_arr
+
+def custom_add_2d(arr1, arr2):
+    
+    
+    # Create a mask where both arrays are NaN
+    both_nan = np.isnan(arr1) & np.isnan(arr2)
+    
+    # Create a mask where arr1 is NaN
+    arr1_nan = np.isnan(arr1)
+    
+    # Create a mask where arr2 is NaN
+    arr2_nan = np.isnan(arr2)
+    
+    # Set the result where both are NaN as NaN
+    result = np.where(both_nan, np.nan, 0)
+    
+    # Set the result where arr1 is NaN as arr2
+    result = np.where(arr1_nan, arr2, result)
+    
+    # Set the result where arr2 is NaN as arr1
+    result = np.where(arr2_nan, arr1, result)
+    
+    # Set the result where neither is NaN as the average
+    result = np.where(~arr1_nan & ~arr2_nan, (arr1 + arr2) / 2, result)
+    
+    return result
+
+
 # created this function so I don't have to write this for loop a bunch of times
-def loop_through_datasets(dataset_arr, feature_extraction_arr, subjects_dict, networks_dict):
+def loop_through_datasets(dataset_arr, feature_extraction_arr):
 
     for dataset in dataset_arr:
 
@@ -23,15 +60,21 @@ def loop_through_datasets(dataset_arr, feature_extraction_arr, subjects_dict, ne
             
             for exp in exp_arr:
                 
-                subjects = subjects_dict[f"{dataset}{exp}"]
+                if len(exp) > 0:
+                    exp = f"_{exp}"
+                    
+                subjects = np.load(f"/data/LLMs/data_processed/{dataset}/dataset/subjects{exp}.npy", allow_pickle=True)
                 
-                network = networks_dict[f"{dataset}{exp}"]
+                try:
+                    network = np.load(f"/data/LLMs/data_processed/{dataset}/dataset/networks{exp}.npy", allow_pickle=True)
+                except:
+                    network = np.repeat(['language'], len(subjects))
                 
                 yield dataset, fe, exp, subjects, network
                 
 
 def find_best_sigma(sigma_range, noL2_str, exp, resultsPath, dataset, subjects, perf='pearson_r',
-                    selected_network_indices=None):
+                    selected_network_indices=None, median=False):
     
     '''
     Finds best sigma value for OASM by taking the mean/median across subjects, and then taking 
@@ -48,10 +91,8 @@ def find_best_sigma(sigma_range, noL2_str, exp, resultsPath, dataset, subjects, 
         s = round(s,3)
         
         # load in performance of OASM across voxels/electrodes/ROIs
-        OASM_perf =  np.load(f'{resultsPath}/{dataset}_OASM-all-sigma_{s}_1{noL2_str}{exp}.npz')[perf]
+        OASM_perf =  load_perf(f'{resultsPath}/{dataset}_OASM-all-sigma_{s}_1{noL2_str}{exp}.npz', perf)
         
-        OASM_perf = np.nan_to_num(OASM_perf, 0)
-    
         # if pereira, take median across language network voxels
         # otherwise simply take the median
         if dataset == 'pereira':
@@ -59,7 +100,7 @@ def find_best_sigma(sigma_range, noL2_str, exp, resultsPath, dataset, subjects, 
             
         OASM_subj = pd.DataFrame({'perf': OASM_perf, 'subject': subjects})
         
-        if perf == 'pearson_r':
+        if median:
             perf_avg = np.median(OASM_subj.groupby(['subject']).median())
         else:
             perf_avg = np.mean(OASM_subj.groupby(['subject']).mean())
@@ -71,16 +112,14 @@ def find_best_sigma(sigma_range, noL2_str, exp, resultsPath, dataset, subjects, 
         
     best_sigma = max(sigma_perf_dict, key=sigma_perf_dict.get)
     
-    OASM_perf_best =  np.load(f'{resultsPath}/{dataset}_OASM-all-sigma_{best_sigma}_1{noL2_str}{exp}.npz')[perf]
-    OASM_perf_best = np.nan_to_num(OASM_perf_best, 0)
-        
+    OASM_perf_best =  load_perf(f'{resultsPath}/{dataset}_OASM-all-sigma_{best_sigma}_1{noL2_str}{exp}.npz', perf)
+
     return sigma_perf_dict, best_sigma, OASM_perf_best
 
-def find_best_layer(layer_range, noL2_str, exp, resultsPath, subjects, dataset, perf='pearson_r', 
+def find_best_layer(layer_range, noL2_str='', exp='', resultsPath='/data/LLMs/brainscore/results_pereira/', subjects=None, dataset='pereira', perf='pearson_r', 
                     selected_network_indices = None, feature_extraction = '', model_name='gpt2-xl', seed_number=None, 
-                    return_SE=False):
+                    return_SE=False, niter=1, median=False):
     
-
     layer_perf_dict = {}
     
     if dataset == 'pereira':
@@ -93,7 +132,7 @@ def find_best_layer(layer_range, noL2_str, exp, resultsPath, subjects, dataset, 
     
     for l in layer_range:
         
-        layer_perf = np.load(f'{resultsPath}/{dataset}_{model_name}{feature_extraction}{seed_str}_layer_{l}_1{noL2_str}{exp}.npz')[perf]
+        layer_perf = load_perf(f'{resultsPath}/{dataset}_{model_name}{feature_extraction}{seed_str}_layer_{l}_{niter}{noL2_str}{exp}.npz', perf)
         
         if perf != 'pearson_r':
             layer_perf = np.clip(layer_perf, 0, np.inf)
@@ -107,19 +146,20 @@ def find_best_layer(layer_range, noL2_str, exp, resultsPath, subjects, dataset, 
 
         perf_avg = np.median(layer_subject.groupby(['subject']).median())
         perf_avg_mean = np.mean(layer_subject.groupby(['subject']).mean())
-        
-        if perf == 'pearson_r': 
+
+        if median: 
             layer_perf_dict[l] = perf_avg
         else:
             layer_perf_dict[l] = perf_avg_mean
         
     best_layer = max(layer_perf_dict, key=layer_perf_dict.get)
     
-    layer_perf_best =  np.load(f'{resultsPath}/{dataset}_{model_name}{feature_extraction}{seed_str}_layer_{best_layer}_1{noL2_str}{exp}.npz')[perf]
-    layer_perf_best = np.nan_to_num(layer_perf_best, 0)
+    layer_perf_best =  load_perf(f'{resultsPath}/{dataset}_{model_name}{feature_extraction}{seed_str}_layer_{best_layer}_{niter}{noL2_str}{exp}.npz', perf)
     
     if return_SE:
-        layer_perf_best_se = compute_squared_error(np.load(f'{resultsPath}/{dataset}_{model_name}{feature_extraction}{seed_str}_layer_{best_layer}_1{noL2_str}{exp}.npz')['y_hat'], dataset=dataset, exp=exp)
+        
+        layer_perf_best_se = compute_squared_error(np.load(f'{resultsPath}/{dataset}_{model_name}{feature_extraction}{seed_str}_layer_{best_layer}_{niter}{noL2_str}{exp}.npz')['y_hat'], 
+                            dataset=dataset, exp=exp)
         return layer_perf_dict, best_layer, layer_perf_best, layer_perf_best_se
         
     return layer_perf_dict, best_layer, layer_perf_best  

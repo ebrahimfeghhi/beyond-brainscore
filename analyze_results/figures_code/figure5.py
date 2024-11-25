@@ -1,16 +1,16 @@
 import numpy as np
-from trained_untrained_results_funcs import elementwise_max, find_best_squared_error, compute_squared_error, find_best_layer
-from plotting_functions import plot_across_subjects
+from trained_untrained_results_funcs import find_best_layer, elementwise_max, calculate_omega, custom_add_2d, load_perf
+from untrained_results_funcs import load_untrained_data
+from plotting_functions import plot_across_subjects, load_r2_into_3d, save_nii
 from matplotlib import pyplot as plt
 import pandas as pd
 import seaborn as sns
-from trained_untrained_results_funcs import calculate_omega
+from nilearn import plotting
+import matplotlib
 
 
 resultsPath_base = '/data/LLMs/brainscore/'
 figurePath = 'figures/new_figures/figure5/'
-
-exp = ['243', '384']
 
 br_labels_dict = {}
 num_vox_dict = {}
@@ -19,6 +19,22 @@ subjects_dict = {}
 data_processed_folder_pereira = f'/data/LLMs/data_processed/pereira/dataset'
 data_processed_folder_fed = f'/data/LLMs/data_processed/fedorenko/dataset'
 data_processed_folder_blank = f'/data/LLMs/data_processed/blank/dataset'
+
+
+omega_metric = {'feature_extraction': [], 'dataset': [], 'values': []}
+
+plot_legend = False
+palette = ['gray', 'blue', 'black']
+perf_str=''
+plot_xlabel=False
+remove_y_axis = False
+num_seeds = 5
+feature_extraction_arr = ['', '-mp', '-sp']
+perf_arr = ['out_of_sample_r2']
+shuffled_arr = ['']
+shuffled = ''
+dataset_arr = ['pereira', 'fedorenko', 'blank']
+exp = ['243', '384']
 
 for e in exp:
 
@@ -38,285 +54,425 @@ subjects_arr_blank  = np.load(f"{data_processed_folder_blank}/subjects.npy", all
 
 subjects_arr_pereira = np.load(f"{data_processed_folder_pereira}/subjects_complete.npy", allow_pickle=True)
 networks_arr_pereira = np.load(f"{data_processed_folder_pereira}/network_complete.npy", allow_pickle=True)
+non_nan_indices_243 = np.load(f"{data_processed_folder_pereira}/non_nan_indices_243.npy") # voxels which are in 243
+non_nan_indices_384 = np.load(f"{data_processed_folder_pereira}/non_nan_indices_384.npy") # voxels which are in 384
+non_nan_indices_dict = {'384': non_nan_indices_384, '243': non_nan_indices_243}
+
                     
-SP_SL = np.load('/data/LLMs/data_processed/pereira/acts/X_positional_WN.npz')['layer1']
-SL = np.load('/data/LLMs/data_processed/pereira/acts/X_word-num.npz')['layer1']
-SP = np.load('/data/LLMs/data_processed/pereira/acts/X_positional_simple.npz')['layer1']
-WP = np.load('/data/LLMs/data_processed/fedorenko/acts/X_soft+grow.npz')['layer1']
-
-plot_legend = False
-perf_str = ''
-plot_xlabel = False
-remove_y_axis = False
-num_seeds = 5
-dataset_arr = ['pereira']
-feature_extraction_arr = ['', '-mp', '-sp']
-perf_arr = ['out_of_sample_r2']
-shuffled_arr = ['']
-
 save_best_layer = []
-omega_metric = {}
-for shuffled in shuffled_arr:
-    
-    for perf in perf_arr:
-        
-        if perf == 'pearson_r':
-            clip_zero = False
-            median = True
-        else:
-            clip_zero = True
-            median = False
-            
-        fig, ax = plt.subplots(1, len(dataset_arr), figsize=(10,5))
+
+
+for perf in perf_arr:
                 
-        for dnum, d in enumerate(dataset_arr):
+    if perf == 'pearson_r':
+        clip_zero = False
+        median = True
+    else:
+        clip_zero = True
+        median = False
+        
+    fig, ax = plt.subplots(1, len(dataset_arr), figsize=(15,5))
             
-            results_dict_gpt2_untrained = {'perf':[], 'subjects': [], 'Network': [], 
-                                        'Model': []}
+    for dnum, d in enumerate(dataset_arr):
+        
+        results_dict_gpt2_untrained = {'perf':[], 'subjects': [], 'Network': [], 
+                                    'Model': []}
+        
+        results_dict_gpt2_untrained_banded = {'perf':[], 'subjects': [], 'Network': [], 
+                                    'Model': []}
+        
+        simple_dict = {'perf':[], 'subjects': [], 'Network': [], 
+                                    'Model': []}
+        
+        if d == 'pereira':
+            results_dict_gpt2_untrained['Exp'] = []
+            results_dict_gpt2_untrained_banded['Exp'] = []
+            simple_dict['Exp'] = []
+        
+        if d == 'pereira':
+            exp_arr = ['384', '243']
+        else:
             
-            results_dict_gpt2_untrained_banded = {'perf':[], 'subjects': [], 'Network': [], 
-                                        'Model': []}
+            exp_arr = ['']
+        
+            if d == 'fedorenko':
+                subjects_arr = subjects_arr_fed
+            if d == 'blank':
+                subjects_arr = subjects_arr_blank
+                    
+            networks_arr = np.repeat('language', len(subjects_arr))
             
-            simple_dict = {'perf':[], 'subjects': [], 'Network': [], 
-                                        'Model': []}
+                            
+        for fe in feature_extraction_arr:
+                
+            if len(fe) == 0:
+                fe_str = '-lt'
+            else:
+                fe_str = fe
+        
+        
+            for exp in exp_arr:
+                
+                
+                if len(exp) > 0:
+                    selected_lang_indices = lang_indices_dict[exp]
+                    subjects_arr = subjects_dict[exp]
+                    networks_arr = br_labels_dict[exp]
+                    exp = f"_{exp}"
+                
+                else:
+                    selected_lang_indices = None
+                    
+                if d == 'pereira':
+                    SP_SL = load_perf(f"/data/LLMs/brainscore/results_pereira/pereira_positional_WN_layer1_1000{exp}.npz", perf)
+                    SL = load_perf(f"/data/LLMs/brainscore/results_{d}/{d}_word-num_layer1_1{exp}.npz", perf)
+                    SP = load_perf(f"/data/LLMs/brainscore/results_{d}/{d}_positional_simple_layer1_1{exp}.npz", perf)
+                    gaussian = load_perf(f'/data/LLMs/brainscore/results_pereira/pereira_gaussian_layer_45_1{exp}.npz', perf)
+                    simple_perf_corrected = elementwise_max([SP_SL, SL, SP, gaussian])
+                    simple_perf = SP_SL
+                    load_r2_into_3d(SP_SL, exp.strip('_'), subjects_to_plot=np.unique(subjects_arr), 
+                                                            subjects_all=subjects_arr, save_name=f'SP+SL_{perf}{exp}', 
+                                                            lang_indices=selected_lang_indices)
+        
+                    
+                elif d == 'fedorenko':
+                    simple_perf = load_perf(f"/data/LLMs/brainscore/results_fedorenko/fedorenko_soft+grow_layer1_1.npz", perf)
+                    simple_perf_corrected = simple_perf
+                    
+                elif d == 'blank':
+                    POS_WN = load_perf('/data/LLMs/brainscore/results_blank/blank_pos-WN_layer_12_1.npz', perf)
+                    POS = load_perf('/data/LLMs/brainscore/results_blank/blank_POS_layer1_1.npz', perf)
+                    WN = load_perf('/data/LLMs/brainscore/results_blank/blank_WN_layer1_1.npz', perf)
+                    simple_perf = POS_WN
+                    simple_perf_corrected = elementwise_max([WN, POS, POS_WN])
+                    
+                # just do it for the first fe since simple model does not depend on feature extraction
+                if fe == '':
+                    simple_dict['perf'].extend(np.nan_to_num(simple_perf))
+                    simple_dict['subjects'].extend(subjects_arr)
+                    simple_dict['Network'].extend(networks_arr)
+                    simple_dict['Model'].extend(np.repeat(f'Simple', len(simple_perf)))
+                    
+                    simple_dict['perf'].extend(np.nan_to_num(simple_perf_corrected))
+                    simple_dict['subjects'].extend(subjects_arr)
+                    simple_dict['Network'].extend(networks_arr)
+                    simple_dict['Model'].extend(np.repeat(f'Simple_corrected', len(simple_perf_corrected)))
+                    
+                    if d == 'pereira':
+                        simple_dict['Exp'].extend(np.repeat(exp.strip('_'), len(simple_perf)*2))
+
+                                        
+                for i in range(num_seeds):
+                                                                
+                    gpt2_untrained_dict, gpt2_untrained_bl, gpt2_untrained_bl_perf  = find_best_layer(np.arange(49), noL2_str='', exp=exp, 
+                                                                resultsPath=f"{resultsPath_base}results_{d}/untrained/{shuffled}", 
+                                                                perf=perf, feature_extraction=fe, selected_network_indices=selected_lang_indices, 
+                                                                subjects=subjects_arr, dataset=d, model_name='gpt2-xl-untrained', seed_number=i)
+
+                    if d == 'pereira':
+                        GPT2XLU_SP_SL_perf = load_untrained_data('SP_SL', exp, i, fe, d)
+                        GPT2XLU_SP_perf = load_untrained_data('SP', exp, i, fe, d)
+                        GPT2XLU_SL_perf = load_untrained_data('SL', exp, i, fe, d)
+                        simple_color = sns.color_palette("Greens", 5)[3]  
+                        yticks_perf = [0, 0.05]
+                        yticks_perf_banded = [0, 0.05]
+                        ticks_hist2d = [-0.01, 0.15]
+                        
+                    elif d == 'fedorenko':    
+                        GPT2XLU_WP_perf = load_untrained_data('WP', exp, i, fe, d)
+                        simple_color = sns.color_palette("Reds", 5)[3] 
+                        yticks_perf = [0, 0.08]
+                        yticks_perf_banded = [0, 0.08]
+                        ticks_hist2d = [-0.01, 0.2]
+                        
+                    elif d == 'blank':
+                        GPT2XLU_POS_WN_perf = load_untrained_data('POS_WN', exp, i, fe, d)
+                        GPT2XLU_POS_perf = load_untrained_data('POS', exp, i, fe, d)
+                        GPT2XLU_WN_perf = load_untrained_data('WN', exp, i, fe, d)
+                        simple_color = sns.color_palette("Oranges", 5)[3] 
+                        yticks_perf = [0, 0.02]
+                        yticks_perf_banded = [0, 0.02]
+                        ticks_hist2d = [-0.001, 0.02]
+                        
+                    if i == 0:
+                        
+                        perf_across_seeds_gpt2xlu = gpt2_untrained_bl_perf
+                        
+                        if d == 'pereira':
+                            
+                            perf_across_seeds_gpt2xlu_sp = GPT2XLU_SP_perf
+                            perf_across_seeds_gpt2xlu_sl = GPT2XLU_SL_perf
+                            perf_across_seeds_gpt2xlu_sp_sl = GPT2XLU_SP_SL_perf
+                            
+                        elif d == 'fedorenko':
+                            
+                            perf_across_seeds_gpt2xlu_WP = GPT2XLU_WP_perf
+                            
+                        elif d == 'blank':
+                            
+                            perf_across_seeds_gpt2xlu_POS_WN = GPT2XLU_POS_WN_perf
+                            perf_across_seeds_gpt2xlu_POS = GPT2XLU_POS_perf
+                            perf_across_seeds_gpt2xlu_WN = GPT2XLU_WN_perf
+                            
+                    else:
+    
+                        perf_across_seeds_gpt2xlu += gpt2_untrained_bl_perf
+                        
+                        if d == 'pereira':
+                            perf_across_seeds_gpt2xlu_sp += GPT2XLU_SP_perf
+                            perf_across_seeds_gpt2xlu_sl += GPT2XLU_SL_perf
+                            perf_across_seeds_gpt2xlu_sp_sl += GPT2XLU_SP_SL_perf
+                            
+                        elif d == 'fedorenko':    
+                            
+                            perf_across_seeds_gpt2xlu_WP += GPT2XLU_WP_perf
+                            
+                        elif d == 'blank':
+                            
+                            perf_across_seeds_gpt2xlu_POS_WN += GPT2XLU_POS_WN_perf
+                            perf_across_seeds_gpt2xlu_POS += GPT2XLU_POS_perf
+                            perf_across_seeds_gpt2xlu_WN += GPT2XLU_WN_perf
+ 
+                results_dict_gpt2_untrained['perf'].extend(perf_across_seeds_gpt2xlu/num_seeds)
+                results_dict_gpt2_untrained['subjects'].extend(subjects_arr)
+                results_dict_gpt2_untrained['Network'].extend(networks_arr)
+                results_dict_gpt2_untrained['Model'].extend(np.repeat(f'GPT2XLU{fe_str}', len(perf_across_seeds_gpt2xlu)))
+                
+                
+                if d == 'pereira':
+                    load_r2_into_3d(perf_across_seeds_gpt2xlu/num_seeds, exp.strip('_'), f'GPT2-XLU{fe}_{perf}{exp}', 
+                                            subjects_to_plot=np.unique(subjects_arr), subjects_all=subjects_arr, lang_indices=selected_lang_indices)
+                    load_r2_into_3d(simple_perf - (perf_across_seeds_gpt2xlu/num_seeds), exp.strip('_'), f'SP+SL-GPT2-XLU{fe}_{perf}{exp}', 
+                                            subjects_to_plot=np.unique(subjects_arr), subjects_all=subjects_arr, lang_indices=selected_lang_indices)
+                if d == 'pereira':
+                    banded_perf = elementwise_max([perf_across_seeds_gpt2xlu, perf_across_seeds_gpt2xlu_sl, perf_across_seeds_gpt2xlu_sp, 
+                                                    perf_across_seeds_gpt2xlu_sp_sl])
+                elif d == 'fedorenko':
+                    banded_perf = elementwise_max([perf_across_seeds_gpt2xlu, perf_across_seeds_gpt2xlu_WP])
+                elif d == 'blank':
+                    banded_perf = elementwise_max([perf_across_seeds_gpt2xlu, perf_across_seeds_gpt2xlu_POS_WN, 
+                                                    perf_across_seeds_gpt2xlu_POS, perf_across_seeds_gpt2xlu_WN])
+                    
+                
+                results_dict_gpt2_untrained_banded['perf'].extend(banded_perf/num_seeds)
+                results_dict_gpt2_untrained_banded['subjects'].extend(subjects_arr)
+                results_dict_gpt2_untrained_banded['Network'].extend(networks_arr)
+                results_dict_gpt2_untrained_banded['Model'].extend(np.repeat(f'Banded{fe_str}', len(banded_perf)))
+                
+                if d == 'pereira':
+                    results_dict_gpt2_untrained['Exp'].extend(np.repeat(exp.strip('_'), num_vox_dict[exp.strip('_')]))
+                    results_dict_gpt2_untrained_banded['Exp'].extend(np.repeat(exp.strip('_'), num_vox_dict[exp.strip('_')]))
             
-            if d == 'pereira':
-                results_dict_gpt2_untrained['Exp'] = []
-                results_dict_gpt2_untrained_banded['Exp'] = []
-                simple_dict['Exp'] = []
+            save_nii(f'GPT2-XLU{fe}_{perf}')
+            save_nii(f'SP+SL_{perf}')
+            save_nii(f'SP+SL-GPT2-XLU{fe}_{perf}')
             
-            if d == 'pereira':
-                exp_arr = ['384', '243']
+            from matplotlib.colors import ListedColormap
+            
+            # Use the default Nilearn colormap 'cold_hot' as the base
+            base_cmap = plt.get_cmap('cold_hot')
+            colors = base_cmap(np.linspace(0, 1, base_cmap.N))
+
+            # Modify the middle value (representing 0) to light gray
+            mid_index = base_cmap.N // 2
+            colors[mid_index] = [0.8, 0.8, 0.8, 1]  # Light gray in RGBA format
+            
+            from matplotlib.colors import LinearSegmentedColormap
+
+            # Define the colormap
+            colors = [
+                (0.92, 0.92, 0.92),  # Darker light grey
+                (0.4, 0.4, 0.8),  # Darker pastel blue
+                (0.4, 1.0, 0.4),  # Darker pastel green
+                (1.0, 1.0, 0.3),  # Darker pastel yellow
+                (1.0, 0.3, 0.3)   # Darker pastel red
+            ]
+                        
+            nodes = [0.0, 0.25, 0.5, 0.75, 1.0]   # Define transition points in [0, 1]
+
+            custom_cmap = LinearSegmentedColormap.from_list("custom_cmap", list(zip(nodes, colors)))
+
+            plotting.plot_glass_brain(f'/data/LLMs/brainscore/results_pereira/glass_brain_plots/SP+SL_{perf}_subj_avg.nii', 
+            colorbar=True, display_mode='l', vmax=0.15, vmin=0,
+            output_file=f'/home2/ebrahim/beyond-brainscore/analyze_results/figures_code/figures/new_figures/figure5/glass_brain/SP+SL_{perf}_subj_avg_cmap.pdf', cmap=custom_cmap)
+            
+            plotting.plot_glass_brain(f'/data/LLMs/brainscore/results_pereira/glass_brain_plots/SP+SL_{perf}_subj_avg.nii', 
+            colorbar=False, display_mode='l', vmax=0.15, vmin=0,
+            output_file=f'/home2/ebrahim/beyond-brainscore/analyze_results/figures_code/figures/new_figures/figure5/glass_brain/SP+SL_{perf}_subj_avg.pdf', cmap=custom_cmap)
+            
+            plotting.plot_glass_brain(f'/data/LLMs/brainscore/results_pereira/glass_brain_plots/GPT2-XLU{fe}_{perf}_subj_avg.nii', 
+            colorbar=False, display_mode='l', vmax=0.15, vmin=0,
+            output_file=f'/home2/ebrahim/beyond-brainscore/analyze_results/figures_code/figures/new_figures/figure5/glass_brain/GPT2-XLU{fe}_{perf}_subj_avg.pdf', cmap=custom_cmap)
+            
+            plotting.plot_glass_brain(f'/data/LLMs/brainscore/results_pereira/glass_brain_plots/SP+SL-GPT2-XLU{fe}_{perf}_subj_avg.nii', 
+            colorbar=True, display_mode='l', vmin=-0.15, vmax=0.15,
+            output_file=f'/home2/ebrahim/beyond-brainscore/analyze_results/figures_code/figures/new_figures/figure5/glass_brain/SP+SL-GPT2-XLU{fe}_{perf}_subj_avg_cmap.pdf', cmap='seismic', 
+            plot_abs=False)
+               
+            plotting.plot_glass_brain(f'/data/LLMs/brainscore/results_pereira/glass_brain_plots/SP+SL-GPT2-XLU{fe}_{perf}_subj_avg.nii', 
+            colorbar=False, display_mode='l', vmin=-0.15, vmax=0.15,
+            output_file=f'/home2/ebrahim/beyond-brainscore/analyze_results/figures_code/figures/new_figures/figure5/glass_brain/SP+SL-GPT2-XLU{fe}_{perf}_subj_avg.pdf', cmap='seismic', 
+            plot_abs=False)
+        
+            
+        results_dict_gpt2_untrained = pd.DataFrame(results_dict_gpt2_untrained)
+        results_dict_gpt2_untrained_banded = pd.DataFrame(results_dict_gpt2_untrained_banded)
+        
+        simple_dict = pd.DataFrame(simple_dict)
+        
+        simple_dict_corrected = simple_dict.loc[simple_dict.Model.str.contains('corrected')]
+        simple_dict_noncorrected = simple_dict.loc[~simple_dict.Model.str.contains('corrected')]
+        
+        results_combined = pd.concat((results_dict_gpt2_untrained, simple_dict_noncorrected))
+        results_combined_with_banded = pd.concat((results_dict_gpt2_untrained, simple_dict_corrected, results_dict_gpt2_untrained_banded))
+        
+        if len(dataset_arr) == 1:
+            ax_select = ax
+        else:
+            ax_select = ax[dnum]
+            
+        color_palette = ['gray', 'blue', 'black', simple_color]
+            
+        results_combined['Model'] = results_combined['Model'].apply(lambda x: 'Simple' if 'simple' in x.lower() else x)
+        
+        results_combined.to_csv(f'/home2/ebrahim/beyond-brainscore/analyze_results/figures_code/figures_data/figure5/results_combined_{d}_{perf}.csv')
+        
+        subject_avg_pd, dict_pd_merged, dict_pd_with_all = plot_across_subjects(results_combined.copy(), figurePath=figurePath,  selected_networks=['language'],
+                                                            dataset=d, saveName=f'{d}_{fe}', order=['language'], clip_zero=clip_zero, 
+                                                            draw_lines=False, ms=15, plot_legend=False,  
+                                                            plot_legend_under=False, width=0.7, median=median, ylabel_str=perf_str, legend_fontsize=30, ax_select=ax_select,
+                                                            remove_yaxis=False, plot_xlabel=plot_xlabel, alpha=0.5, color_palette=color_palette,
+                                                            hue_order=['GPT2XLU-lt', 'GPT2XLU-mp', 'GPT2XLU-sp', 'Simple'], 
+                                                            yticks=yticks_perf)
+        gpt2xlu_combined_perf_save = {}
+        simple_combined_perf_save = {}
+        for fe in feature_extraction_arr:
+            
+            fig3, ax3 = plt.subplots(1,1,figsize=(8,6))
+            
+            if len(fe) == 0:
+                fe_str = '-lt'
+            else:
+                fe_str = fe
+
+            if d == 'pereira':             
+                  
+                gpt2xlu_perf_combined = np.full(subjects_arr_pereira.shape[0], fill_value=np.nan)
+                simple_perf_combined = np.full(subjects_arr_pereira.shape[0], fill_value=np.nan)
+                lang_indices = np.argwhere(networks_arr_pereira=='language').squeeze()
+                
+                for exp in exp_arr:
+                    results_combined_exp = results_combined.loc[results_combined.Exp==exp]
+                    # custom takes the average for voxels that are in both experiments, otherwise sets the value for that voxel to whatever experiment it's in
+                    simple_perf_combined[non_nan_indices_dict[exp]] = custom_add_2d(simple_perf_combined[non_nan_indices_dict[exp]], 
+                                                                            results_combined_exp.loc[results_combined_exp.Model==f'Simple']['perf'])
+                    gpt2xlu_perf_combined[non_nan_indices_dict[exp]] = custom_add_2d(gpt2xlu_perf_combined[non_nan_indices_dict[exp]], 
+                                                                                results_combined_exp.loc[results_combined_exp.Model==f'GPT2XLU{fe_str}']['perf'])
+                gpt2xlu_perf_combined = gpt2xlu_perf_combined[lang_indices]
+                simple_perf_combined = simple_perf_combined[lang_indices]
+                    
             else:
                 
-                exp_arr = ['']
-            
-                if d == 'fedorenko':
-                    subjects_arr = subjects_arr_fed
-                if d == 'blank':
-                    subjects_arr = subjects_arr_blank
-                        
-                networks_arr = np.repeat('language', len(subjects_arr))
+                simple_perf_combined = results_combined.loc[results_combined.Model==f'Simple']['perf']
+                gpt2xlu_perf_combined = results_combined.loc[results_combined.Model==f'GPT2XLU{fe_str}']['perf']
                 
+            gpt2xlu_perf_combined = gpt2xlu_perf_combined[~np.isnan(gpt2xlu_perf_combined)]
+            simple_perf_combined = simple_perf_combined[~np.isnan(simple_perf_combined)]
+            
+            sns.despine()
+            if d == 'pereira':
+                ax3.hist2d(y=gpt2xlu_perf_combined, x=simple_perf_combined, norm=matplotlib.colors.LogNorm(), bins=100, cmap=custom_cmap)
+                gpt2xlu_combined_perf_save[fe] = gpt2xlu_perf_combined
+                simple_combined_perf_save[''] = simple_perf_combined
+            else:
+                ax3.scatter(y=gpt2xlu_perf_combined, x=simple_perf_combined, s=100, color='tab:gray')
+                
+            ax3.set_ylim(ticks_hist2d[0], ticks_hist2d[1])
+            ax3.set_yticks([0, ticks_hist2d[1]])
+            ax3.set_xlim(ticks_hist2d[0], ticks_hist2d[1])
+            ax3.set_xticks([0, ticks_hist2d[1]])
+            ax3.set_yticklabels([0, ticks_hist2d[1]], fontsize=25)
+            ax3.set_xticklabels([0, ticks_hist2d[1]], fontsize=25)
+            
+            # Coordinates for the left edge and bottom edge
+            left_edge = [(0, 0), (0, ticks_hist2d[1])]
+            bottom_edge = [(0, 0), (ticks_hist2d[1], 0)]
+
+            # Plot the left edge
+            #ax3.plot(*zip(*left_edge), linewidth=3, color='black', linestyle='-')
+
+            # Plot the bottom edge
+            #ax3.plot(*zip(*bottom_edge), linewidth=3, color='black', linestyle='-')
+            
+            ax3.plot(ax3.get_xlim(), ax3.get_ylim(), 'r--', color='black', linewidth=3)
                                 
-            for fe in feature_extraction_arr:
+            fig3.savefig(f"/home2/ebrahim/beyond-brainscore/analyze_results/figures_code/figures/new_figures/figure5/hist2d{fe_str}_{perf}_{shuffled}_{d}.pdf", bbox_inches='tight')
+            fig3.savefig(f"/home2/ebrahim/beyond-brainscore/analyze_results/figures_code/figures/new_figures/figure5/hist2d{fe_str}_{perf}_{shuffled}_{d}.png")
+            
+             
+        if d == 'pereira':
+            np.savez('/home2/ebrahim/beyond-brainscore/analyze_results/figures_code/figures_data/figure4/gpt2xl_combined', **gpt2xlu_combined_perf_save)
+            np.savez('/home2/ebrahim/beyond-brainscore/analyze_results/figures_code/figures_data/figure4/simple_combined', **simple_combined_perf_save)
+            
+        fig2, ax2 = plt.subplots(1,3, figsize=(15,6))
+        fig2.subplots_adjust(wspace=0.1) 
+    
+        if perf == 'out_of_sample_r2':
+            
+            for ja, fe in enumerate(feature_extraction_arr):
                 
                 if len(fe) == 0:
                     fe_str = '-lt'
                 else:
                     fe_str = fe
+                
+                if fe_str == '-lt':
+                    color_palette_banded = sns.color_palette([simple_color, 'purple', 'gray'])
+                elif fe_str == '-mp':
+                    color_palette_banded = sns.color_palette([simple_color, 'purple', 'blue'])
+                elif fe_str == '-sp':
+                    color_palette_banded = sns.color_palette([simple_color, 'purple', 'black'])
+                    
+                results_banded_fe = results_combined_with_banded.loc[
+                    results_combined_with_banded['Model'].str.contains(fe_str) |
+                    results_combined_with_banded['Model'].str.contains("Simple_corrected")
+                ]
+
+                if ja == 0:
+                    remove_y_axis = False
+                else:
+                    remove_y_axis = True
+                
+                subject_avg_pd, dict_pd_merged, dict_pd_with_all = plot_across_subjects(results_banded_fe.copy(), figurePath=figurePath,  selected_networks=['language'],
+                                                            dataset=d, saveName=f'{d}_{fe}', order=['language'], clip_zero=clip_zero, 
+                                                            draw_lines=True, ms=15, plot_legend=False,  
+                                                            plot_legend_under=False, width=0.7, median=median, ylabel_str=perf_str, legend_fontsize=30, ax_select=ax2[ja],
+                                                            remove_yaxis=remove_y_axis, plot_xlabel=plot_xlabel, alpha=0.5, color_palette=color_palette_banded, 
+                                                            hue_order=[f'Simple_corrected', f'Banded{fe_str}', f'GPT2XLU{fe_str}'], 
+                                                            yticks=yticks_perf_banded)
+                
+                ax2[1].spines['left'].set_visible(False)
+                ax2[1].yaxis.set_visible(False)
+                ax2[1].set_yticks([])
+                 
+                ax2[2].spines['left'].set_visible(False)
+                ax2[2].yaxis.set_visible(False)
+                ax2[2].set_yticks([])
+                
+                
+                omega = calculate_omega(subject_avg_pd.reset_index(), f'Banded{fe_str}', f'GPT2XLU{fe_str}', f'Simple_corrected')
+                omega_metric['feature_extraction'].extend(np.repeat(f"{fe_str}", len(omega['metric'])))
+                omega_metric['dataset'].extend(np.repeat(f"{d}", len(omega['metric'])))
+                omega_metric['values'].extend(omega['metric'])
+                
+                
+                    
+            fig2.savefig(f"/home2/ebrahim/beyond-brainscore/analyze_results/figures_code/figures/new_figures/figure5/banded_{perf}_{shuffled}_{d}.pdf", bbox_inches='tight')
+            fig2.savefig(f"/home2/ebrahim/beyond-brainscore/analyze_results/figures_code/figures/new_figures/figure5/banded_{perf}_{shuffled}_{d}.png")
             
-                for exp in exp_arr:
-                    
-                    
-                    if len(exp) > 0:
-                        selected_lang_indices = lang_indices_dict[exp]
-                        subjects_arr = subjects_dict[exp]
-                        networks_arr = br_labels_dict[exp]
-                        exp = f"_{exp}"
-                    
-                    else:
-                        selected_lang_indices = None
-                        
-                    if d == 'pereira':
-                        SP_SL = np.load(f"/data/LLMs/brainscore/results_pereira/pereira_positional_WN_layer1_1{exp}.npz")[perf]
-                        SL = np.load(f"/data/LLMs/brainscore/results_{d}/{d}_word-num_layer1_1{exp}.npz")[perf]
-                        SP = np.load(f"/data/LLMs/brainscore/results_{d}/{d}_positional_simple_layer1_1{exp}.npz")[perf]
-                        
-                        SP_SL_squared_error = compute_squared_error(np.load(f"/data/LLMs/brainscore/results_pereira/pereira_positional_WN_layer1_1{exp}.npz")['y_hat'], d, exp)
-                        SL_squared_error = compute_squared_error(np.load(f"/data/LLMs/brainscore/results_{d}/{d}_word-num_layer1_1{exp}.npz")['y_hat'], d, exp)
-                        SP_squared_error = compute_squared_error(np.load(f"/data/LLMs/brainscore/results_{d}/{d}_positional_simple_layer1_1{exp}.npz")['y_hat'], d, exp)
-                        
-                        simple_perf_corrected = elementwise_max([SP_SL, SL, SP])
-                        simple_perf_corrected_squared_error = find_best_squared_error([SP_SL_squared_error, SL_squared_error, SP_squared_error])
-                    
-                        simple_perf = SP_SL
-                        
-                    else:
     
-                        simple_perf = np.load(f"/data/LLMs/brainscore/results_{d}/{d}_soft+grow_layer1_1.npz")[perf]
-                        simple_perf_corrected = simple_perf
-                        simple_squared_error = compute_squared_error(np.load(f"/data/LLMs/brainscore/results_{d}/{d}_soft+grow_layer1_1.npz")['y_hat'], d, exp)
-                        
-                        
-                    simple_dict['perf'].extend(simple_perf)
-                    simple_dict['subjects'].extend(subjects_arr)
-                    simple_dict['Network'].extend(networks_arr)
-                    simple_dict['Model'].extend(np.repeat(f'Simple{fe_str}', len(simple_perf)))
-                    
-                    simple_dict['perf'].extend(simple_perf_corrected)
-                    simple_dict['subjects'].extend(subjects_arr)
-                    simple_dict['Network'].extend(networks_arr)
-                    simple_dict['Model'].extend(np.repeat(f'Simple{fe_str}_corrected', len(simple_perf_corrected)))
-                    
-                    if d == 'pereira':
-                        simple_dict['Exp'].extend(np.repeat(exp.strip('_'), len(simple_perf)*2))
-                        
-                    for i in range(num_seeds):
-                    
-                        gpt2_untrained_acts = np.load(f"/data/LLMs/data_processed/{d}/acts/X_gpt2-xl-untrained{fe}_m{i}.npz")
-                                    
-                        gpt2_untrained_dict, gpt2_untrained_bl, gpt2_untrained_bl_perf, gpt2_untrained_bl_perf_se  = find_best_layer(np.arange(49), noL2_str='', exp=exp, 
-                                                                    resultsPath=f"{resultsPath_base}results_{d}/untrained/{shuffled}", 
-                                                                    perf=perf, feature_extraction=fe, selected_network_indices=selected_lang_indices, 
-                                                                    subjects=subjects_arr, dataset=d, model_name='gpt2-xl-untrained', seed_number=i, return_SE=True)
-                        
-                        best_layer = max(gpt2_untrained_dict[1], key=gpt2_untrained_dict[1].get)
-                        save_best_layer.append(f"{d}_gpt2-xl-untrained{fe}_layer_{best_layer}_1{exp}_m{i}.npz") 
-                        
-                        if d == 'pereira':
-                            GPT2XLU_SP_SL_perf = np.load(f"/data/LLMs/brainscore/results_{d}/untrained/{d}_gpt2-xl-untrained{fe}_m{i}_SP+SL_layer1_1000{exp}.npz")[perf]
-                            GPT2XLU_SP_perf = np.load(f"/data/LLMs/brainscore/results_{d}/untrained/{d}_gpt2-xl-untrained{fe}_m{i}_SP_layer1_1000{exp}.npz")[perf]
-                            GPT2XLU_SL_perf = np.load(f"/data/LLMs/brainscore/results_{d}/untrained/{d}_gpt2-xl-untrained{fe}_m{i}_SP_layer1_1000{exp}.npz")[perf]
-                            
-                            GPT2XLU_SP_SL_squared_error = compute_squared_error(np.load(f"/data/LLMs/brainscore/results_{d}/untrained/{d}_gpt2-xl-untrained{fe}_m{i}_SP+SL_layer1_1000{exp}.npz")['y_hat'], 
-                                                                                dataset=d, exp=exp)
-                            GPT2XLU_SP_squared_error = compute_squared_error(np.load(f"/data/LLMs/brainscore/results_{d}/untrained/{d}_gpt2-xl-untrained{fe}_m{i}_SP_layer1_1000{exp}.npz")['y_hat'], 
-                                                                            dataset=d, exp=exp)
-                            GPT2XLU_SL_squared_error = compute_squared_error(np.load(f"/data/LLMs/brainscore/results_{d}/untrained/{d}_gpt2-xl-untrained{fe}_m{i}_SP_layer1_1000{exp}.npz")['y_hat'], 
-                                                                             dataset=d, exp=exp)
-                        
-                            simple_color = sns.color_palette("Greens", 5)[2]  # Light green
+    fig.savefig(f"/home2/ebrahim/beyond-brainscore/analyze_results/figures_code/figures/new_figures/figure5/{perf}_{shuffled}.png")
+    fig.savefig(f"/home2/ebrahim/beyond-brainscore/analyze_results/figures_code/figures/new_figures/figure5/{perf}_{shuffled}.pdf", bbox_inches='tight')
 
-                        elif d == 'fedorenko':
-                            
-                            GPT2XLU_WP_perf = np.load(f"/data/LLMs/brainscore/results_{d}/untrained/{d}_gpt2-xl-untrained{fe}_m{i}_soft+grow_layer1_1000.npz")[perf]
-                            GPT2XLU_WP_squared_error = compute_squared_error(np.load(f"/data/LLMs/brainscore/results_{d}/untrained/{d}_gpt2-xl-untrained{fe}_m{i}_soft+grow_layer1_1000.npz")['y_hat'], 
-                                                                             dataset=d, exp=exp)
-                            simple_color = sns.color_palette("Greens", 5)[4]   # Dark green
-                            
-                        
-                        breakpoint()
-                            
-                        gpt2_best_acts = gpt2_untrained_acts[f'layer_{best_layer}']
-                        
-                        if i == 0:
-                            
-                            perf_across_seeds_gpt2xlu = gpt2_untrained_bl_perf
-                            
-                            if d == 'pereira':
-                                
-                                perf_across_seeds_gpt2xlu_sp = GPT2XLU_SP_perf
-                                perf_across_seeds_gpt2xlu_sl = GPT2XLU_SL_perf
-                                perf_across_seeds_gpt2xlu_sp_sl = GPT2XLU_SP_SL_perf
-                                
-                            else:
-                                
-                                perf_across_seeds_gpt2xu_WP = GPT2XLU_WP_perf
-                            
-                        else:
-        
-                            perf_across_seeds_gpt2xlu += gpt2_untrained_bl_perf
-                            
-                            if d == 'pereira':
-                                perf_across_seeds_gpt2xlu_sp += GPT2XLU_SP_perf
-                                perf_across_seeds_gpt2xlu_sl += GPT2XLU_SL_perf
-                                perf_across_seeds_gpt2xlu_sp_sl += GPT2XLU_SP_SL_perf
-                            else:
-                                perf_across_seeds_gpt2xu_WP += GPT2XLU_WP_perf
-                            
-                        
-                        #if d == 'pereira':
-                        #    banded_model = np.hstack((gpt2_best_acts, SP_SL))
-                        #    np.savez(f"/data/LLMs/data_processed/{d}/acts/X_gpt2-xl-untrained{fe}_m{i}_SP+SL", **{'layer1':banded_model})
-                            
-                        #    banded_model_SP = np.hstack((gpt2_best_acts, SP))
-                        #    np.savez(f"/data/LLMs/data_processed/{d}/acts/X_gpt2-xl-untrained{fe}_m{i}_SP", **{'layer1':banded_model_SP})
-                            
-                        #    banded_model_SL = np.hstack((gpt2_best_acts, SL))
-                        #    np.savez(f"/data/LLMs/data_processed/{d}/acts/X_gpt2-xl-untrained{fe}_m{i}_SL", **{'layer1':banded_model_SL})
-                        
-                        #elif d == 'fedorenko':
-                        #    banded_model = np.hstack((gpt2_best_acts, WP))
-                        #    np.savez(f"/data/LLMs/data_processed/{d}/acts/X_gpt2-xl-untrained{fe}_m{i}_soft+grow", **{'layer1':banded_model})
-                            
-                    
-                    
-                    results_dict_gpt2_untrained['perf'].extend(perf_across_seeds_gpt2xlu/num_seeds)
-                    results_dict_gpt2_untrained['subjects'].extend(subjects_arr)
-                    results_dict_gpt2_untrained['Network'].extend(networks_arr)
-                    results_dict_gpt2_untrained['Model'].extend(np.repeat(f'GPT2XLU{fe_str}', len(perf_across_seeds_gpt2xlu)))
-                    
-                    
-                    if d == 'pereira':
-                        banded_perf = elementwise_max([perf_across_seeds_gpt2xlu, perf_across_seeds_gpt2xlu_sl, perf_across_seeds_gpt2xlu_sp, 
-                                                       perf_across_seeds_gpt2xlu_sp_sl])
-                    else:
-                        banded_perf = elementwise_max([perf_across_seeds_gpt2xlu, perf_across_seeds_gpt2xu_WP])
-                        
-                                        
-                    results_dict_gpt2_untrained_banded['perf'].extend(banded_perf/num_seeds)
-                    results_dict_gpt2_untrained_banded['subjects'].extend(subjects_arr)
-                    results_dict_gpt2_untrained_banded['Network'].extend(networks_arr)
-                    results_dict_gpt2_untrained_banded['Model'].extend(np.repeat(f'Banded{fe_str}', len(banded_perf)))
-                    
-                    if d == 'pereira':
-                        results_dict_gpt2_untrained['Exp'].extend(np.repeat(exp.strip('_'), num_vox_dict[exp.strip('_')]))
-                        results_dict_gpt2_untrained_banded['Exp'].extend(np.repeat(exp.strip('_'), num_vox_dict[exp.strip('_')]))
-                        
-                        
-            results_dict_gpt2_untrained = pd.DataFrame(results_dict_gpt2_untrained)
-            results_dict_gpt2_untrained_banded = pd.DataFrame(results_dict_gpt2_untrained_banded)
-            
-            simple_dict = pd.DataFrame(simple_dict)
-            
-            simple_dict_corrected = simple_dict.loc[simple_dict.Model.str.contains('corrected')]
-            simple_dict_noncorrected = simple_dict.loc[~simple_dict.Model.str.contains('corrected')]
-            
-            results_combined = pd.concat((results_dict_gpt2_untrained, simple_dict_noncorrected))
-            results_combined_with_banded = pd.concat((results_dict_gpt2_untrained, simple_dict_corrected, results_dict_gpt2_untrained_banded))
-            
-            if len(dataset_arr) == 1:
-                ax_select = ax
-            else:
-                ax_select = ax[dnum]
-                
-            color_palette = ['gray', 'blue', 'black', simple_color]
-                
-            results_combined['Model'] = results_combined['Model'].apply(lambda x: 'Simple' if 'simple' in x.lower() else x)
-
-            subject_avg_pd, dict_pd_merged, dict_pd_with_all = plot_across_subjects(results_combined.copy(), figurePath=figurePath,  selected_networks=['language'],
-                                                                dataset=d, saveName=f'{d}_{fe}', order=['language'], clip_zero=clip_zero, 
-                                                                draw_lines=False, ms=15, plot_legend=False,  
-                                                                plot_legend_under=False, width=0.7, median=median, ylabel_str=perf_str, legend_fontsize=30, ax_select=ax_select,
-                                                                remove_yaxis=remove_y_axis, plot_xlabel=plot_xlabel, alpha=0.5, color_palette=color_palette,
-                                                                hue_order=['GPT2XLU-lt', 'GPT2XLU-mp', 'GPT2XLU-sp', 'Simple'])
-            fig2, ax2 = plt.subplots(1,3, figsize=(15,6))
-        
-            if perf == 'out_of_sample_r2':
-                
-                for ja, fe in enumerate(feature_extraction_arr):
-                    
-                    if len(fe) == 0:
-                        fe_str = '-lt'
-                    else:
-                        fe_str = fe
-                    
-                    if fe_str == '-lt':
-                        color_palette_banded = sns.color_palette([simple_color, 'purple', 'gray'])
-                    elif fe_str == '-mp':
-                        color_palette_banded = sns.color_palette([simple_color, 'purple', 'blue'])
-                    elif fe_str == '-sp':
-                        color_palette_banded = sns.color_palette([simple_color, 'purple', 'black'])
-                        
-                    results_banded_fe = results_combined_with_banded.loc[results_combined_with_banded['Model'].str.contains(fe_str)]
-                    
-        
-                    subject_avg_pd, dict_pd_merged, dict_pd_with_all = plot_across_subjects(results_banded_fe.copy(), figurePath=figurePath,  selected_networks=['language'],
-                                                                dataset=d, saveName=f'{d}_{fe}', order=['language'], clip_zero=clip_zero, 
-                                                                draw_lines=True, ms=15, plot_legend=False,  
-                                                                plot_legend_under=False, width=0.7, median=median, ylabel_str=perf_str, legend_fontsize=30, ax_select=ax2[ja],
-                                                                remove_yaxis=remove_y_axis, plot_xlabel=plot_xlabel, alpha=0.5, color_palette=color_palette_banded, 
-                                                                hue_order=[f'Simple{fe_str}_corrected', f'Banded{fe_str}', f'GPT2XLU{fe_str}'])
-                    
-                    omega = calculate_omega(subject_avg_pd.reset_index(), f'Banded{fe_str}', f'GPT2XLU{fe_str}', f'Simple{fe_str}_corrected')
-                    omega_metric[f"{d}_{fe}"] = [np.mean(omega['metric']), np.std(omega['metric'])/np.sqrt(len(omega))]
-                    
-                fig2.savefig(f"/home2/ebrahim/beyond-brainscore/analyze_results/figures_code/figures/new_figures/figure5/banded_{perf}_{shuffled}_{d}.pdf", bbox_inches='tight')
-                fig2.savefig(f"/home2/ebrahim/beyond-brainscore/analyze_results/figures_code/figures/new_figures/figure5/banded_{perf}_{shuffled}_{d}.png")
-                
-        
-        fig.savefig(f"/home2/ebrahim/beyond-brainscore/analyze_results/figures_code/figures/new_figures/figure5/{perf}_{shuffled}.png")
-        fig.savefig(f"/home2/ebrahim/beyond-brainscore/analyze_results/figures_code/figures/new_figures/figure5/{perf}_{shuffled}.pdf", bbox_inches='tight')
-
-np.savez("/home2/ebrahim/beyond-brainscore/analyze_results/figures_code/figures_data/untrained_omega_values", **omega_metric)
+omega_metric = pd.DataFrame(omega_metric)
+omega_metric.to_csv("/home2/ebrahim/beyond-brainscore/analyze_results/figures_code/figures_data/figure5/gpt2xlu_omega_values.csv")

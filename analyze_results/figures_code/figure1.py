@@ -161,7 +161,7 @@ for perf in perf_arr:
                 results_simple_gpt2xl = pd.concat((results_dict_simple, results_dict_gpt2))
                     
                 if perf == 'pearson_r':
-                    median = True
+                    median = False
                     clip_zero = False
                     perf_str = 'Pearson r'
                     plot_xlabel = False
@@ -214,8 +214,9 @@ for perf in perf_arr:
                                                         plot_legend_under=False, width=0.7, median=median, ylabel_str=perf_str, legend_fontsize=30, ax_select=ax[index],
                                                         remove_yaxis=remove_y_axis, plot_xlabel=plot_xlabel)
                 
-                
-
+                subject_avg_pd = subject_avg_pd.reset_index()
+                subject_avg_pd.to_csv(f"/home2/ebrahim/beyond-brainscore/analyze_results/figures_code/figures_data/figure1/{dataset}_{perf}{noL2_str}{shuffled_save_str}.csv", index=False)                
+            
                 # so I just do it manually here (fed is always index 1)
                 ax[1].spines['left'].set_visible(False)   # Hide the left spine
                 ax[1].yaxis.set_visible(False)            # Hide the y-axis

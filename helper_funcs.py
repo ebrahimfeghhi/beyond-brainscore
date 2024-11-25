@@ -614,6 +614,11 @@ def run_himalayas(X_train, y_train, X_test,
         targets_batch = y_train.shape[1]
         
     scaler = StandardScaler()
+    
+    if len(X_train.shape) == 1:
+        X_train = np.expand_dims(X_train, axis=-1)
+        X_test = np.expand_dims(X_test, axis=-1)
+        
     X_train = scaler.fit_transform(X_train)
     X_test = scaler.transform(X_test)
         

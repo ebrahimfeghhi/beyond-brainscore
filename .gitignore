@@ -4,7 +4,7 @@ pereira_data/no_share
 fedorenko_data/no_share
 blank_data/no_share
 legacy/
-
+analyze_results/figures_code/figures_data/
 src/himalaya/
 
 ## From https://github.com/github/gitignore/blob/main/Python.gitignore

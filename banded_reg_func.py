@@ -9,7 +9,7 @@ from copy import deepcopy
     
 def himalaya_regression_caller(model: Union[str, dict, np.ndarray], 
                                y: Union[str, np.ndarray] = '', data_labels: Union[str, np.ndarray] = '', 
-                               features_list: list = [], n_iter: int = 1, 
+                               features_list: list = [], features_dict_per_layer: dict = {}, n_iter: int = 1, 
                                dataset: str = 'pereira', data_folder: str ='/data/LLMs/data_processed', 
                                exp: str ='both', save_results: bool = True, 
                                save_y_hat: bool = True, save_new: bool= False, 
@@ -142,9 +142,19 @@ def himalaya_regression_caller(model: Union[str, dict, np.ndarray],
     if not os.path.exists(full_results_folder):
         os.makedirs(full_results_folder)
             
-    for layer_name, X in X_all_layers.items():
+    for idx, (layer_name, X) in enumerate(X_all_layers.items()):
         
-        features_list_layer = deepcopy(features_list)
+        if len(features_dict_per_layer) > 0:
+            features_list_layer = features_dict_per_layer[layer_name]
+        else:
+            features_list_layer = deepcopy(features_list)
+            
+            
+        if len(features_list_layer) == 1:
+            print("resetting niter to 1")
+            n_iter_layer = 1
+        else:
+            n_iter_layer = n_iter
         
         print(f"X shape: {X.shape}")
 
@@ -171,13 +181,14 @@ def himalaya_regression_caller(model: Union[str, dict, np.ndarray],
             
         if np.sum(features_list_layer) != num_features:
             print("f_list is not compatible with the shape of X.")
-            breakpoint()
 
         # use kernel method to speed things up when features > samples
         if num_features > num_samples:
             use_kernelized = False # getting cuda asynch errors with kernel
         else:
             use_kernelized = False
+            
+        print("Features list", features_list_layer)
 
         feature_grouper = preprocess_himalayas(features_list_layer, use_kernelized)
         
@@ -189,20 +200,20 @@ def himalaya_regression_caller(model: Union[str, dict, np.ndarray],
             
            mse_stored_intercept_only, mse_stored, y_hat_folds, mse_stored_intercept_non_avg, y_test_folds, test_fold_size = \
                             construct_splits_pereira(X, y, data_labels, alphas, device, feature_grouper, 
-                             n_iter, use_kernelized, dataset, exp, linear_reg=linear_reg)
+                             n_iter_layer, use_kernelized, dataset, exp, linear_reg=linear_reg)
         
         elif dataset == 'fedorenko':
             
             mse_stored_intercept_only, mse_stored, y_hat_folds, mse_stored_intercept_non_avg, y_test_folds, test_fold_size = \
                 construct_splits_fedorenko(X, y, data_labels, alphas, device, feature_grouper, 
-                             n_iter, use_kernelized, dataset, split_size=32, linear_reg=linear_reg)
+                             n_iter_layer, use_kernelized, dataset, split_size=32, linear_reg=linear_reg)
             
           
         elif dataset == 'blank':
             
            mse_stored_intercept_only, mse_stored, y_hat_folds, mse_stored_intercept_non_avg, y_test_folds, test_fold_size = \
                construct_splits_blank(X, y, data_labels, alphas, device, feature_grouper, 
-                             n_iter, use_kernelized, dataset, linear_reg=linear_reg)
+                             n_iter_layer, use_kernelized, dataset, linear_reg=linear_reg)
 
         mse_stored_intercept = np.vstack(mse_stored_intercept_only)
         mse_stored = np.vstack(mse_stored)
@@ -239,7 +250,7 @@ def himalaya_regression_caller(model: Union[str, dict, np.ndarray],
 
         if save_results:
 
-            file_name = f"{dataset}_{model}_{layer_name}_{n_iter}"
+            file_name = f"{dataset}_{model}_{layer_name}_{n_iter_layer}"
             
             if linear_reg:
                 
@@ -267,6 +278,7 @@ def himalaya_regression_caller(model: Union[str, dict, np.ndarray],
                 while os.path.exists(os.path.join(full_results_folder, complete_file_name)):
                     i += 1
                     complete_file_name = f"{file_name}_m{i}.npz"
+            
 
             np.savez(os.path.join(full_results_folder, complete_file_name), **results_stored)
             

@@ -213,7 +213,7 @@ def load_model_to_pd(model_name, layer_name, niters, br_labels, subject_labels, 
 def plot_across_subjects(dict_pd_merged, figurePath, dataset, selected_networks, ax_select=None, yticks=None, saveName=None,
                          color_palette=None, hue_order=None, order=None, clip_zero=True, draw_lines=False, plot_legend=False, plot_legend_under=False, ms=6, width=0.8, 
                          LLM_perf=None, ylabel=True, median=False, ylabel_str=r'$R^2$', legend_fontsize=25, remove_yaxis=False, 
-                         subject_avg_pd=None, plot_xlabel=False, x_var='Network', hue_var='Model', line_extend=0.08, lw=3, alpha=0.4, dodge=True):
+                         subject_avg_pd=None, plot_xlabel=False, x_var='Network', hue_var='Model', line_extend=0.08, lw=3, alpha=0.4, dodge=True, alpha_dots=None):
     
     '''
         :param DataFrame dict_pd_merged: pandas df with the following columns: [subjects, Network, Model, perf]
@@ -246,6 +246,8 @@ def plot_across_subjects(dict_pd_merged, figurePath, dataset, selected_networks,
 
     
     if subject_avg_pd is None:
+        
+        dict_pd_merged['perf'] = np.nan_to_num(dict_pd_merged['perf'])
         
         if clip_zero:
             print("Clipping 0 values")
@@ -290,8 +292,11 @@ def plot_across_subjects(dict_pd_merged, figurePath, dataset, selected_networks,
         estimator = 'mean'
       
       
+    if alpha_dots is None:
+        alpha_dots = alpha 
+      
     sns.stripplot(data=subject_avg_pd, x=x_var, y='perf', hue=hue_var, dodge=dodge, palette=color_palette, 
-                   size=ms, hue_order=hue_order, order=order, ax=ax_select, legend=plot_legend, alpha=alpha)
+                   size=ms, hue_order=hue_order, order=order, ax=ax_select, legend=False, alpha=alpha_dots)
         
     
     num_models = np.unique(subject_avg_pd.reset_index()['Model']).shape[0]
@@ -336,7 +341,8 @@ def plot_across_subjects(dict_pd_merged, figurePath, dataset, selected_networks,
     if yticks is not None:
         ax_select.set_yticks(yticks)
         ax_select.set_yticklabels(yticks, fontsize=30)
-
+        ax_select.set_ylim(0, yticks[1]*1.2)
+    
     if remove_yaxis:
         ax_select.spines['left'].set_visible(False)
         ax_select.yaxis.set_visible(False)
@@ -346,7 +352,6 @@ def plot_across_subjects(dict_pd_merged, figurePath, dataset, selected_networks,
         ax_select.set_xticks([])
         ax_select.set_xlabel('')
         
-    
 
     plt.tick_params(axis='x', labelsize=30) 
 
@@ -575,14 +580,14 @@ def plot_hist2d(df, model1, model2, cmaps, max_val, networks, min_val, figurePat
     
     
     
-def save_fMRI_simple(save_vals, exp, 
-                     subjects_to_plot, subjects_all, save_name, 
-                     plotting_folder = "/data/LLMs/Pereira/plotting_data/", 
-                     col_to_coords_store = '/home3/ebrahim/what-is-brainscore/data_processed/pereira/'):
+def load_r2_into_3d(save_vals, exp, save_name, 
+                     subjects_to_plot, subjects_all, results_path = '/data/LLMs/brainscore/results_pereira/glass_brain_plots/',
+                     col_to_coords_store = '/home3/ebrahim/what-is-brainscore/data_processed/pereira/', 
+                     lang_indices=None):
     
     '''
         :param ndarray save_vals: r2 values for each voxel
-        :param str exp:which experiment 
+        :param str exp: which experiment 
         :param str subjects_to_plot: which subject to save data for
         :param array subjects_all: of shape num_voxels, indicates which subject each voxel belongs ot 
         :param str plotting_folder: where to store .nii files for plotting purposes
@@ -591,30 +596,12 @@ def save_fMRI_simple(save_vals, exp,
         Save r2 values for each subject into a .nii file to allow for plotting glass brains.
     '''
     
-    nii_file_path_base = "/home3/ebrahim/neural-nlp-exact/neural_nlp/analyze/surface_projection/"
+
+    non_lang_mask = ~np.isin(np.arange(save_vals.size), lang_indices)
     
-    rand_subj = nib.load(f"{nii_file_path_base}forReg_ID231_T1_z69.nii")
-    fs_avg = nib.load(f"{nii_file_path_base}FreesurferT1.nii")
-    spm_avg = nib.load(f"{nii_file_path_base}SPM_T1.nii")
-
-    # converting from one affine to another
-    # derived these from SPM
-    rand_to_fsl = np.array([[1.999, -0.046, -0.005, 50.009],
-                            [-0.004, 0.045, -2.000, 197.581],
-                            [0.046, 1.999, 0.044, 30.919],
-                            [0, 0, 0, 1]])
-
-    spm_to_fsl = np.array([[2, 0, -0.006, 36.278], 
-                        [-0.006, -0.016, -2, 223.072],
-                        [0, 2, -0.016, 18.207],
-                        [0, 0, 0, 1]])
-
-    rand_to_spm = np.array([[1, -0.001, -0.002, 6.026],
-                            [0.001, 1.000, 0.010, 6.922],
-                            [0.002, -0.010, 1.000, 11.275],
-                            [0,0,0,1]])
-
-
+    if lang_indices is not None:
+        save_vals[non_lang_mask] = np.nan
+    
     dat_stored = {}
     SPM_dim = (79,95,69)
     
@@ -640,18 +627,65 @@ def save_fMRI_simple(save_vals, exp,
         for i, (x,y,z) in enumerate(zip(col_to_coord_1_sn, col_to_coord_2_sn, col_to_coord_3_sn)):
             dat_stored[f'{s}'][x,y,z] = save_vals_s[i]
             
-    dat_stored_avg = np.full(SPM_dim, np.nan)
+    np.savez(f"{results_path}{save_name}", **dat_stored)
+            
+
+def save_nii(dict_name, results_path = "/data/LLMs/brainscore/results_pereira/glass_brain_plots/", 
+             plotting_folder = "/data/LLMs/brainscore/results_pereira/glass_brain_plots/"):
     
-    for s in subjects_to_plot:       
-        nib.save(nib.Nifti1Image(dat_stored[f'{s}'], fs_avg._affine@spm_to_fsl @ rand_to_spm)  
-                        ,f'{plotting_folder}{save_name}_{s}.nii')
-        dat_stored_avg += dat_stored[f'{s}']
+    
+    dict_384 = np.load(f"{results_path}{dict_name}_384.npz")
+    dict_243 = np.load(f"{results_path}{dict_name}_243.npz")
+    
+    nii_file_path_base = "/home3/ebrahim/neural-nlp-exact/neural_nlp/analyze/surface_projection/"
+    
+    rand_subj = nib.load(f"{nii_file_path_base}forReg_ID231_T1_z69.nii")
+    fs_avg = nib.load(f"{nii_file_path_base}FreesurferT1.nii")
+    spm_avg = nib.load(f"{nii_file_path_base}SPM_T1.nii")
+
+    # converting from one affine to another
+    # derived these from SPM
+    rand_to_fsl = np.array([[1.999, -0.046, -0.005, 50.009],
+                            [-0.004, 0.045, -2.000, 197.581],
+                            [0.046, 1.999, 0.044, 30.919],
+                            [0, 0, 0, 1]])
+
+    spm_to_fsl = np.array([[2, 0, -0.006, 36.278], 
+                        [-0.006, -0.016, -2, 223.072],
+                        [0, 2, -0.016, 18.207],
+                        [0, 0, 0, 1]])
+
+    rand_to_spm = np.array([[1, -0.001, -0.002, 6.026],
+                            [0.001, 1.000, 0.010, 6.922],
+                            [0.002, -0.010, 1.000, 11.275],
+                            [0,0,0,1]])
+
+    # merge resultsa across exp
+    merged_dict = {}
+    all_keys = set(dict_384.keys()).union(set(dict_243.keys()))
+    
+    for key in all_keys:
+        if key in dict_384 and key in dict_243:
+            merged_dict[key] = (dict_384[key] + dict_243[key]) / 2
+        elif key in dict_384:
+            merged_dict[key] = dict_384[key]
+        else:
+            merged_dict[key] = dict_243[key]
+
+    
+    for i, s in enumerate(merged_dict.keys()):  
+           
+        nib.save(nib.Nifti1Image(merged_dict[s], fs_avg._affine@rand_to_fsl)  
+                        ,f'{plotting_folder}{dict_name}_{s}.nii')
         
-    dat_stored_avg /= len(subjects_to_plot)
-    nib.save(nib.Nifti1Image(dat_stored[f'{s}'], fs_avg._affine@spm_to_fsl @ rand_to_spm)  
-                        ,f'{plotting_folder}{save_name}_avg.nii')
-        
-    return subjects_to_plot, dat_stored
+        # Stack the arrays along a new axis
+    stacked = np.stack(list(merged_dict.values()), axis=0)
+     
+    # Compute nanmean along the first axis (across dictionary values)
+    subj_avg = np.nanmean(stacked, axis=0)
+
+    nib.save(nib.Nifti1Image(subj_avg, fs_avg._affine@rand_to_fsl)  
+        ,f'{plotting_folder}{dict_name}_subj_avg.nii')
 
 
 def data_for_1samp_ttest(model1, model2, store_pd, N):
