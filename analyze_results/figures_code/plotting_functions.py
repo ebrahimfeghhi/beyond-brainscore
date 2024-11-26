@@ -3,7 +3,7 @@ import seaborn as sns
 import pandas as pd 
 from matplotlib import pyplot as plt
 import sys
-sys.path.append('/home2/ebrahim/beyond-brainscore/')
+sys.path.append('/home2/ebrahim/beyond-brainscore/run_reg_scripts/')
 from helper_funcs import return_network_idxs
 from scipy.stats import pearsonr 
 import matplotlib

@@ -6,6 +6,62 @@ import pandas as pd
 Functions used for both trained and untrained pereira results.
 '''
 
+def load_mean_sem_perf(model_name, dataset, feature_extraction, layer_num, 
+                       resultsPath='/data/LLMs/brainscore/', seed_str='', noL2_str='', niter=1, perf='out_of_sample_r2', median=False, 
+                       var_par_naming=False, return_perf=False, return_mean=False, print_res=True):
+
+   if dataset == 'pereira':
+      subjects_perf_pd = {'perf': [], 'subjects': [], 'Exp': []}
+   else:
+      subjects_perf_pd = {'perf': [], 'subjects': []}
+
+   for d, fe, exp, subjects, network in loop_through_datasets([dataset], [feature_extraction]):
+
+      lang_indices = np.argwhere(network=='language')
+
+      if var_par_naming:
+         model_name_replaced= model_name.replace('EXP', exp)
+         layer_perf = load_perf(f'{resultsPath}/results_{dataset}/{dataset}_{model_name_replaced}{feature_extraction}{seed_str}_{niter}{noL2_str}{exp}.npz', perf)
+      else:
+         layer_perf = load_perf(f'{resultsPath}/results_{dataset}/{dataset}_{model_name}{feature_extraction}{seed_str}_layer_{layer_num}_{niter}{noL2_str}{exp}.npz', perf)
+
+      subjects_perf_pd['perf'].extend(layer_perf[lang_indices].squeeze())
+      subjects_perf_pd['subjects'].extend(subjects[lang_indices].squeeze())
+
+      if len(exp) > 0:
+         subjects_perf_pd['Exp'].extend(np.repeat(exp, len(lang_indices)))
+
+   subjects_perf_pd = pd.DataFrame(subjects_perf_pd)
+      
+   if median:
+      if dataset == 'pereira':
+            subject_avg_pd = subjects_perf_pd.groupby(['subjects', 'Exp']).median()
+            subject_avg_pd = subject_avg_pd.groupby(['subjects']).mean() # mean across experiments 
+      else:
+            subject_avg_pd = subjects_perf_pd.groupby(['subjects']).median()
+      
+   else:
+      if dataset == 'pereira':
+            subject_avg_pd = subjects_perf_pd.groupby(['subjects', 'Exp']).mean()
+            subject_avg_pd = subject_avg_pd.groupby(['subjects']).mean() # mean across experiments 
+      else:
+            subject_avg_pd = subjects_perf_pd.groupby(['subjects']).mean()
+            
+   
+   if print_res:
+      print(model_name, f"{float(subject_avg_pd.mean().iloc[0]):.2g}", f"{float(subject_avg_pd.std().iloc[0] / np.sqrt(len(subject_avg_pd))):.2g}")
+
+   if return_perf:
+      if dataset == 'pereira':
+         subjects_perf_384 = subjects_perf_pd.loc[subjects_perf_pd['Exp']=='_384']['perf']
+         subjects_perf_243 = subjects_perf_pd.loc[subjects_perf_pd['Exp']=='_243']['perf']
+         return subjects_perf_384, subjects_perf_243
+      else:
+         return subjects_perf_pd['perf']
+   
+   if return_mean:
+      return float(subject_avg_pd.mean().iloc[0])
+
 
 def load_perf(filepath, perf):
     

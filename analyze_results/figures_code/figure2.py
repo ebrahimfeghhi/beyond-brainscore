@@ -5,7 +5,7 @@ from sklearn.metrics import mean_squared_error
 import sys
 sys.path.append(base)
 from plotting_functions import plot_across_subjects
-from trained_untrained_results_funcs import calculate_omega, find_best_layer, find_best_sigma
+from trained_untrained_results_funcs import calculate_omega, find_best_layer, find_best_sigma, load_perf
 from untrained_results_funcs import compute_p_val
 import pandas as pd
 import seaborn as sns
@@ -96,6 +96,7 @@ mse_intercept_pereira_full_shuffled[243:, non_nan_indices_384] = mse_intercept_3
 
 
 if create_banded:
+    perf = 'out_of_sample_r2'
     
     omega_metric = {'feature_extraction': [], 'dataset': [], 'values': []}
     
@@ -129,23 +130,29 @@ if create_banded:
                     bs = best_sigma[f"{dataset}_out_of_sample_r2_shuffled"]
                     
                 if len(exp) > 0:
-                
-                    banded_model = np.load(f'/data/LLMs/brainscore/results_{dataset}/shuffled/{dataset}_gpt2-xl{fe}_OASM_layer1_1000_{exp}.npz')
-                    gpt2_model = np.load(f'/data/LLMs/brainscore/results_{dataset}/shuffled/{dataset}_gpt2-xl{fe}_layer_{bl}_1_{exp}.npz')
-                    OASM_model = np.load(f'/data/LLMs/brainscore/results_{dataset}/shuffled/{dataset}_OASM-all-sigma_{bs}_1_{exp}.npz')
+                    banded_model = load_perf(f'/data/LLMs/brainscore/results_{dataset}/shuffled/{dataset}_gpt2-xl{fe}_OASM_layer1_1000_{exp}.npz', perf)
+                    gpt2_model = load_perf(f'/data/LLMs/brainscore/results_{dataset}/shuffled/{dataset}_gpt2-xl{fe}_layer_{bl}_1_{exp}.npz', perf)
+                    OASM_model = load_perf(f'/data/LLMs/brainscore/results_{dataset}/shuffled/{dataset}_OASM-all-sigma_{bs}_1_{exp}.npz', perf)
                     
                 else:
+                    banded_model = load_perf(f'/data/LLMs/brainscore/results_{dataset}/shuffled/{dataset}_gpt2-xl{fe}_OASM_layer1_1000.npz', perf)
+                    gpt2_model = load_perf(f'/data/LLMs/brainscore/results_{dataset}/shuffled/{dataset}_gpt2-xl{fe}_layer_{bl}_1.npz', perf)
+                    OASM_model = load_perf(f'/data/LLMs/brainscore/results_{dataset}/shuffled/{dataset}_OASM-all-sigma_{bs}_1.npz', perf)
+                    
+                if dataset == 'pereira':
+                    gaussian = load_perf(f'/data/LLMs/brainscore/results_pereira/pereira_gaussian_layer_45_1_{exp}.npz', perf)
+                elif dataset == 'fedorenko':
+                    gaussian = load_perf(f'/data/LLMs/brainscore/results_fedorenko/fedorenko_gaussian_layer_39_1.npz', perf)
+                else:
+                    gaussian = load_perf(f'/data/LLMs/brainscore/results_blank/blank_gaussian_layer_13_1.npz', perf)        
+                    
                 
-                    banded_model = np.load(f'/data/LLMs/brainscore/results_{dataset}/shuffled/{dataset}_gpt2-xl{fe}_OASM_layer1_1000.npz')
-                    gpt2_model = np.load(f'/data/LLMs/brainscore/results_{dataset}/shuffled/{dataset}_gpt2-xl{fe}_layer_{bl}_1.npz')
-                    OASM_model = np.load(f'/data/LLMs/brainscore/results_{dataset}/shuffled/{dataset}_OASM-all-sigma_{bs}_1.npz')
-                
-                num_vals = len(banded_model['out_of_sample_r2'])
+                num_vals = len(banded_model)
                 
                 # perform per voxel/electrode/fROI correction
-                banded_gpt2_OASM['perf'].extend(np.maximum(banded_model['out_of_sample_r2'],gpt2_model['out_of_sample_r2']))
-                banded_gpt2_OASM['perf'].extend(gpt2_model['out_of_sample_r2'])
-                banded_gpt2_OASM['perf'].extend(OASM_model['out_of_sample_r2'])
+                banded_gpt2_OASM['perf'].extend(np.maximum(banded_model, gpt2_model))
+                banded_gpt2_OASM['perf'].extend(gpt2_model)
+                banded_gpt2_OASM['perf'].extend(np.maximum(OASM_model, gaussian))
                 
                 banded_gpt2_OASM['Model'].extend(np.repeat('Banded', num_vals))
                 banded_gpt2_OASM['Model'].extend(np.repeat(f'GPT2{fe}', num_vals))
