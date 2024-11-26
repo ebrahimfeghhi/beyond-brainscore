@@ -14,7 +14,19 @@ and pip install.
 
 ### Constructing neural data matrices (y)
 
+To construct the y matrix from the .nc files, use the create_y_matrix notebook
+within the format_neural_data_folder. 
 
+### Generating activations
+\
+All code to generate model activations is located in the generate activations folder.
+The LLM script creates activations for LLM models, and the OASM and simple_features notebooks
+creates the activations for OASM and the simple models. 
+
+### Combining activations
+
+To fit banded regressions in figures 4 and 5, activations are combined using the notebooks
+located in the stack_features folder. 
 
 ### Regression code 
 
@@ -31,24 +43,9 @@ All results are saved to results_all/results_dataset, where dataset
 is specified by the user. The three possible datasets which 
 were used in the paper, are pereira, fedorenko, and blank.
 
-### Feature construction 
-We construct all our features in the generate_activations folder. 
-
-LLM.py contains the code used to generate features from LLMs for all
-three neural datasets. 
-
-LMMS_generate.py contains the code we used to generate sense embeddings 
-using LMMS (pereira only). 
-
-Syntax.py contians the code used to generate syntactic embeddings. We followed
-a procedure that was highly similar to Caucheteux et. al (2021). (Periera only).
 
 ### Generating figures
 
-All figures are created in the analyze_results folder. We provide a separate 
-notebook for trained and untrained results for each dataset. 
+All figures are created in the analyze_results/figures_code folder. We provide a separate 
+script to generate the results for each figures. 
 
-### Unresolved issues
-
-We made some modifications to himalaya, which currently causes the code 
-to break when run on cpu. This will be fixed shortly. 
