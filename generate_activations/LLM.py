@@ -50,7 +50,6 @@ def generate_activations_LLM(dataset, model_str, untrained, model_num, decontext
             experiment_txt = [line.strip() for line in file]
         # each element is exp-passage_name-passage_num-first half or second half
         data_labels = np.load(f"{basePath_data}{dataset}/dataset/data_labels_{dataset}.npy") 
-        breakpoint()
         
     if dataset == 'fedorenko':
         

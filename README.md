@@ -1,6 +1,6 @@
 # What is brainscore 
 
-Code for "What are large language models mapping to in the brain? A case against over-reliance on brain score.
+Code for "A revised view of correspondences between large language models and brains".
 
 ## Environment 
 
@@ -11,6 +11,10 @@ To use this code, clone our custom himalaya and LMMS repo
 and pip install. 
 
 ## Overview
+
+### Constructing neural data matrices (y)
+
+
 
 ### Regression code 
 

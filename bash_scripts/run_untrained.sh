@@ -9,15 +9,16 @@
 
 
 # Number of times to run the commands
-N=10
-start=0
+N=4
+start=1
 model='gpt2-xl'
-exp_arr=("243" "384")
+exp_arr=("384" "243")
+dataset_arr=('pereira' 'fedorenko')
 
 source ~/miniconda3/etc/profile.d/conda.sh
 
 # Store the current directory
-HOME_DIR="/home2/ebrahim/beyond-brainscore/"
+CURRENT_DIR=$(pwd)
 
 ENV_NAME="llm_brain" 
 conda activate "$ENV_NAME"
@@ -27,27 +28,25 @@ do
     echo "Iteration $i"
 
     # Navigate to the 'activations' directory to run 'run_LLM.py'
-
-    cd $HOME_DIR/generate_activations
-    python LLM.py --untrained --model "$model"
-
     # Loop through exp_arr
-    for exp in "${exp_arr[@]}"
+    for dataset in "${dataset_arr[@]}"
     do
-        echo "Running exp $exp"
-        # Navigate back to the original directory
-        cd $HOME_DIR
 
-        # run regression for each layer of gpt2-large-untrained (sum pooled)
-        python call_banded_reg.py --model "$model"-untrained-sp --exp "$exp" --save_new --untrained --linear_reg --device 2
-        # also run for last token 
-        python call_banded_reg.py --model "$model"-untrained --exp "$exp" --save_new --untrained --linear_reg --device 2
-        
-        cd $HOME_DIR/misc_code
-        python clean_untrained.py --model "$model" --seed $i --exp "$exp" --sp # clean sum pooled untrained
-        python clean_untrained.py --model "$model" --seed $i --exp "$exp"
-        
-        
+        cd $CURRENT_DIR/generate_activations
+        python LLM.py --untrained --model "$model" --dataset "$dataset" --model_num "$i"
+
+        for exp in "${exp_arr[@]}"
+        do
+            echo "Running exp $exp"
+            # Navigate back to the original directory
+            cd $CURRENT_DIR
+            
+            # run regression for each layer of gpt2-large-untrained (sum pooled)
+            python call_banded_reg.py --model gpt2-xl-untrained_m"$i" --exp "$exp" --untrained --y_hat --device 1 --dataset "$dataset" 
+            python call_banded_reg.py --model gpt2-xl-untrained-mp_m"$i" --exp "$exp" --untrained --y_hat --device 1 --dataset "$dataset" 
+            python call_banded_reg.py --model gpt2-xl-untrained-sp_m"$i" --exp "$exp" --untrained --y_hat --device 1 --dataset "$dataset" 
+
+        done
     done
    
     echo "Iteration $i complete"
