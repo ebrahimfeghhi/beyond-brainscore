@@ -1,7 +1,7 @@
 import numpy as np
 from trained_untrained_results_funcs import find_best_layer, elementwise_max, calculate_omega, custom_add_2d, load_perf
 from untrained_results_funcs import load_untrained_data
-from plotting_functions import plot_across_subjects, load_r2_into_3d, save_nii
+from plotting_functions import plot_across_subjects, load_r2_into_3d, save_nii, plot_2d_hist_scatter_updated
 from matplotlib import pyplot as plt
 import pandas as pd
 import seaborn as sns
@@ -22,16 +22,6 @@ data_processed_folder_blank = f'/data/LLMs/data_processed/blank/dataset'
 
 
 omega_metric = {'feature_extraction': [], 'dataset': [], 'values': []}
-
-def load_perf(filepath, perf):
-    
-    perf_arr = np.load(filepath)[perf]
-    
-    if perf=='out_of_sample_r2':
-        return np.clip(perf_arr, 0, np.inf)
-    else:
-        return perf_arr
-
 
 plot_legend = False
 palette = ['gray', 'blue', 'black']
@@ -135,6 +125,7 @@ for perf in perf_arr:
                     
                 if d == 'pereira':
                     
+                    # 15 models total (2^4 - 1)
                     SP_SL_GLOVE = load_perf(f"/data/LLMs/brainscore/results_pereira/pereira_trained-var-par{exp}-sp_pos+WN+glove_1000{exp}.npz", perf)
                     SL_GLOVE = load_perf(f"/data/LLMs/brainscore/results_pereira/pereira_trained-var-par{exp}-sp_WN+glove_1000{exp}.npz", perf)
                     SP_GLOVE = load_perf(f"/data/LLMs/brainscore/results_pereira/pereira_trained-var-par{exp}-sp_pos+glove_1000{exp}.npz", perf)
@@ -142,28 +133,47 @@ for perf in perf_arr:
                     SP_SL = load_perf(f"/data/LLMs/brainscore/results_pereira/pereira_trained-var-par{exp}-sp_pos+WN_1{exp}.npz", perf)
                     SL = load_perf(f"/data/LLMs/brainscore/results_pereira/pereira_trained-var-par{exp}-sp_WN_1{exp}.npz", perf)
                     SP = load_perf(f"/data/LLMs/brainscore/results_pereira/pereira_trained-var-par{exp}-sp_pos_1{exp}.npz", perf)
-                    gaussian = load_perf(f'/data/LLMs/brainscore/results_pereira/pereira_gaussian_layer_45_1{exp}.npz', perf)
-                    simple_perf_corrected = elementwise_max([SP_SL_GLOVE, SL_GLOVE, SP_GLOVE, GLOVE, SP_SL, SL, SP, gaussian])
+                    
+                    SP_SL_GLOVE_NOISE = load_perf(f"/data/LLMs/brainscore/results_pereira/pereira_trained-var-par{exp}-sp_pos+WN+gaussian+glove_1000{exp}.npz", perf)
+                    SL_GLOVE_NOISE = load_perf(f"/data/LLMs/brainscore/results_pereira/pereira_trained-var-par{exp}-sp_WN+gaussian+glove_1000{exp}.npz", perf)
+                    SP_GLOVE_NOISE = load_perf(f"/data/LLMs/brainscore/results_pereira/pereira_trained-var-par{exp}-sp_pos+gaussian+glove_1000{exp}.npz", perf)
+                    GLOVE_NOISE = load_perf(f"/data/LLMs/brainscore/results_pereira/pereira_trained-var-par{exp}-sp_gaussian+glove_1000{exp}.npz", perf)
+                    SP_SL_NOISE = load_perf(f"/data/LLMs/brainscore/results_pereira/pereira_trained-var-par{exp}-sp_pos+WN_1000{exp}.npz", perf)
+                    SL_NOISE = load_perf(f"/data/LLMs/brainscore/results_pereira/pereira_trained-var-par{exp}-sp_WN+gaussian_1000{exp}.npz", perf)
+                    SP_NOISE = load_perf(f"/data/LLMs/brainscore/results_pereira/pereira_trained-var-par{exp}-sp_pos+gaussian_1000{exp}.npz", perf)
+                    
+                    NOISE = load_perf(f"/data/LLMs/brainscore/results_pereira/pereira_trained-var-par{exp}-sp_gaussian_1{exp}.npz", perf)
+    
+                    simple_perf_corrected = elementwise_max([SP_SL_GLOVE_NOISE, SL_GLOVE_NOISE, SP_GLOVE_NOISE, GLOVE_NOISE, 
+                                                             SP_SL_NOISE, SL_NOISE, SP_NOISE, SP_SL_GLOVE, SL_GLOVE, 
+                                                             SP_GLOVE, GLOVE, SP_SL, SL, SP, NOISE])
+                
                     simple_perf = SP_SL_GLOVE
-                    print(selected_lang_indices.shape)
+                    
                     load_r2_into_3d(SP_SL_GLOVE, exp.strip('_'), subjects_to_plot=np.unique(subjects_arr), 
                                                             subjects_all=subjects_arr, save_name=f'SP+SL+GloVe_{perf}{exp}', 
-                                                            lang_indices=selected_lang_indices)
+                                                            lang_indices=selected_lang_indices, clip_zero=clip_zero)
         
                 elif d == 'fedorenko':
-                    simple_perf = load_perf(f"/data/LLMs/brainscore/results_fedorenko/fedorenko_pos_layer_4.7_1.npz", perf)
-                    gaussian = load_perf(f'/data/LLMs/brainscore/results_fedorenko/fedorenko_gaussian_layer_39_1{exp}.npz', perf)
-                    simple_perf_corrected = elementwise_max([simple_perf, gaussian])
+                    
+                    NOISE = load_perf(f"/data/LLMs/brainscore/results_{d}/{d}_trained-var-par{exp}-sp_gaussian_1{exp}.npz", perf)
+                    simple_perf = load_perf(f"/data/LLMs/brainscore/results_{d}/{d}_trained-var-par{exp}-sp_WP_1{exp}.npz", perf)
+                    simple_perf_noise = load_perf(f"/data/LLMs/brainscore/results_{d}/{d}_trained-var-par{exp}-sp_WP+gaussian_1000{exp}.npz", perf)
+                    simple_perf_corrected = elementwise_max([simple_perf, NOISE, simple_perf_noise])
                     
                 elif d == 'blank':
                     
                     POS_WN = load_perf(f"/data/LLMs/brainscore/results_blank/blank_trained-var-par{exp}-sp_pos+WN_1{exp}.npz", perf)
                     POS = load_perf(f"/data/LLMs/brainscore/results_blank/blank_trained-var-par{exp}-sp_pos_1{exp}.npz", perf)
                     WN = load_perf(f"/data/LLMs/brainscore/results_blank/blank_trained-var-par{exp}-sp_WN_1{exp}.npz", perf)
-                    gaussian = load_perf(f'/data/LLMs/brainscore/results_blank/blank_gaussian_layer_13_1{exp}.npz', perf)        
-                    simple_perf = POS_WN
-                    simple_perf_corrected = elementwise_max([WN, POS, POS_WN, gaussian])
+                    NOISE = load_perf(f"/data/LLMs/brainscore/results_blank/blank_trained-var-par{exp}-sp_gaussian_1{exp}.npz", perf)
                     
+                    POS_WN_NOISE = load_perf(f"/data/LLMs/brainscore/results_blank/blank_trained-var-par{exp}-sp_pos+WN+gaussian_1000{exp}.npz", perf)
+                    POS_NOISE = load_perf(f"/data/LLMs/brainscore/results_blank/blank_trained-var-par{exp}-sp_pos+gaussian_1000{exp}.npz", perf)
+                    WN_NOISE = load_perf(f"/data/LLMs/brainscore/results_blank/blank_trained-var-par{exp}-sp_WN+gaussian_1000{exp}.npz", perf)
+                    
+                    simple_perf = POS_WN
+                    simple_perf_corrected = elementwise_max([POS_WN_NOISE, POS_NOISE, WN_NOISE, NOISE, WN, POS, POS_WN])
                     
                 # just do it for the first fe since simple model does not depend on feature extraction
                 if fe == '':
@@ -187,7 +197,7 @@ for perf in perf_arr:
                                                             perf=perf, feature_extraction=fe, selected_network_indices=selected_lang_indices, 
                                                             subjects=subjects_arr, dataset=d, model_name='gpt2-xl')
 
-                    
+
                 if d == 'pereira':
                     GPT2XL_SP_SL_GLOVE = load_perf(f"/data/LLMs/brainscore/results_pereira/pereira_trained-var-par{exp}{fe}_pos+WN+gpt2xl+glove_1000{exp}.npz", perf)
                     GPT2XL_GLOVE = load_perf(f"/data/LLMs/brainscore/results_pereira/pereira_trained-var-par{exp}{fe}_gpt2xl+glove_1000{exp}.npz", perf)
@@ -199,14 +209,14 @@ for perf in perf_arr:
                     simple_color = sns.color_palette("Greens", 5)[3]  
                     yticks_perf = [0, 0.10]
                     yticks_perf_banded = [0, 0.10]
-                    ticks_hist2d = [-0.01, 0.25]
+                    ticks_hist2d = [-0.05, 0.25]
                     
                 elif d == 'fedorenko':    
                     GPT2XL_WP = load_perf(f"/data/LLMs/brainscore/results_fedorenko/fedorenko_trained-var-par{exp}{fe}_WP+gpt2xl_1000{exp}.npz", perf)
                     simple_color = sns.color_palette("Reds", 5)[3] 
                     yticks_perf = [0, 0.10]
                     yticks_perf_banded = [0, 0.10]
-                    ticks_hist2d = [-0.01, 0.25]
+                    ticks_hist2d = [-0.05, 0.30]
                     
                 elif d == 'blank':
                     GPT2XL_POS_WN = load_perf(f"/data/LLMs/brainscore/results_blank/blank_trained-var-par{exp}{fe}_pos+WN+gpt2xl_1000{exp}.npz", perf)
@@ -215,7 +225,7 @@ for perf in perf_arr:
                     simple_color = sns.color_palette("Oranges", 5)[3] 
                     yticks_perf = [0, 0.02]
                     yticks_perf_banded = [0, 0.02]
-                    ticks_hist2d = [-0.001, 0.02]
+                    ticks_hist2d = [-0.015, 0.02]
             
 
                 results_dict_gpt2['perf'].extend(gpt2_bl_perf)
@@ -227,18 +237,21 @@ for perf in perf_arr:
                 if d == 'pereira':
                     load_r2_into_3d(gpt2_bl_perf, exp.strip('_'), f'GPT2-XL{fe}_{perf}{exp}', 
                                             subjects_to_plot=np.unique(subjects_arr), subjects_all=subjects_arr, 
-                                            lang_indices=selected_lang_indices)
+                                            lang_indices=selected_lang_indices, clip_zero=clip_zero)
                     
-                    load_r2_into_3d(simple_perf - gpt2_bl_perf,
+                    # need to perform clipping before doing subtraction, otherwise subtracting a negative value
+                    # leads to weird results
+                    load_r2_into_3d(np.clip(simple_perf, 0, np.inf) - np.clip(gpt2_bl_perf, 0, np.inf),
                                             exp.strip('_'), f'SP+SL+GloVe-GPT2-XL{fe}_{perf}{exp}', 
                                             subjects_to_plot=np.unique(subjects_arr), subjects_all=subjects_arr, 
-                                            lang_indices=selected_lang_indices)
+                                            lang_indices=selected_lang_indices, clip_zero=False)
                 if d == 'pereira':
-                    banded_perf = elementwise_max([gpt2_bl_perf, GPT2XL_SP_SL_GLOVE, GPT2XL_SL_GLOVE, GPT2XL_SP_GLOVE, GPT2XL_GLOVE, GPT2XL_SP_SL, GPT2XL_SL, GPT2XL_SP])
+                    banded_perf = elementwise_max([gpt2_bl_perf, GPT2XL_SP_SL_GLOVE, GPT2XL_SL_GLOVE, GPT2XL_SP_GLOVE, GPT2XL_GLOVE, GPT2XL_SP_SL, GPT2XL_SL, GPT2XL_SP, 
+                                                   SP_SL_GLOVE, SL_GLOVE, SP_GLOVE, GLOVE, SP_SL, SL, SP])
                 elif d == 'fedorenko':
-                    banded_perf = elementwise_max([gpt2_bl_perf, GPT2XL_WP])
+                    banded_perf = elementwise_max([gpt2_bl_perf, GPT2XL_WP, simple_perf])
                 elif d == 'blank':
-                    banded_perf = elementwise_max([gpt2_bl_perf, GPT2XL_POS_WN, GPT2XL_POS, GPT2XL_WN])
+                    banded_perf = elementwise_max([gpt2_bl_perf, GPT2XL_POS_WN, GPT2XL_POS, GPT2XL_WN, WN, POS, POS_WN])
                     
                 results_dict_gpt2_banded['perf'].extend(banded_perf)
                 results_dict_gpt2_banded['subjects'].extend(subjects_arr)
@@ -328,86 +341,15 @@ for perf in perf_arr:
                                                             remove_yaxis=False, plot_xlabel=plot_xlabel, alpha=0.5, color_palette=color_palette,
                                                             hue_order=['GPT2XL-lt', 'GPT2XL-mp', 'GPT2XL-sp', 'Simple'], 
                                                             yticks=yticks_perf)
+
         
-        gpt2xl_combined_perf_save = {}
-        simple_combined_perf_save = {}
-        for fe in feature_extraction_arr:
-            
-            fig3, ax3 = plt.subplots(1,1,figsize=(8,6))
-            
-            if len(fe) == 0:
-                fe_str = '-lt'
-            else:
-                fe_str = fe
+        plot_2d_hist_scatter_updated(dataset=d, simplemodel='Simple', gpt2model='GPT2XL', results_combined=results_combined, ticks_hist2d=ticks_hist2d, 
+                              savePath='/home2/ebrahim/beyond-brainscore/analyze_results/figures_code/figures/new_figures/figure4/', 
+                              feature_extraction_arr=feature_extraction_arr, custom_cmap=custom_cmap, subjects_arr_pereira=subjects_arr_pereira, 
+                              networks_arr_pereira=networks_arr_pereira, non_nan_indices_dict=non_nan_indices_dict, 
+                              exp_arr=['384', '243'], perf='out_of_sample_r2', shuffled='', 
+                              savePath_figures_data='/home2/ebrahim/beyond-brainscore/analyze_results/figures_code/figures_data/figure4/')
 
-            if d == 'pereira':             
-                  
-                # shape num voxels (combined across experiments)
-                gpt2xl_perf_combined = np.full(subjects_arr_pereira.shape[0], fill_value=np.nan)
-                simple_perf_combined = np.full(subjects_arr_pereira.shape[0], fill_value=np.nan)
-                lang_indices = np.argwhere(networks_arr_pereira=='language').squeeze()
-                
-                for exp in exp_arr:
-                    # get results for a given experiment
-                    results_combined_exp = results_combined.loc[results_combined.Exp==exp]
-                    
-                    
-                    # custom takes the average for voxels that are in both experiments, otherwise set the voxel performance to whichever exp it belongs to
-                    simple_perf_combined[non_nan_indices_dict[exp]] = custom_add_2d(simple_perf_combined[non_nan_indices_dict[exp]], 
-                                                                            results_combined_exp.loc[results_combined_exp.Model==f'Simple']['perf'])
-                    
-                    gpt2xl_perf_combined[non_nan_indices_dict[exp]] = custom_add_2d(gpt2xl_perf_combined[non_nan_indices_dict[exp]], 
-                                                                                results_combined_exp.loc[results_combined_exp.Model==f'GPT2XL{fe_str}']['perf'])
-
-                # now just select language voxels
-                gpt2xl_perf_combined = gpt2xl_perf_combined[lang_indices]
-                simple_perf_combined = simple_perf_combined[lang_indices]
-                
-            else:
-                
-                simple_perf_combined = results_combined.loc[results_combined.Model==f'Simple']['perf']
-                gpt2xl_perf_combined = results_combined.loc[results_combined.Model==f'GPT2XL{fe_str}']['perf']
-                
-            # There are still a few voxels that are nan because they contain nans for both experiments. 
-            gpt2xl_perf_combined = gpt2xl_perf_combined[~np.isnan(gpt2xl_perf_combined)]
-            simple_perf_combined = simple_perf_combined[~np.isnan(simple_perf_combined)]
-            
-            sns.despine()
-            if d == 'pereira':
-                ax3.hist2d(y=gpt2xl_perf_combined, x=simple_perf_combined, norm=matplotlib.colors.LogNorm(), bins=100, cmap=custom_cmap)
-                gpt2xl_combined_perf_save[fe] = gpt2xl_perf_combined
-                simple_combined_perf_save[''] = simple_perf_combined
-                
-            else:
-                ax3.scatter(y=gpt2xl_perf_combined, x=simple_perf_combined, s=100, color='tab:gray')
-                
-            ax3.set_ylim(ticks_hist2d[0], ticks_hist2d[1])
-            ax3.set_yticks([0, ticks_hist2d[1]])
-            ax3.set_xlim(ticks_hist2d[0], ticks_hist2d[1])
-            ax3.set_xticks([0, ticks_hist2d[1]])
-            ax3.set_yticklabels([0, ticks_hist2d[1]], fontsize=25)
-            ax3.set_xticklabels([0, ticks_hist2d[1]], fontsize=25)
-            
-            # Coordinates for the left edge and bottom edge
-            left_edge = [(0, 0), (0, ticks_hist2d[1])]
-            bottom_edge = [(0, 0), (ticks_hist2d[1], 0)]
-
-            # Plot the left edge
-            #ax3.plot(*zip(*left_edge), linewidth=3, color='black', linestyle='-')
-
-            # Plot the bottom edge
-            #ax3.plot(*zip(*bottom_edge), linewidth=3, color='black', linestyle='-')
-            
-            ax3.plot(ax3.get_xlim(), ax3.get_ylim(), 'r--', color='black', linewidth=3)
-                                
-            fig3.savefig(f"/home2/ebrahim/beyond-brainscore/analyze_results/figures_code/figures/new_figures/figure4/hist2d{fe_str}_{perf}_{shuffled}_{d}.pdf", bbox_inches='tight')
-            fig3.savefig(f"/home2/ebrahim/beyond-brainscore/analyze_results/figures_code/figures/new_figures/figure4/hist2d{fe_str}_{perf}_{shuffled}_{d}.png")
-            
-        if d == 'pereira':
-            np.savez('/home2/ebrahim/beyond-brainscore/analyze_results/figures_code/figures_data/figure4/gpt2xl_combined', **gpt2xl_combined_perf_save)
-            np.savez('/home2/ebrahim/beyond-brainscore/analyze_results/figures_code/figures_data/figure4/simple_combined', **simple_combined_perf_save)
-            
-        
         fig2, ax2 = plt.subplots(1,3, figsize=(15,6))
         fig2.subplots_adjust(wspace=0.1) 
     

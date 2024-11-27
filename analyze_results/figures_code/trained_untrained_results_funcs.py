@@ -63,15 +63,15 @@ def load_mean_sem_perf(model_name, dataset, feature_extraction, layer_num,
       return float(subject_avg_pd.mean().iloc[0])
 
 
-def load_perf(filepath, perf):
+def load_perf(filepath, perf, clip_zero=False):
     
     perf_arr = np.nan_to_num(np.load(filepath)[perf])
     
-    if perf=='out_of_sample_r2':
+    if clip_zero:
         return np.clip(perf_arr, 0, np.inf)
-    else:
-        return perf_arr
 
+    return perf_arr
+    
 def custom_add_2d(arr1, arr2):
     
     
@@ -192,9 +192,7 @@ def find_best_layer(layer_range, noL2_str='', exp='', resultsPath='/data/LLMs/br
         
         if perf != 'pearson_r':
             layer_perf = np.clip(layer_perf, 0, np.inf)
-        
-        layer_perf = np.nan_to_num(layer_perf, nan=0)
-        
+ 
         if dataset == 'pereira':
             layer_perf = layer_perf[selected_network_indices]
             

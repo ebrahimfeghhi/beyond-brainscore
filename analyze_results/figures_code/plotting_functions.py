@@ -9,6 +9,7 @@ from scipy.stats import pearsonr
 import matplotlib
 from scipy.stats import ttest_rel, ttest_1samp
 import nibabel as nib
+from trained_untrained_results_funcs import custom_add_2d
 
 def find_rows_without_nan(matrix):
     
@@ -494,6 +495,89 @@ def plot_across_seeds(model_names_arr, layers_name_arr, niters, num_seeds, seed_
         
     return store_pd, store_pd_seed_averaged, store_pd_seed_averaged_all
 
+
+def plot_2d_hist_scatter_updated(dataset, simplemodel, gpt2model, results_combined, ticks_hist2d, savePath,
+                              feature_extraction_arr, custom_cmap=None, subjects_arr_pereira=None, 
+                              networks_arr_pereira=None, non_nan_indices_dict=None, 
+                              exp_arr=['384', '243'], perf='out_of_sample_r2', shuffled='', 
+                              savePath_figures_data=None):
+
+    gpt2model_combined_perf_save = {}
+    simple_combined_perf_save = {}
+    
+    for fe in feature_extraction_arr:
+        
+        fig3, ax3 = plt.subplots(1,1,figsize=(8,6))
+        
+        if len(fe) == 0:
+            fe_str = '-lt'
+        else:
+            fe_str = fe
+
+        if dataset == 'pereira':             
+                
+            gpt2model_perf_combined = np.full(subjects_arr_pereira.shape[0], fill_value=np.nan)
+            simple_perf_combined = np.full(subjects_arr_pereira.shape[0], fill_value=np.nan)
+            lang_indices = np.argwhere(networks_arr_pereira=='language').squeeze()
+            
+            for exp in exp_arr:
+                results_combined_exp = results_combined.loc[results_combined.Exp==exp]
+                # custom takes the average for voxels that are in both experiments, otherwise sets the value for that voxel to whatever experiment it's in
+                simple_perf_combined[non_nan_indices_dict[exp]] = custom_add_2d(simple_perf_combined[non_nan_indices_dict[exp]],  
+                                                                                results_combined_exp.loc[results_combined_exp.Model==simplemodel]['perf'])
+                gpt2model_perf_combined[non_nan_indices_dict[exp]] = custom_add_2d(gpt2model_perf_combined[non_nan_indices_dict[exp]], 
+                                                                            results_combined_exp.loc[results_combined_exp.Model==f'{gpt2model}{fe_str}']['perf'])
+            gpt2model_perf_combined = gpt2model_perf_combined[lang_indices]
+            simple_perf_combined = simple_perf_combined[lang_indices]
+                
+        else:
+            
+            simple_perf_combined = results_combined.loc[results_combined.Model==simplemodel]['perf']
+            gpt2model_perf_combined = results_combined.loc[results_combined.Model==f'{gpt2model}{fe_str}']['perf']
+            
+        gpt2model_perf_combined = gpt2model_perf_combined[~np.isnan(gpt2model_perf_combined)]
+        simple_perf_combined = simple_perf_combined[~np.isnan(simple_perf_combined)]
+        
+        sns.despine()
+        if dataset == 'pereira':
+            ax3.hist2d(y=gpt2model_perf_combined, x=simple_perf_combined, norm=matplotlib.colors.LogNorm(), bins=100, cmap=custom_cmap)
+            gpt2model_combined_perf_save[fe] = gpt2model_perf_combined
+            simple_combined_perf_save[''] = simple_perf_combined
+        else:
+            ax3.scatter(y=gpt2model_perf_combined, x=simple_perf_combined, s=100, color='tab:gray')
+            
+        ax3.set_ylim(ticks_hist2d[0], ticks_hist2d[1])
+        ax3.set_yticks([0, ticks_hist2d[1]])
+        ax3.set_xlim(ticks_hist2d[0], ticks_hist2d[1])
+        ax3.set_xticks([0, ticks_hist2d[1]])
+        ax3.set_yticklabels([0, ticks_hist2d[1]], fontsize=25)
+        ax3.set_xticklabels([0, ticks_hist2d[1]], fontsize=25)
+        
+        # Coordinates for the left edge and bottom edge
+        #left_edge = [(0, 0), (0, ticks_hist2d[1])]
+        #bottom_edge = [(0, 0), (ticks_hist2d[1], 0)]
+
+        # Plot the left edge
+        #ax3.plot(*zip(*left_edge), linewidth=3, color='black', linestyle='-')
+
+        # Plot the bottom edge
+        #ax3.plot(*zip(*bottom_edge), linewidth=3, color='black', linestyle='-')
+        
+        ax3.plot(ax3.get_xlim(), ax3.get_ylim(), 'r--', color='black', linewidth=3)
+                            
+        fig3.savefig(f"{savePath}hist2d{fe_str}_{perf}_{shuffled}_{dataset}.pdf", bbox_inches='tight')
+        fig3.savefig(f"{savePath}hist2d{fe_str}_{perf}_{shuffled}_{dataset}.png")
+        
+        
+    if dataset == 'pereira':
+        if len(feature_extraction_arr) == 1:
+            np.savez(f'{savePath_figures_data}gpt2xl_combined{fe_str}', **gpt2model_combined_perf_save)
+            np.savez(f'{savePath_figures_data}simple_combined{fe_str}', **simple_combined_perf_save)
+        else:
+            np.savez(f'{savePath_figures_data}simple_combined', **simple_combined_perf_save)
+            np.savez(f'{savePath_figures_data}gpt2xl_combined', **gpt2model_combined_perf_save)
+            
+    
 def pass_info_plot_hist2d(df, best_DEM_model, best_LLM_model, max_val_dict, min_val, figurePath, saveName):
     
     '''
@@ -583,7 +667,7 @@ def plot_hist2d(df, model1, model2, cmaps, max_val, networks, min_val, figurePat
 def load_r2_into_3d(save_vals, exp, save_name, 
                      subjects_to_plot, subjects_all, results_path = '/data/LLMs/brainscore/results_pereira/glass_brain_plots/',
                      col_to_coords_store = '/home3/ebrahim/what-is-brainscore/data_processed/pereira/', 
-                     lang_indices=None):
+                     lang_indices=None, clip_zero=True):
     
     '''
         :param ndarray save_vals: r2 values for each voxel
@@ -596,6 +680,8 @@ def load_r2_into_3d(save_vals, exp, save_name,
         Save r2 values for each subject into a .nii file to allow for plotting glass brains.
     '''
     
+    if clip_zero:
+        save_vals = np.clip(save_vals, 0, np.inf)
 
     non_lang_mask = ~np.isin(np.arange(save_vals.size), lang_indices)
     

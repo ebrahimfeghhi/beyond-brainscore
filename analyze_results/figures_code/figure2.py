@@ -1,17 +1,18 @@
 import numpy as np
 base = '/home2/ebrahim/beyond-brainscore/'
-from matplotlib import pyplot as plt
 from sklearn.metrics import mean_squared_error
 import sys
 sys.path.append(base)
-from plotting_functions import plot_across_subjects
-from trained_untrained_results_funcs import calculate_omega, find_best_layer, find_best_sigma, load_perf
+from plotting_functions import plot_across_subjects, plot_2d_hist_scatter_updated, load_r2_into_3d, save_nii
+from trained_untrained_results_funcs import calculate_omega, find_best_layer, find_best_sigma, load_perf, elementwise_max
 from untrained_results_funcs import compute_p_val
 import pandas as pd
-import seaborn as sns
 from scipy.stats import false_discovery_control
 import os
 import pickle
+from matplotlib import pyplot as plt
+import seaborn as sns
+from nilearn import plotting
 
 best_layer_gpt2 = np.load('best_layer_sigma_info/best_gpt2xl_layer.npz')
 best_sigma = np.load('best_layer_sigma_info/best_sigma.npz')
@@ -41,8 +42,12 @@ for e in exp:
     num_vox_dict[e] = bre.shape[0]
     subjects_dict[e] = np.load(f"{data_processed_folder_pereira}/subjects_{e}.npy", allow_pickle=True)
     
+lang_indices_dict = {}
 lang_indices_384 = np.argwhere(br_labels_dict['384'] == 'language').squeeze()
 lang_indices_243 = np.argwhere(br_labels_dict['243'] == 'language').squeeze()
+lang_indices_dict['384'] = lang_indices_384
+lang_indices_dict['243'] = lang_indices_243
+
 
 subjects_arr_fed  = np.load(f"{data_processed_folder_fed}/subjects.npy", allow_pickle=True)
 subjects_arr_blank  = np.load(f"{data_processed_folder_blank}/subjects.npy", allow_pickle=True)
@@ -51,7 +56,7 @@ subjects_arr_pereira = np.load(f"{data_processed_folder_pereira}/subjects_comple
 networks_arr_pereira = np.load(f"{data_processed_folder_pereira}/network_complete.npy", allow_pickle=True)
 non_nan_indices_243 = np.load(f"{data_processed_folder_pereira}/non_nan_indices_243.npy") # voxels which are in 243
 non_nan_indices_384 = np.load(f"{data_processed_folder_pereira}/non_nan_indices_384.npy") # voxels which are in 384
-
+non_nan_indices_dict = {'384': non_nan_indices_384, '243': non_nan_indices_243}
 
 resultsPath = '/data/LLMs/brainscore/'
 ytest_243 = np.load(f'{resultsPath}results_pereira/y_test_ordered_243.npy')
@@ -95,8 +100,33 @@ mse_intercept_pereira_full_shuffled[:243, non_nan_indices_243] = mse_intercept_2
 mse_intercept_pereira_full_shuffled[243:, non_nan_indices_384] = mse_intercept_384_shuffled
 
 
+# Use the default Nilearn colormap 'cold_hot' as the base
+base_cmap = plt.get_cmap('cold_hot')
+colors = base_cmap(np.linspace(0, 1, base_cmap.N))
+
+# Modify the middle value (representing 0) to light gray
+mid_index = base_cmap.N // 2
+colors[mid_index] = [0.8, 0.8, 0.8, 1]  # Light gray in RGBA format
+
+from matplotlib.colors import LinearSegmentedColormap
+
+# Define the colormap
+colors = [
+    (0.92, 0.92, 0.92),  # Darker light grey
+    (0.4, 0.4, 0.8),  # Darker pastel blue
+    (0.4, 1.0, 0.4),  # Darker pastel green
+    (1.0, 1.0, 0.3),  # Darker pastel yellow
+    (1.0, 0.3, 0.3)   # Darker pastel red
+]
+            
+nodes = [0.0, 0.25, 0.5, 0.75, 1.0]   # Define transition points in [0, 1]
+
+custom_cmap = LinearSegmentedColormap.from_list("custom_cmap", list(zip(nodes, colors)))
+
 if create_banded:
+    
     perf = 'out_of_sample_r2'
+    clip_zero = True
     
     omega_metric = {'feature_extraction': [], 'dataset': [], 'values': []}
     
@@ -110,10 +140,15 @@ if create_banded:
             exp_arr = ['']
             
         fig, ax = plt.subplots(1,3,figsize=(12,6))
+        sns.despine()
         plt.subplots_adjust(wspace=0.05)  # Decrease wspace to reduce the horizontal space between plots
 
-            
         for i, fe in enumerate(feature_extraction_arr):
+            
+            if fe == '':
+                fe_str = '-lt'
+            else:
+                fe_str = fe
         
             banded_gpt2_OASM = {'perf': [], 'Model': [], 'Network': [], 'subjects': []}
             
@@ -130,47 +165,107 @@ if create_banded:
                     bs = best_sigma[f"{dataset}_out_of_sample_r2_shuffled"]
                     
                 if len(exp) > 0:
-                    banded_model = load_perf(f'/data/LLMs/brainscore/results_{dataset}/shuffled/{dataset}_gpt2-xl{fe}_OASM_layer1_1000_{exp}.npz', perf)
+                    banded_model = load_perf(f'/data/LLMs/brainscore/results_{dataset}/shuffled/{dataset}_gpt2-xl{fe}_OASM_{exp}_layer1_1000_{exp}.npz', perf)
+                    banded_gaussian_model = load_perf(f'/data/LLMs/brainscore/results_{dataset}/shuffled/{dataset}_gaussian_OASM_{exp}_layer1_1000_{exp}.npz', perf)
+                    
                     gpt2_model = load_perf(f'/data/LLMs/brainscore/results_{dataset}/shuffled/{dataset}_gpt2-xl{fe}_layer_{bl}_1_{exp}.npz', perf)
                     OASM_model = load_perf(f'/data/LLMs/brainscore/results_{dataset}/shuffled/{dataset}_OASM-all-sigma_{bs}_1_{exp}.npz', perf)
                     
+                    if exp == '384':
+                        gaussian_model = load_perf(f'/data/LLMs/brainscore/results_pereira/pereira_gaussian_layer_0_1_{exp}.npz', perf)
+                    if exp == '243':
+                        gaussian_model = load_perf(f'/data/LLMs/brainscore/results_pereira/pereira_gaussian_layer_45_1_{exp}.npz', perf)
+                    
+                    ticks_hist2d = [-0.05, 0.4]
+                    
                 else:
+                    
                     banded_model = load_perf(f'/data/LLMs/brainscore/results_{dataset}/shuffled/{dataset}_gpt2-xl{fe}_OASM_layer1_1000.npz', perf)
+                    banded_gaussian_model = load_perf(f'/data/LLMs/brainscore/results_{dataset}/shuffled/{dataset}_gaussian_OASM_layer1_1000.npz', perf)
+                    
                     gpt2_model = load_perf(f'/data/LLMs/brainscore/results_{dataset}/shuffled/{dataset}_gpt2-xl{fe}_layer_{bl}_1.npz', perf)
                     OASM_model = load_perf(f'/data/LLMs/brainscore/results_{dataset}/shuffled/{dataset}_OASM-all-sigma_{bs}_1.npz', perf)
                     
-                if dataset == 'pereira':
-                    gaussian = load_perf(f'/data/LLMs/brainscore/results_pereira/pereira_gaussian_layer_45_1_{exp}.npz', perf)
-                elif dataset == 'fedorenko':
-                    gaussian = load_perf(f'/data/LLMs/brainscore/results_fedorenko/fedorenko_gaussian_layer_39_1.npz', perf)
-                else:
-                    gaussian = load_perf(f'/data/LLMs/brainscore/results_blank/blank_gaussian_layer_13_1.npz', perf)        
+                    if dataset == 'fedorenko':
+                        gaussian_model = load_perf(f'/data/LLMs/brainscore/results_fedorenko/fedorenko_gaussian_layer_39_1.npz', perf)
+                        ticks_hist2d = [-0.05, 0.4]
+                    else:
+                        gaussian_model = load_perf(f'/data/LLMs/brainscore/results_blank/blank_gaussian_layer_13_1.npz', perf)      
+                        ticks_hist2d = [-0.01, 0.5]
+
                     
+                if dataset == 'pereira':
                 
+                    ticks_hist2d = [-0.05, 0.4]
+                    
+                    # for glass brain plots
+                    load_r2_into_3d(OASM_model, exp, subjects_to_plot=np.unique(subjects_dict[exp]), 
+                                                            subjects_all=subjects_dict[exp], save_name=f'OASM_{perf}_{exp}', 
+                                                            lang_indices=lang_indices_dict[exp], clip_zero=clip_zero)
+                    load_r2_into_3d(gpt2_model, exp, subjects_to_plot=np.unique(subjects_dict[exp]), 
+                                                            subjects_all=subjects_dict[exp], save_name=f'GPT2{fe}_shuffled_{perf}_{exp}', 
+                                                            lang_indices=lang_indices_dict[exp], clip_zero=clip_zero)
+                    load_r2_into_3d(np.clip(OASM_model, 0, np.inf)- np.clip(gpt2_model,0,np.inf), exp, subjects_to_plot=np.unique(subjects_dict[exp]), 
+                                                            subjects_all=subjects_dict[exp], save_name=f'OASM-GPT2{fe}_{perf}_{exp}', 
+                                                            lang_indices=lang_indices_dict[exp], clip_zero=False)
+                    
+                    
                 num_vals = len(banded_model)
                 
                 # perform per voxel/electrode/fROI correction
-                banded_gpt2_OASM['perf'].extend(np.maximum(banded_model, gpt2_model))
+                banded_gpt2_OASM['perf'].extend(elementwise_max([banded_model, gpt2_model, OASM_model]))
                 banded_gpt2_OASM['perf'].extend(gpt2_model)
-                banded_gpt2_OASM['perf'].extend(np.maximum(OASM_model, gaussian))
+                banded_gpt2_OASM['perf'].extend(elementwise_max([banded_gaussian_model, gaussian_model, OASM_model]))
+                banded_gpt2_OASM['perf'].extend(OASM_model)
                 
                 banded_gpt2_OASM['Model'].extend(np.repeat('Banded', num_vals))
-                banded_gpt2_OASM['Model'].extend(np.repeat(f'GPT2{fe}', num_vals))
+                banded_gpt2_OASM['Model'].extend(np.repeat(f'GPT2{fe_str}', num_vals))
                 banded_gpt2_OASM['Model'].extend(np.repeat('OASM', num_vals))
+                banded_gpt2_OASM['Model'].extend(np.repeat('OASM_nc', num_vals))
+                
                 
                 if dataset == 'pereira':
-                    banded_gpt2_OASM['Network'].extend(np.tile(br_labels_dict[exp],3))
-                    banded_gpt2_OASM['subjects'].extend(np.tile(subjects_dict[exp],3))
-                    banded_gpt2_OASM['Exp'].extend(np.repeat(exp, num_vox_dict[exp]*3))
+                    banded_gpt2_OASM['Network'].extend(np.tile(br_labels_dict[exp],4))
+                    banded_gpt2_OASM['subjects'].extend(np.tile(subjects_dict[exp],4))
+                    banded_gpt2_OASM['Exp'].extend(np.repeat(exp, num_vox_dict[exp]*4))
                     
                 elif dataset == 'fedorenko':
-                    banded_gpt2_OASM['Network'].extend(np.tile(['language'], num_vals*3))
-                    banded_gpt2_OASM['subjects'].extend(np.tile(subjects_arr_fed, 3))
+                    banded_gpt2_OASM['Network'].extend(np.tile(['language'], num_vals*4))
+                    banded_gpt2_OASM['subjects'].extend(np.tile(subjects_arr_fed, 4))
                     
                 else:
-                    banded_gpt2_OASM['Network'].extend(np.tile(['language'], num_vals*3))
-                    banded_gpt2_OASM['subjects'].extend(np.tile(subjects_arr_blank,3))
+                    banded_gpt2_OASM['Network'].extend(np.tile(['language'], num_vals*4))
+                    banded_gpt2_OASM['subjects'].extend(np.tile(subjects_arr_blank,4))
                     
+            
+            
+            # for glass brain plots
+            save_nii(f'OASM_{perf}')
+            save_nii(f'GPT2{fe}_shuffled_{perf}')
+            save_nii(f'OASM-GPT2{fe}_{perf}')
+            
+            
+            plotting.plot_glass_brain(f'/data/LLMs/brainscore/results_pereira/glass_brain_plots/OASM_{perf}_subj_avg.nii', 
+            colorbar=True, display_mode='l',vmax=0.40, vmin=0,
+            output_file=f'/home2/ebrahim/beyond-brainscore/analyze_results/figures_code/figures/new_figures/figure2/glass_brain/OASM_{perf}_subj_avg_cmap.pdf', cmap=custom_cmap)
+            
+            plotting.plot_glass_brain(f'/data/LLMs/brainscore/results_pereira/glass_brain_plots/OASM_{perf}_subj_avg.nii', 
+            colorbar=False, display_mode='l',vmax=0.40, vmin=0,
+            output_file=f'/home2/ebrahim/beyond-brainscore/analyze_results/figures_code/figures/new_figures/figure2/glass_brain/OASM_{perf}_subj_avg.pdf', cmap=custom_cmap)
+            
+            plotting.plot_glass_brain(f'/data/LLMs/brainscore/results_pereira/glass_brain_plots/GPT2{fe}_shuffled_{perf}_subj_avg.nii', 
+            colorbar=False, display_mode='l', vmax=0.40, vmin=0,
+            output_file=f'/home2/ebrahim/beyond-brainscore/analyze_results/figures_code/figures/new_figures/figure2/glass_brain/GPT2{fe}_shuffled_{perf}_subj_avg.pdf', cmap=custom_cmap)
+            
+            plotting.plot_glass_brain(f'/data/LLMs/brainscore/results_pereira/glass_brain_plots/OASM-GPT2{fe}_{perf}_subj_avg.nii', 
+            colorbar=True, display_mode='l', vmax=0.40, vmin=-0.40,
+            output_file=f'/home2/ebrahim/beyond-brainscore/analyze_results/figures_code/figures/new_figures/figure2/glass_brain/OASM-GPT2{fe}_{perf}_subj_avg_cmap.pdf', cmap='seismic', 
+            plot_abs=False)
+               
+            plotting.plot_glass_brain(f'/data/LLMs/brainscore/results_pereira/glass_brain_plots/OASM-GPT2{fe}_{perf}_subj_avg.nii', 
+            colorbar=False, display_mode='l', vmax=0.40, vmin=-0.40,
+            output_file=f'/home2/ebrahim/beyond-brainscore/analyze_results/figures_code/figures/new_figures/figure2/glass_brain/OASM-GPT2{fe}_{perf}_subj_avg.pdf', cmap='seismic', 
+            plot_abs=False)
             
             banded_gpt2_OASM_pd = pd.DataFrame(banded_gpt2_OASM)
                         
@@ -181,21 +276,26 @@ if create_banded:
             if fe == '-sp':
                 palette = sns.color_palette(["#FFA500", 'purple', "black"]) 
                 
+            plot_2d_hist_scatter_updated(dataset=dataset, simplemodel='OASM_nc', gpt2model='GPT2', results_combined=banded_gpt2_OASM_pd, ticks_hist2d=ticks_hist2d, 
+                              savePath='/home2/ebrahim/beyond-brainscore/analyze_results/figures_code/figures/new_figures/figure2/histograms/', 
+                              feature_extraction_arr=[fe], custom_cmap=custom_cmap, subjects_arr_pereira=subjects_arr_pereira, 
+                              networks_arr_pereira=networks_arr_pereira, non_nan_indices_dict=non_nan_indices_dict, 
+                              exp_arr=['384', '243'], perf='out_of_sample_r2', shuffled='', 
+                              savePath_figures_data='/home2/ebrahim/beyond-brainscore/analyze_results/figures_code/figures_data/figure2/')
+        
+            banded_gpt2_OASM_pd = banded_gpt2_OASM_pd[banded_gpt2_OASM_pd['Model'] != 'OASM_nc']
 
             subject_avg_pd, dict_pd_merged, dict_pd_with_all = plot_across_subjects(banded_gpt2_OASM_pd, dataset=dataset, selected_networks=['language'], 
-                                                                                figurePath=None, clip_zero=True, ms=12, 
-                                ylabel_str='', median=False, line_extend=0.05, draw_lines=True, ax_select=ax[i], hue_order=['OASM', 'Banded', f'GPT2{fe}'], 
+                                                                                figurePath=None, clip_zero=clip_zero, ms=12, 
+                                ylabel_str='', median=False, line_extend=0.05, draw_lines=True, ax_select=ax[i], hue_order=['OASM', 'Banded', f'GPT2{fe_str}'], 
                                 color_palette=palette, plot_legend=False)
             
-            omega = calculate_omega(subject_avg_pd.reset_index(), 'Banded', f'GPT2{fe}', 'OASM')
-            if fe == '':
-                fe_str = '-lt'
-            else:
-                fe_str = fe
+            omega = calculate_omega(subject_avg_pd.reset_index(), 'Banded', f'GPT2{fe_str}', 'OASM')
+  
             omega_metric['feature_extraction'].extend(np.repeat(f"{fe_str}", len(omega['metric'])))
             omega_metric['dataset'].extend(np.repeat(f"{dataset}", len(omega['metric'])))
             omega_metric['values'].extend(omega['metric'])
-    
+            
             ax[i].set_yticks((0, round(float(ax[0].get_ylim()[1]),2)))
             ax[i].set_yticklabels((0, round(float(ax[0].get_ylim()[1]),2)), fontsize=30)
 
@@ -218,9 +318,9 @@ if create_across_layer:
     
     layer_pd_dict = {}
     
-    if os.path.exists('/home2/ebrahim/beyond-brainscore/analyze_results/figures_code/figures_data/layer_pd_dict.pickle'):
+    if os.path.exists('/home2/ebrahim/beyond-brainscore/analyze_results/figures_code/figures_data/figure2/layer_pd_dict.pickle'):
           # Save the dictionary to a pickle file
-        with open('/home2/ebrahim/beyond-brainscore/analyze_results/figures_code/figures_data/layer_pd_dict.pickle', 'rb') as f:
+        with open('/home2/ebrahim/beyond-brainscore/analyze_results/figures_code/figures_data/figure2/layer_pd_dict.pickle', 'rb') as f:
             layer_pd_dict = pickle.load(f)
             print("LOADING PICKLE")
 
@@ -251,9 +351,9 @@ if create_across_layer:
                             for exp in exp_arr:
                                 
                                 if len(exp) > 0:
-                                    layer_perf =  np.load(f'/data/LLMs/brainscore/results_{dataset}/{shuffled}/{dataset}_gpt2-xl{fe}_layer_{l}_1_{exp}.npz')[perf]
+                                    layer_perf =  load_perf(f'/data/LLMs/brainscore/results_{dataset}/{shuffled}/{dataset}_gpt2-xl{fe}_layer_{l}_1_{exp}.npz', perf)
                                 else:
-                                    layer_perf =  np.load(f'/data/LLMs/brainscore/results_{dataset}/{shuffled}/{dataset}_gpt2-xl{fe}_layer_{l}_1.npz')[perf]
+                                    layer_perf =  load_perf(f'/data/LLMs/brainscore/results_{dataset}/{shuffled}/{dataset}_gpt2-xl{fe}_layer_{l}_1.npz', perf)
                                 
                                 if perf == 'out_of_sample_r2':
                                     layer_perf = np.clip(layer_perf, 0, np.inf)
@@ -324,6 +424,7 @@ if create_across_layer:
             sns.lineplot(layer_perf_pd_all_shuffled, x='layer_num', y='perf', hue='Model', errorbar=None, ax=ax[0], legend=legend, linewidth=3, palette=palette)
             sns.lineplot(layer_perf_pd_all, x='layer_num', y='perf', hue='Model', errorbar=None, ax=ax[1], legend=False, linewidth=3, palette=palette)
             ax[0].legend(fontsize=25)  # Set legend font size for the first subplot
+            
             ax[0].set_xticks([0,48])
             ax[0].set_xticklabels([0,48], fontsize=25)
             
@@ -567,7 +668,7 @@ if create_sig:
         fig.savefig(f"/home2/ebrahim/beyond-brainscore/analyze_results/figures_code/figures/new_figures/figure2/stats_obi/{dataset}.pdf", bbox_inches='tight')
         
         
-if create_across_layer:
+if False:
     
     noL2_str = ''
     resultsPath_pereira = f"{resultsPath}results_pereira/"
