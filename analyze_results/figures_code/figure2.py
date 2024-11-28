@@ -213,29 +213,27 @@ if create_banded:
                 num_vals = len(banded_model)
                 
                 # perform per voxel/electrode/fROI correction
-                banded_gpt2_OASM['perf'].extend(elementwise_max([banded_model, gpt2_model, OASM_model]))
+                banded_gpt2_OASM['perf'].extend(elementwise_max([banded_model, gpt2_model]))
                 banded_gpt2_OASM['perf'].extend(gpt2_model)
-                banded_gpt2_OASM['perf'].extend(elementwise_max([banded_gaussian_model, gaussian_model, OASM_model]))
                 banded_gpt2_OASM['perf'].extend(OASM_model)
                 
                 banded_gpt2_OASM['Model'].extend(np.repeat('Banded', num_vals))
                 banded_gpt2_OASM['Model'].extend(np.repeat(f'GPT2{fe_str}', num_vals))
                 banded_gpt2_OASM['Model'].extend(np.repeat('OASM', num_vals))
-                banded_gpt2_OASM['Model'].extend(np.repeat('OASM_nc', num_vals))
                 
                 
                 if dataset == 'pereira':
-                    banded_gpt2_OASM['Network'].extend(np.tile(br_labels_dict[exp],4))
-                    banded_gpt2_OASM['subjects'].extend(np.tile(subjects_dict[exp],4))
-                    banded_gpt2_OASM['Exp'].extend(np.repeat(exp, num_vox_dict[exp]*4))
+                    banded_gpt2_OASM['Network'].extend(np.tile(br_labels_dict[exp],3))
+                    banded_gpt2_OASM['subjects'].extend(np.tile(subjects_dict[exp],3))
+                    banded_gpt2_OASM['Exp'].extend(np.repeat(exp, num_vox_dict[exp]*3))
                     
                 elif dataset == 'fedorenko':
-                    banded_gpt2_OASM['Network'].extend(np.tile(['language'], num_vals*4))
-                    banded_gpt2_OASM['subjects'].extend(np.tile(subjects_arr_fed, 4))
+                    banded_gpt2_OASM['Network'].extend(np.tile(['language'], num_vals*3))
+                    banded_gpt2_OASM['subjects'].extend(np.tile(subjects_arr_fed, 3))
                     
                 else:
-                    banded_gpt2_OASM['Network'].extend(np.tile(['language'], num_vals*4))
-                    banded_gpt2_OASM['subjects'].extend(np.tile(subjects_arr_blank,4))
+                    banded_gpt2_OASM['Network'].extend(np.tile(['language'], num_vals*3))
+                    banded_gpt2_OASM['subjects'].extend(np.tile(subjects_arr_blank,3))
                     
             
             
@@ -276,14 +274,13 @@ if create_banded:
             if fe == '-sp':
                 palette = sns.color_palette(["#FFA500", 'purple', "black"]) 
                 
-            plot_2d_hist_scatter_updated(dataset=dataset, simplemodel='OASM_nc', gpt2model='GPT2', results_combined=banded_gpt2_OASM_pd, ticks_hist2d=ticks_hist2d, 
+            plot_2d_hist_scatter_updated(dataset=dataset, simplemodel='OASM', gpt2model='GPT2', results_combined=banded_gpt2_OASM_pd, ticks_hist2d=ticks_hist2d, 
                               savePath='/home2/ebrahim/beyond-brainscore/analyze_results/figures_code/figures/new_figures/figure2/histograms/', 
                               feature_extraction_arr=[fe], custom_cmap=custom_cmap, subjects_arr_pereira=subjects_arr_pereira, 
                               networks_arr_pereira=networks_arr_pereira, non_nan_indices_dict=non_nan_indices_dict, 
                               exp_arr=['384', '243'], perf='out_of_sample_r2', shuffled='', 
                               savePath_figures_data='/home2/ebrahim/beyond-brainscore/analyze_results/figures_code/figures_data/figure2/')
         
-            banded_gpt2_OASM_pd = banded_gpt2_OASM_pd[banded_gpt2_OASM_pd['Model'] != 'OASM_nc']
 
             subject_avg_pd, dict_pd_merged, dict_pd_with_all = plot_across_subjects(banded_gpt2_OASM_pd, dataset=dataset, selected_networks=['language'], 
                                                                                 figurePath=None, clip_zero=clip_zero, ms=12, 

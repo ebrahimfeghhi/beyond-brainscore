@@ -134,19 +134,10 @@ for perf in perf_arr:
                     SL = load_perf(f"/data/LLMs/brainscore/results_pereira/pereira_trained-var-par{exp}-sp_WN_1{exp}.npz", perf)
                     SP = load_perf(f"/data/LLMs/brainscore/results_pereira/pereira_trained-var-par{exp}-sp_pos_1{exp}.npz", perf)
                     
-                    SP_SL_GLOVE_NOISE = load_perf(f"/data/LLMs/brainscore/results_pereira/pereira_trained-var-par{exp}-sp_pos+WN+gaussian+glove_1000{exp}.npz", perf)
-                    SL_GLOVE_NOISE = load_perf(f"/data/LLMs/brainscore/results_pereira/pereira_trained-var-par{exp}-sp_WN+gaussian+glove_1000{exp}.npz", perf)
-                    SP_GLOVE_NOISE = load_perf(f"/data/LLMs/brainscore/results_pereira/pereira_trained-var-par{exp}-sp_pos+gaussian+glove_1000{exp}.npz", perf)
-                    GLOVE_NOISE = load_perf(f"/data/LLMs/brainscore/results_pereira/pereira_trained-var-par{exp}-sp_gaussian+glove_1000{exp}.npz", perf)
-                    SP_SL_NOISE = load_perf(f"/data/LLMs/brainscore/results_pereira/pereira_trained-var-par{exp}-sp_pos+WN_1000{exp}.npz", perf)
-                    SL_NOISE = load_perf(f"/data/LLMs/brainscore/results_pereira/pereira_trained-var-par{exp}-sp_WN+gaussian_1000{exp}.npz", perf)
-                    SP_NOISE = load_perf(f"/data/LLMs/brainscore/results_pereira/pereira_trained-var-par{exp}-sp_pos+gaussian_1000{exp}.npz", perf)
-                    
                     NOISE = load_perf(f"/data/LLMs/brainscore/results_pereira/pereira_trained-var-par{exp}-sp_gaussian_1{exp}.npz", perf)
     
-                    simple_perf_corrected = elementwise_max([SP_SL_GLOVE_NOISE, SL_GLOVE_NOISE, SP_GLOVE_NOISE, GLOVE_NOISE, 
-                                                             SP_SL_NOISE, SL_NOISE, SP_NOISE, SP_SL_GLOVE, SL_GLOVE, 
-                                                             SP_GLOVE, GLOVE, SP_SL, SL, SP, NOISE])
+                    simple_perf_corrected = elementwise_max([SP_SL_GLOVE, SL_GLOVE, 
+                                                             SP_GLOVE, GLOVE, SP_SL, SL, SP])
                 
                     simple_perf = SP_SL_GLOVE
                     
@@ -158,8 +149,7 @@ for perf in perf_arr:
                     
                     NOISE = load_perf(f"/data/LLMs/brainscore/results_{d}/{d}_trained-var-par{exp}-sp_gaussian_1{exp}.npz", perf)
                     simple_perf = load_perf(f"/data/LLMs/brainscore/results_{d}/{d}_trained-var-par{exp}-sp_WP_1{exp}.npz", perf)
-                    simple_perf_noise = load_perf(f"/data/LLMs/brainscore/results_{d}/{d}_trained-var-par{exp}-sp_WP+gaussian_1000{exp}.npz", perf)
-                    simple_perf_corrected = elementwise_max([simple_perf, NOISE, simple_perf_noise])
+                    simple_perf_corrected = simple_perf
                     
                 elif d == 'blank':
                     
@@ -167,13 +157,9 @@ for perf in perf_arr:
                     POS = load_perf(f"/data/LLMs/brainscore/results_blank/blank_trained-var-par{exp}-sp_pos_1{exp}.npz", perf)
                     WN = load_perf(f"/data/LLMs/brainscore/results_blank/blank_trained-var-par{exp}-sp_WN_1{exp}.npz", perf)
                     NOISE = load_perf(f"/data/LLMs/brainscore/results_blank/blank_trained-var-par{exp}-sp_gaussian_1{exp}.npz", perf)
-                    
-                    POS_WN_NOISE = load_perf(f"/data/LLMs/brainscore/results_blank/blank_trained-var-par{exp}-sp_pos+WN+gaussian_1000{exp}.npz", perf)
-                    POS_NOISE = load_perf(f"/data/LLMs/brainscore/results_blank/blank_trained-var-par{exp}-sp_pos+gaussian_1000{exp}.npz", perf)
-                    WN_NOISE = load_perf(f"/data/LLMs/brainscore/results_blank/blank_trained-var-par{exp}-sp_WN+gaussian_1000{exp}.npz", perf)
-                    
+    
                     simple_perf = POS_WN
-                    simple_perf_corrected = elementwise_max([POS_WN_NOISE, POS_NOISE, WN_NOISE, NOISE, WN, POS, POS_WN])
+                    simple_perf_corrected = elementwise_max([WN, POS, POS_WN])
                     
                 # just do it for the first fe since simple model does not depend on feature extraction
                 if fe == '':
@@ -246,12 +232,12 @@ for perf in perf_arr:
                                             subjects_to_plot=np.unique(subjects_arr), subjects_all=subjects_arr, 
                                             lang_indices=selected_lang_indices, clip_zero=False)
                 if d == 'pereira':
-                    banded_perf = elementwise_max([gpt2_bl_perf, GPT2XL_SP_SL_GLOVE, GPT2XL_SL_GLOVE, GPT2XL_SP_GLOVE, GPT2XL_GLOVE, GPT2XL_SP_SL, GPT2XL_SL, GPT2XL_SP, 
-                                                   SP_SL_GLOVE, SL_GLOVE, SP_GLOVE, GLOVE, SP_SL, SL, SP])
+                    banded_perf = elementwise_max([gpt2_bl_perf, GPT2XL_SP_SL_GLOVE, GPT2XL_SL_GLOVE, GPT2XL_SP_GLOVE, 
+                                                   GPT2XL_GLOVE, GPT2XL_SP_SL, GPT2XL_SL, GPT2XL_SP])
                 elif d == 'fedorenko':
-                    banded_perf = elementwise_max([gpt2_bl_perf, GPT2XL_WP, simple_perf])
+                    banded_perf = elementwise_max([gpt2_bl_perf, GPT2XL_WP])
                 elif d == 'blank':
-                    banded_perf = elementwise_max([gpt2_bl_perf, GPT2XL_POS_WN, GPT2XL_POS, GPT2XL_WN, WN, POS, POS_WN])
+                    banded_perf = elementwise_max([gpt2_bl_perf, GPT2XL_POS_WN, GPT2XL_POS, GPT2XL_WN])
                     
                 results_dict_gpt2_banded['perf'].extend(banded_perf)
                 results_dict_gpt2_banded['subjects'].extend(subjects_arr)

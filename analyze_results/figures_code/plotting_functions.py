@@ -535,14 +535,16 @@ def plot_2d_hist_scatter_updated(dataset, simplemodel, gpt2model, results_combin
             simple_perf_combined = results_combined.loc[results_combined.Model==simplemodel]['perf']
             gpt2model_perf_combined = results_combined.loc[results_combined.Model==f'{gpt2model}{fe_str}']['perf']
             
+
+        gpt2model_combined_perf_save[fe] = gpt2model_perf_combined
+        simple_combined_perf_save[''] = simple_perf_combined
+            
         gpt2model_perf_combined = gpt2model_perf_combined[~np.isnan(gpt2model_perf_combined)]
         simple_perf_combined = simple_perf_combined[~np.isnan(simple_perf_combined)]
         
         sns.despine()
         if dataset == 'pereira':
             ax3.hist2d(y=gpt2model_perf_combined, x=simple_perf_combined, norm=matplotlib.colors.LogNorm(), bins=100, cmap=custom_cmap)
-            gpt2model_combined_perf_save[fe] = gpt2model_perf_combined
-            simple_combined_perf_save[''] = simple_perf_combined
         else:
             ax3.scatter(y=gpt2model_perf_combined, x=simple_perf_combined, s=100, color='tab:gray')
             
@@ -568,16 +570,16 @@ def plot_2d_hist_scatter_updated(dataset, simplemodel, gpt2model, results_combin
         fig3.savefig(f"{savePath}hist2d{fe_str}_{perf}_{shuffled}_{dataset}.pdf", bbox_inches='tight')
         fig3.savefig(f"{savePath}hist2d{fe_str}_{perf}_{shuffled}_{dataset}.png")
         
-        
-    if dataset == 'pereira':
-        if len(feature_extraction_arr) == 1:
-            np.savez(f'{savePath_figures_data}gpt2xl_combined{fe_str}', **gpt2model_combined_perf_save)
-            np.savez(f'{savePath_figures_data}simple_combined{fe_str}', **simple_combined_perf_save)
-        else:
-            np.savez(f'{savePath_figures_data}simple_combined', **simple_combined_perf_save)
-            np.savez(f'{savePath_figures_data}gpt2xl_combined', **gpt2model_combined_perf_save)
-            
     
+
+    if len(feature_extraction_arr) == 1:
+        np.savez(f'{savePath_figures_data}gpt2xl_combined{fe_str}_{dataset}', **gpt2model_combined_perf_save)
+        np.savez(f'{savePath_figures_data}simple_combined{fe_str}_{dataset}', **simple_combined_perf_save)
+    else:
+        np.savez(f'{savePath_figures_data}simple_combined_{dataset}', **simple_combined_perf_save)
+        np.savez(f'{savePath_figures_data}gpt2xl_combined_{dataset}', **gpt2model_combined_perf_save)
+        
+
 def pass_info_plot_hist2d(df, best_DEM_model, best_LLM_model, max_val_dict, min_val, figurePath, saveName):
     
     '''
