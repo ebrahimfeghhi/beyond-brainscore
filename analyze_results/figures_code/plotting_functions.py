@@ -570,8 +570,6 @@ def plot_2d_hist_scatter_updated(dataset, simplemodel, gpt2model, results_combin
         fig3.savefig(f"{savePath}hist2d{fe_str}_{perf}_{shuffled}_{dataset}.pdf", bbox_inches='tight')
         fig3.savefig(f"{savePath}hist2d{fe_str}_{perf}_{shuffled}_{dataset}.png")
         
-    
-
     if len(feature_extraction_arr) == 1:
         np.savez(f'{savePath_figures_data}gpt2xl_combined{fe_str}_{dataset}', **gpt2model_combined_perf_save)
         np.savez(f'{savePath_figures_data}simple_combined{fe_str}_{dataset}', **simple_combined_perf_save)
