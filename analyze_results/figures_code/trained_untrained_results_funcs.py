@@ -6,6 +6,36 @@ import pandas as pd
 Functions used for both trained and untrained pereira results.
 '''
 
+
+def select_rows_with_lower_error(array1, array2):
+    """
+    Compare rows of two 2D arrays and create a new array where each row is chosen
+    from the input arrays based on lower mean error.
+
+    Parameters:
+    - array1: np.ndarray of shape (N, M), first array.
+    - array2: np.ndarray of shape (N, M), second array.
+
+    Returns:
+    - np.ndarray: New array of shape (N, M), rows selected based on lower mean error.
+    """
+    if array1.shape != array2.shape:
+        raise ValueError("Both arrays must have the same shape.")
+    
+
+    # Compute mean error per voxel (row-wise mean) for both arrays
+    mean_error1 = np.nanmean(array1, axis=0)
+    mean_error2 = np.nanmean(array2, axis=0)
+
+    # Create a mask where True means array1 has lower error, False means array2 has lower error
+    mask = mean_error1 < mean_error2
+    
+    # Create the new array by selecting rows from array1 or array2 based on the mask
+    result = np.where(mask[None, :], array1, array2)
+
+    return result
+
+
 def load_mean_sem_perf(model_name, dataset, feature_extraction, layer_num, 
                        resultsPath='/data/LLMs/brainscore/', seed_str='', noL2_str='', niter=1, perf='out_of_sample_r2', median=False, 
                        var_par_naming=False, return_perf=False, return_mean=False, print_res=True, clip_res=True):
@@ -219,9 +249,12 @@ def find_best_layer(layer_range, noL2_str='', exp='', resultsPath='/data/LLMs/br
     return layer_perf_dict, best_layer, layer_perf_best  
 
 
-def compute_squared_error(y_hat, dataset, exp):
+def compute_squared_error(y_hat, dataset, exp, shuffled=False):
     
-    y_test = np.load(f"/data/LLMs/brainscore/results_{dataset}/y_test_ordered{exp}.npy")
+    if shuffled:
+        y_test = np.load(f"/data/LLMs/brainscore/results_{dataset}/shuffled/y_test_ordered{exp}.npy")
+    else:
+        y_test = np.load(f"/data/LLMs/brainscore/results_{dataset}/y_test_ordered{exp}.npy")
     
     return (y_hat - y_test)**2
 

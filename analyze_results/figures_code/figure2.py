@@ -4,7 +4,7 @@ from sklearn.metrics import mean_squared_error
 import sys
 sys.path.append(base)
 from plotting_functions import plot_across_subjects, plot_2d_hist_scatter_updated, load_r2_into_3d, save_nii
-from trained_untrained_results_funcs import calculate_omega, find_best_layer, find_best_sigma, load_perf, elementwise_max
+from trained_untrained_results_funcs import calculate_omega, find_best_layer, find_best_sigma, load_perf, elementwise_max, select_rows_with_lower_error
 from untrained_results_funcs import compute_p_val
 import pandas as pd
 from scipy.stats import false_discovery_control
@@ -465,20 +465,28 @@ if create_sig:
         for fe in feature_extraction_methods:
             
             y_hat_full = np.full(shape_pereira_full, fill_value=np.nan)
+            y_hat_full_gpt2 = np.full(shape_pereira_full, fill_value=np.nan)
             y_hat_full_stacked = np.full(shape_pereira_full, fill_value=np.nan)
             
             if dataset == 'pereira':
                 
                 network = 'language'
                 
+                best_layer_384 = best_layer_gpt2[f"{dataset}_384_out_of_sample_r2_shuffled{fe}"]
+                best_layer_243 = best_layer_gpt2[f"{dataset}_243_out_of_sample_r2_shuffled{fe}"]
+            
                 best_sigma_value_384 = best_sigma[f"{dataset}_384_out_of_sample_r2_shuffled"]
                 best_sigma_value_243 = best_sigma[f"{dataset}_243_out_of_sample_r2_shuffled"]
             
                 network_indices_384 = np.argwhere(br_labels_dict['384']==network).squeeze()
                 network_indices_243 = np.argwhere(br_labels_dict['243']==network).squeeze()
                 
+                
                 y_hat_384 = np.load(f"{resultsPath_loop}{dataset}_OASM-all-sigma_{best_sigma_value_384}_1_384.npz")['y_hat']
                 y_hat_243 = np.load(f"{resultsPath_loop}{dataset}_OASM-all-sigma_{best_sigma_value_243}_1_243.npz")['y_hat']
+                
+                y_hat_384_gpt2 = np.load(f"{resultsPath_loop}{dataset}_gpt2-xl{fe}_layer_{best_layer_384}_1_384.npz")['y_hat']
+                y_hat_243_gpt2 = np.load(f"{resultsPath_loop}{dataset}_gpt2-xl{fe}_layer_{best_layer_243}_1_243.npz")['y_hat']
                 
                 y_hat_384_stacked = np.load(f"{resultsPath_loop}{dataset}_gpt2-xl{fe}_OASM_384_layer1_1000_384.npz")['y_hat']
                 y_hat_243_stacked = np.load(f"{resultsPath_loop}{dataset}_gpt2-xl{fe}_OASM_243_layer1_1000_243.npz")['y_hat']
@@ -486,27 +494,38 @@ if create_sig:
                 y_hat_384[:, ~network_indices_384] = np.nan
                 y_hat_243[:, ~network_indices_243] = np.nan
                 
+                y_hat_384_gpt2[:, ~network_indices_384] = np.nan
+                y_hat_243_gpt2[:, ~network_indices_243] = np.nan
+               
                 y_hat_384_stacked[:, ~network_indices_384] = np.nan
-                y_hat_384_stacked[:, ~network_indices_243] = np.nan
+                y_hat_243_stacked[:, ~network_indices_243] = np.nan
         
                 y_hat_full[:243, non_nan_indices_243] = y_hat_243
                 y_hat_full[243:, non_nan_indices_384] = y_hat_384
                 
+                y_hat_full_gpt2[:243, non_nan_indices_243] = y_hat_243_gpt2
+                y_hat_full_gpt2[243:, non_nan_indices_384] = y_hat_384_gpt2
+                
                 y_hat_full_stacked[:243, non_nan_indices_243] = y_hat_243_stacked
                 y_hat_full_stacked[243:, non_nan_indices_384] = y_hat_384_stacked
-                    
-                mse_best_layer[f"{dataset}_{shuffle_str}_{fe}"] = (y_test_loop-y_hat_full)**2
-                mse_best_layer[f"{dataset}_{shuffle_str}_{fe}_stacked"] = (y_test_loop-y_hat_full_stacked)**2
                 
             else:
             
                 best_sigma_value = best_sigma[f"{dataset}_out_of_sample_r2_shuffled"]
+                best_layer = best_layer_gpt2[f"{dataset}_out_of_sample_r2_shuffled{fe}"]
                 
-                y_hat = np.load(f"{resultsPath_loop}{dataset}_OASM-all-sigma_{best_sigma_value}_1.npz")['y_hat']
-                y_hat_stacked = np.load(f"{resultsPath_loop}{dataset}_gpt2-xl{fe}_OASM_layer1_1000.npz")['y_hat']
+                y_hat_full = np.load(f"{resultsPath_loop}{dataset}_OASM-all-sigma_{best_sigma_value}_1.npz")['y_hat']
+                y_hat_full_gpt2 = np.load(f"{resultsPath_loop}{dataset}_gpt2-xl{fe}_layer_{best_layer}_1.npz")['y_hat']
+                y_hat_full_stacked = np.load(f"{resultsPath_loop}{dataset}_gpt2-xl{fe}_OASM_layer1_1000.npz")['y_hat']
+                
+                
+            se_gpt2 = (y_test_loop-y_hat_full_gpt2)**2
+            se_stacked = (y_test_loop-y_hat_full_stacked)**2
+            se_stacked_corrected = select_rows_with_lower_error(se_gpt2, se_stacked)
             
-                mse_best_layer[f"{dataset}_{shuffle_str}_{fe}"] = (y_test_loop-y_hat)**2
-                mse_best_layer[f"{dataset}_{shuffle_str}_{fe}_stacked"] = (y_test_loop-y_hat_stacked)**2
+            mse_best_layer[f"{dataset}_{shuffle_str}_{fe}"] = (y_test_loop-y_hat_full)**2
+            
+            mse_best_layer[f"{dataset}_{shuffle_str}_{fe}_stacked"] = se_stacked_corrected
                 
             
     store_subject_network_idxs_384 = {}
@@ -516,8 +535,6 @@ if create_sig:
 
     from scipy.stats import ttest_rel
     
-    data_labels_dict = {'pereira'}
-
     network = 'language'
 
     # Step 2) Compute p values by doing a t-test for each voxel/electrode/fROI between the squared error values of 
@@ -540,8 +557,7 @@ if create_sig:
             
             mse_oasm = mse_best_layer[f"{dataset}_{shuffle_str}_{fe}"]
             mse_gpt2xl_oasm = mse_best_layer[f"{dataset}_{shuffle_str}_{fe}_stacked"]
-            
-
+        
             for subject in np.unique(subjects_arr):
                 for network in np.unique(networks_arr):
                     
@@ -550,8 +566,7 @@ if create_sig:
                         subject_idxs = np.argwhere(subjects_arr==subject)
                         network_idxs = np.argwhere(networks_arr_pereira==network)
                         subject_network_idxs =  list(np.intersect1d(subject_idxs, network_idxs))
-                        
-                        # do a t-test between the intercept only model and the 
+
                         stat, pval = ttest_rel(mse_gpt2xl_oasm[:,  subject_network_idxs], mse_oasm[:, subject_network_idxs], axis=0, nan_policy='omit', alternative='less')
                 
                         pval = pval[~np.isnan(pval)]

@@ -1,5 +1,5 @@
 import numpy as np
-from trained_untrained_results_funcs import find_best_layer, elementwise_max, calculate_omega, custom_add_2d, load_perf
+from trained_untrained_results_funcs import find_best_layer, elementwise_max, calculate_omega, custom_add_2d, load_perf,compute_squared_error
 from untrained_results_funcs import load_untrained_data
 from plotting_functions import plot_across_subjects, load_r2_into_3d, save_nii, plot_2d_hist_scatter_updated
 from matplotlib import pyplot as plt
@@ -59,6 +59,7 @@ non_nan_indices_243 = np.load(f"{data_processed_folder_pereira}/non_nan_indices_
 non_nan_indices_384 = np.load(f"{data_processed_folder_pereira}/non_nan_indices_384.npy") # voxels which are in 384
 non_nan_indices_dict = {'384': non_nan_indices_384, '243': non_nan_indices_243}
 
+shape_pereira_full = (627, int(subjects_arr_pereira.shape[0]))
                     
 save_best_layer = []
 
@@ -129,11 +130,6 @@ for perf in perf_arr:
                     SL = load_perf(f"/data/LLMs/brainscore/results_{d}/{d}_word-num_layer1_1{exp}.npz", perf)
                     SP = load_perf(f"/data/LLMs/brainscore/results_{d}/{d}_positional_simple_layer1_1{exp}.npz", perf)
                        
-                    if exp == '384':
-                        gaussian = load_perf(f'/data/LLMs/brainscore/results_pereira/pereira_gaussian_layer_0_1{exp}.npz', perf)
-                    else:
-                        gaussian = load_perf(f'/data/LLMs/brainscore/results_pereira/pereira_gaussian_layer_45_1{exp}.npz', perf)
-                        
                     simple_perf_corrected = elementwise_max([SP_SL, SL, SP])
                     simple_perf = SP_SL
                     load_r2_into_3d(SP_SL, exp.strip('_'), subjects_to_plot=np.unique(subjects_arr), 
@@ -169,32 +165,36 @@ for perf in perf_arr:
 
                                         
                 for i in range(num_seeds):
-                                                                
-                    gpt2_untrained_dict, gpt2_untrained_bl, gpt2_untrained_bl_perf  = find_best_layer(np.arange(49), noL2_str='', exp=exp, 
+                             
+                    # get best layer                                   
+                    _, bl, _  = find_best_layer(np.arange(49), noL2_str='', exp=exp, 
                                                                 resultsPath=f"{resultsPath_base}results_{d}/untrained/{shuffled}", 
                                                                 perf=perf, feature_extraction=fe, selected_network_indices=selected_lang_indices, 
-                                                                subjects=subjects_arr, dataset=d, model_name='gpt2-xl-untrained', seed_number=i)
-
+                                                                subjects=subjects_arr, dataset=d, model_name='gpt2-xl-untrained', seed_number=i, return_SE=False)
+                    
+                    
+                    gpt2_untrained_bl_perf, gpt2_untrained_bl_se = load_untrained_data(bl, '', exp, i, fe, d, save_str='r2-best', niter=1, shape_pereira_full=shape_pereira_full, non_nan_indices_dict=non_nan_indices_dict)
+                    
                     if d == 'pereira':
-                        GPT2XLU_SP_SL_perf = load_untrained_data('SP_SL', exp, i, fe, d)
-                        GPT2XLU_SP_perf = load_untrained_data('SP', exp, i, fe, d)
-                        GPT2XLU_SL_perf = load_untrained_data('SL', exp, i, fe, d)
+                        GPT2XLU_SP_SL_perf, GPT2XLU_SP_SL_se = load_untrained_data(bl, 'SP_SL', exp, i, fe, d, shape_pereira_full=shape_pereira_full, non_nan_indices_dict=non_nan_indices_dict)
+                        GPT2XLU_SP_perf, GPT2XLU_SP_se = load_untrained_data(bl, 'SP', exp, i, fe, d, shape_pereira_full=shape_pereira_full, non_nan_indices_dict=non_nan_indices_dict)
+                        GPT2XLU_SL_perf, GPT2XLU_SL_se = load_untrained_data(bl, 'SL', exp, i, fe, d, shape_pereira_full=shape_pereira_full, non_nan_indices_dict=non_nan_indices_dict)
                         simple_color = sns.color_palette("Greens", 5)[3]  
                         yticks_perf = [0, 0.05]
                         yticks_perf_banded = [0, 0.05]
                         ticks_hist2d = [-0.05, 0.15]
                         
                     elif d == 'fedorenko':    
-                        GPT2XLU_WP_perf = load_untrained_data('WP', exp, i, fe, d)
+                        GPT2XLU_WP_perf, GPT2XLU_WP_se = load_untrained_data(bl, 'WP', exp, i, fe, d)
                         simple_color = sns.color_palette("Reds", 5)[3] 
                         yticks_perf = [0, 0.08]
                         yticks_perf_banded = [0, 0.08]
                         ticks_hist2d = [-0.05, 0.2]
                         
                     elif d == 'blank':
-                        GPT2XLU_POS_WN_perf = load_untrained_data('POS_WN', exp, i, fe, d)
-                        GPT2XLU_POS_perf = load_untrained_data('POS', exp, i, fe, d)
-                        GPT2XLU_WN_perf = load_untrained_data('WN', exp, i, fe, d)
+                        GPT2XLU_POS_WN_perf, GPT2XLU_POS_WN_se = load_untrained_data(bl, 'POS_WN', exp, i, fe, d)
+                        GPT2XLU_POS_perf, GPT2XLU_POS_se = load_untrained_data(bl, 'POS', exp, i, fe, d)
+                        GPT2XLU_WN_perf, GPT2XLU_WN_se = load_untrained_data(bl, 'WN', exp, i, fe, d)        
                         simple_color = sns.color_palette("Oranges", 5)[3] 
                         yticks_perf = [0, 0.02]
                         yticks_perf_banded = [0, 0.02]
@@ -210,15 +210,25 @@ for perf in perf_arr:
                             perf_across_seeds_gpt2xlu_sl = GPT2XLU_SL_perf
                             perf_across_seeds_gpt2xlu_sp_sl = GPT2XLU_SP_SL_perf
                             
+                            se_across_seeds_gpt2xlu_sp = GPT2XLU_SP_se
+                            se_across_seeds_gpt2xlu_sl = GPT2XLU_SL_se
+                            se_across_seeds_gpt2xlu_sp_sl = GPT2XLU_SP_SL_se
+                            
                         elif d == 'fedorenko':
                             
                             perf_across_seeds_gpt2xlu_WP = GPT2XLU_WP_perf
+                            se_across_seeds_gpt2xlu_WP = GPT2XLU_WP_se
+                            
                             
                         elif d == 'blank':
                             
                             perf_across_seeds_gpt2xlu_POS_WN = GPT2XLU_POS_WN_perf
                             perf_across_seeds_gpt2xlu_POS = GPT2XLU_POS_perf
                             perf_across_seeds_gpt2xlu_WN = GPT2XLU_WN_perf
+                            
+                            se_across_seeds_gpt2xlu_POS_WN = GPT2XLU_POS_WN_se
+                            se_across_seeds_gpt2xlu_POS = GPT2XLU_POS_se
+                            se_across_seeds_gpt2xlu_WN = GPT2XLU_WN_se
                             
                     else:
     
@@ -228,17 +238,28 @@ for perf in perf_arr:
                             perf_across_seeds_gpt2xlu_sp += GPT2XLU_SP_perf
                             perf_across_seeds_gpt2xlu_sl += GPT2XLU_SL_perf
                             perf_across_seeds_gpt2xlu_sp_sl += GPT2XLU_SP_SL_perf
+                        
+                            se_across_seeds_gpt2xlu_sp += GPT2XLU_SP_se
+                            se_across_seeds_gpt2xlu_sl += GPT2XLU_SL_se
+                            se_across_seeds_gpt2xlu_sp_sl += GPT2XLU_SP_SL_se
                             
                         elif d == 'fedorenko':    
                             
                             perf_across_seeds_gpt2xlu_WP += GPT2XLU_WP_perf
+                            se_across_seeds_gpt2xlu_WP += GPT2XLU_WP_se
+                            
                             
                         elif d == 'blank':
                             
                             perf_across_seeds_gpt2xlu_POS_WN += GPT2XLU_POS_WN_perf
                             perf_across_seeds_gpt2xlu_POS += GPT2XLU_POS_perf
                             perf_across_seeds_gpt2xlu_WN += GPT2XLU_WN_perf
- 
+                            
+                            se_across_seeds_gpt2xlu_POS_WN += GPT2XLU_POS_WN_se
+                            se_across_seeds_gpt2xlu_POS += GPT2XLU_POS_se
+                            se_across_seeds_gpt2xlu_WN += GPT2XLU_WN_se
+                
+
                 results_dict_gpt2_untrained['perf'].extend(perf_across_seeds_gpt2xlu/num_seeds)
                 results_dict_gpt2_untrained['subjects'].extend(subjects_arr)
                 results_dict_gpt2_untrained['Network'].extend(networks_arr)
@@ -269,6 +290,7 @@ for perf in perf_arr:
                     results_dict_gpt2_untrained['Exp'].extend(np.repeat(exp.strip('_'), num_vox_dict[exp.strip('_')]))
                     results_dict_gpt2_untrained_banded['Exp'].extend(np.repeat(exp.strip('_'), num_vox_dict[exp.strip('_')]))
             
+            breakpoint()
             save_nii(f'GPT2-XLU{fe}_{perf}')
             save_nii(f'SP+SL_{perf}')
             save_nii(f'SP+SL-GPT2-XLU{fe}_{perf}')

@@ -3,13 +3,14 @@ from scipy.stats import ttest_rel
 import pandas as pd
 from scipy.stats import false_discovery_control
 
-from trained_untrained_results_funcs import max_across_nested
+from trained_untrained_results_funcs import max_across_nested, compute_squared_error
 
 '''
 Functions used to plot untrained results in Pereira.
 '''
 
-def load_untrained_data(model, exp, i, fe, dat, perf="out_of_sample_r2"):
+def load_untrained_data(bl, model, exp, i, fe, dat, perf="out_of_sample_r2", save_str="var-par", 
+                        niter=1000, return_SE=True, shape_pereira_full=None, non_nan_indices_dict=None):
     
     """
     Attempts to load a specified file with variable layer 'x' from 0 to 9.
@@ -26,21 +27,32 @@ def load_untrained_data(model, exp, i, fe, dat, perf="out_of_sample_r2"):
     """
     
     data = None  # Initialize variable to store data if loaded successfully
+    
+    if len(model) > 0:
+        model = f'_{model}'
 
-    for x in range(49):  # Try each value of x from 0 to 9
-        file_path = f"/data/LLMs/brainscore/results_{dat}/untrained/{dat}_gpt2-xl-untrained{fe}-var-par{exp}_m{i}_{model}_layer_{x}_1000{exp}.npz"
+    file_path = f"/data/LLMs/brainscore/results_{dat}/untrained/{dat}_gpt2-xl-untrained{fe}-{save_str}{exp}_m{i}{model}_layer_{bl}_{niter}{exp}.npz"
+    data = np.nan_to_num(np.load(file_path)[perf])
+
+
+    if return_SE:
+        se = compute_squared_error(np.load(file_path)['y_hat'], dat, exp)
         
-        try:
-            # Attempt to load the file
-            data = np.nan_to_num(np.load(file_path)[perf])
-   
-        except:
-            continue
+        if dat == 'pereira':
+            
+            exp = exp.strip('_')
+            
+            se_full = np.full(shape_pereira_full, fill_value=np.nan)
+            
+            if '243' in exp:
+                se_full[:243, non_nan_indices_dict[exp]] = se
+                
+            else:
+                se_full[243:, non_nan_indices_dict[exp]] = se
+            
+            return data, se_full
         
-        
-    if data is None:
-        print("Data is None")
-        breakpoint()
+        return data, se
         
     return data
             
