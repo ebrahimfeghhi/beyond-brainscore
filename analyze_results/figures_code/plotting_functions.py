@@ -751,6 +751,8 @@ def save_nii(dict_name, results_path = "/data/LLMs/brainscore/results_pereira/gl
     all_keys = set(dict_384.keys()).union(set(dict_243.keys()))
     
     for key in all_keys:
+        # take the mean performance across both experiments
+        # for voxels that have activations in each experiment
         if key in dict_384 and key in dict_243:
             merged_dict[key] = (dict_384[key] + dict_243[key]) / 2
         elif key in dict_384:

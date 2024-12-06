@@ -133,11 +133,9 @@ for perf in perf_arr:
                     SP_SL = load_perf(f"/data/LLMs/brainscore/results_pereira/pereira_trained-var-par{exp}-sp_pos+WN_1{exp}.npz", perf)
                     SL = load_perf(f"/data/LLMs/brainscore/results_pereira/pereira_trained-var-par{exp}-sp_WN_1{exp}.npz", perf)
                     SP = load_perf(f"/data/LLMs/brainscore/results_pereira/pereira_trained-var-par{exp}-sp_pos_1{exp}.npz", perf)
+                    simple_models = [SP_SL_GLOVE, SL_GLOVE, SP_GLOVE, GLOVE, SP_SL, SL, SP]
                     
-                    NOISE = load_perf(f"/data/LLMs/brainscore/results_pereira/pereira_trained-var-par{exp}-sp_gaussian_1{exp}.npz", perf)
-    
-                    simple_perf_corrected = elementwise_max([SP_SL_GLOVE, SL_GLOVE, 
-                                                             SP_GLOVE, GLOVE, SP_SL, SL, SP])
+                    simple_perf_corrected = elementwise_max(simple_models)
                 
                     simple_perf = SP_SL_GLOVE
                     
@@ -147,8 +145,8 @@ for perf in perf_arr:
         
                 elif d == 'fedorenko':
                     
-                    NOISE = load_perf(f"/data/LLMs/brainscore/results_{d}/{d}_trained-var-par{exp}-sp_gaussian_1{exp}.npz", perf)
                     simple_perf = load_perf(f"/data/LLMs/brainscore/results_{d}/{d}_trained-var-par{exp}-sp_WP_1{exp}.npz", perf)
+                    simple_models = [simple_perf]
                     simple_perf_corrected = simple_perf
                     
                 elif d == 'blank':
@@ -156,10 +154,10 @@ for perf in perf_arr:
                     POS_WN = load_perf(f"/data/LLMs/brainscore/results_blank/blank_trained-var-par{exp}-sp_pos+WN_1{exp}.npz", perf)
                     POS = load_perf(f"/data/LLMs/brainscore/results_blank/blank_trained-var-par{exp}-sp_pos_1{exp}.npz", perf)
                     WN = load_perf(f"/data/LLMs/brainscore/results_blank/blank_trained-var-par{exp}-sp_WN_1{exp}.npz", perf)
-                    NOISE = load_perf(f"/data/LLMs/brainscore/results_blank/blank_trained-var-par{exp}-sp_gaussian_1{exp}.npz", perf)
     
                     simple_perf = POS_WN
-                    simple_perf_corrected = elementwise_max([WN, POS, POS_WN])
+                    simple_models = [WN, POS, POS_WN]
+                    simple_perf_corrected = elementwise_max(simple_models)
                     
                 # just do it for the first fe since simple model does not depend on feature extraction
                 if fe == '':
@@ -364,6 +362,7 @@ for perf in perf_arr:
                     remove_y_axis = False
                 else:
                     remove_y_axis = True
+                    
                 
                 subject_avg_pd, dict_pd_merged, dict_pd_with_all = plot_across_subjects(results_banded_fe.copy(), figurePath=figurePath,  selected_networks=['language'],
                                                             dataset=d, saveName=f'{d}_{fe}', order=['language'], clip_zero=clip_zero, 

@@ -8,7 +8,7 @@ Functions used for both trained and untrained pereira results.
 
 def load_mean_sem_perf(model_name, dataset, feature_extraction, layer_num, 
                        resultsPath='/data/LLMs/brainscore/', seed_str='', noL2_str='', niter=1, perf='out_of_sample_r2', median=False, 
-                       var_par_naming=False, return_perf=False, return_mean=False, print_res=True):
+                       var_par_naming=False, return_perf=False, return_mean=False, print_res=True, clip_res=True):
 
    if dataset == 'pereira':
       subjects_perf_pd = {'perf': [], 'subjects': [], 'Exp': []}
@@ -21,9 +21,9 @@ def load_mean_sem_perf(model_name, dataset, feature_extraction, layer_num,
 
       if var_par_naming:
          model_name_replaced= model_name.replace('EXP', exp)
-         layer_perf = load_perf(f'{resultsPath}/results_{dataset}/{dataset}_{model_name_replaced}{feature_extraction}{seed_str}_{niter}{noL2_str}{exp}.npz', perf)
+         layer_perf = load_perf(f'{resultsPath}/results_{dataset}/{dataset}_{model_name_replaced}{feature_extraction}{seed_str}_{niter}{noL2_str}{exp}.npz', perf, clip_zero=clip_res)
       else:
-         layer_perf = load_perf(f'{resultsPath}/results_{dataset}/{dataset}_{model_name}{feature_extraction}{seed_str}_layer_{layer_num}_{niter}{noL2_str}{exp}.npz', perf)
+         layer_perf = load_perf(f'{resultsPath}/results_{dataset}/{dataset}_{model_name}{feature_extraction}{seed_str}_layer_{layer_num}_{niter}{noL2_str}{exp}.npz', per, clip_zero=clip_res)
 
       subjects_perf_pd['perf'].extend(layer_perf[lang_indices].squeeze())
       subjects_perf_pd['subjects'].extend(subjects[lang_indices].squeeze())

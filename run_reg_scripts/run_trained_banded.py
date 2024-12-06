@@ -3,11 +3,12 @@ sys.path.append('/home2/ebrahim/beyond-brainscore/generate_activations/')
 from banded_reg_func import himalaya_regression_caller
 import numpy as np
 
-datasets = ['fedorenko']
-feature_extraction_arr = ['-sp', '-mp', '-lt']
+datasets = ['pereira', 'fedorenko', 'blank']
+feature_extraction_arr = ['-sp', '-mp', '']
 
 data_folder = '/data/LLMs/data_processed'
-device = 1
+device = 2
+save_y_hat = True
 
 for d in datasets:
     
@@ -31,7 +32,7 @@ for d in datasets:
             
             or2 = himalaya_regression_caller(model=model_name, y='', data_labels='', features_list=[], features_dict_per_layer=f_dict_layers,
                 n_iter=1000, dataset=d, data_folder=data_folder, exp=exp.strip('_'), 
-                save_results=True, save_y_hat=False, save_new=False, 
+                save_results=True, save_y_hat=save_y_hat, save_new=False, 
                 device=device, untrained=False, linear_reg=False, shuffled=False) 
 
         

@@ -21,9 +21,9 @@ dataset_arr = ['pereira', 'blank', 'fedorenko']
 shuffled_arr = ['shuffled', '']
 perf_arr = ['out_of_sample_r2', 'pearson_r']
 
-create_banded = True
+create_banded = False
 create_across_layer = False
-create_sig = False
+create_sig = True
 
 exp = ['243', '384']
 
@@ -54,6 +54,8 @@ subjects_arr_blank  = np.load(f"{data_processed_folder_blank}/subjects.npy", all
 
 subjects_arr_pereira = np.load(f"{data_processed_folder_pereira}/subjects_complete.npy", allow_pickle=True)
 networks_arr_pereira = np.load(f"{data_processed_folder_pereira}/network_complete.npy", allow_pickle=True)
+lang_indices = np.argwhere(networks_arr_pereira=='language').squeeze()
+
 non_nan_indices_243 = np.load(f"{data_processed_folder_pereira}/non_nan_indices_243.npy") # voxels which are in 243
 non_nan_indices_384 = np.load(f"{data_processed_folder_pereira}/non_nan_indices_384.npy") # voxels which are in 384
 non_nan_indices_dict = {'384': non_nan_indices_384, '243': non_nan_indices_243}
@@ -166,31 +168,21 @@ if create_banded:
                     
                 if len(exp) > 0:
                     banded_model = load_perf(f'/data/LLMs/brainscore/results_{dataset}/shuffled/{dataset}_gpt2-xl{fe}_OASM_{exp}_layer1_1000_{exp}.npz', perf)
-                    banded_gaussian_model = load_perf(f'/data/LLMs/brainscore/results_{dataset}/shuffled/{dataset}_gaussian_OASM_{exp}_layer1_1000_{exp}.npz', perf)
                     
                     gpt2_model = load_perf(f'/data/LLMs/brainscore/results_{dataset}/shuffled/{dataset}_gpt2-xl{fe}_layer_{bl}_1_{exp}.npz', perf)
                     OASM_model = load_perf(f'/data/LLMs/brainscore/results_{dataset}/shuffled/{dataset}_OASM-all-sigma_{bs}_1_{exp}.npz', perf)
-                    
-                    if exp == '384':
-                        gaussian_model = load_perf(f'/data/LLMs/brainscore/results_pereira/pereira_gaussian_layer_0_1_{exp}.npz', perf)
-                    if exp == '243':
-                        gaussian_model = load_perf(f'/data/LLMs/brainscore/results_pereira/pereira_gaussian_layer_45_1_{exp}.npz', perf)
                     
                     ticks_hist2d = [-0.05, 0.4]
                     
                 else:
                     
                     banded_model = load_perf(f'/data/LLMs/brainscore/results_{dataset}/shuffled/{dataset}_gpt2-xl{fe}_OASM_layer1_1000.npz', perf)
-                    banded_gaussian_model = load_perf(f'/data/LLMs/brainscore/results_{dataset}/shuffled/{dataset}_gaussian_OASM_layer1_1000.npz', perf)
-                    
                     gpt2_model = load_perf(f'/data/LLMs/brainscore/results_{dataset}/shuffled/{dataset}_gpt2-xl{fe}_layer_{bl}_1.npz', perf)
                     OASM_model = load_perf(f'/data/LLMs/brainscore/results_{dataset}/shuffled/{dataset}_OASM-all-sigma_{bs}_1.npz', perf)
                     
                     if dataset == 'fedorenko':
-                        gaussian_model = load_perf(f'/data/LLMs/brainscore/results_fedorenko/fedorenko_gaussian_layer_39_1.npz', perf)
                         ticks_hist2d = [-0.05, 0.4]
                     else:
-                        gaussian_model = load_perf(f'/data/LLMs/brainscore/results_blank/blank_gaussian_layer_13_1.npz', perf)      
                         ticks_hist2d = [-0.01, 0.5]
 
                     
@@ -281,7 +273,8 @@ if create_banded:
                               exp_arr=['384', '243'], perf='out_of_sample_r2', shuffled='', 
                               savePath_figures_data='/home2/ebrahim/beyond-brainscore/analyze_results/figures_code/figures_data/figure2/')
         
-
+            
+            
             subject_avg_pd, dict_pd_merged, dict_pd_with_all = plot_across_subjects(banded_gpt2_OASM_pd, dataset=dataset, selected_networks=['language'], 
                                                                                 figurePath=None, clip_zero=clip_zero, ms=12, 
                                 ylabel_str='', median=False, line_extend=0.05, draw_lines=True, ax_select=ax[i], hue_order=['OASM', 'Banded', f'GPT2{fe_str}'], 
@@ -309,7 +302,7 @@ if create_banded:
         fig.savefig(f"/home2/ebrahim/beyond-brainscore/analyze_results/figures_code/figures/new_figures/figure2/banded/{dataset}_banded.pdf", bbox_inches='tight')
 
     omega_metric = pd.DataFrame(omega_metric)
-    omega_metric.to_csv("/home2/ebrahim/beyond-brainscore/analyze_results/figures_code/figures_data/oasm_omega_values.csv")
+    omega_metric.to_csv("/home2/ebrahim/beyond-brainscore/analyze_results/figures_code/figures_data/figure2/oasm_omega_values.csv")
     
 if create_across_layer:
     
@@ -459,72 +452,63 @@ if create_sig:
     ytests_dict_shuffled = {'pereira': ytest_pereira_shuffled, 'blank': ytest_blank_shuffled, 'fedorenko': ytest_fed_shuffled}
     subjects_arr_dict = {'blank': subjects_arr_blank, 'fedorenko': subjects_arr_fed}
     dataset_arr = ['pereira', 'blank', 'fedorenko']
+    
+    best_sigma = np.load('/home2/ebrahim/beyond-brainscore/analyze_results/figures_code/best_layer_sigma_info/best_sigma.npz')
 
     # Step 1) get squared error values for each voxel/electrode/fROI from the best layer of GPT2XL
     for dataset in dataset_arr:
         
-        for shuffle in shuffled_arr:  
-            
-            if shuffle=='shuffled':
-                resultsPath_loop = f"{resultsPath}results_{dataset}/shuffled/"
-                shuffle_str = 'shuffled'
-                y_test_loop = ytests_dict_shuffled[dataset]
-    
-            else:
-                resultsPath_loop = f"{resultsPath}results_{dataset}/"
-                shuffle_str = 'contig'
-                y_test_loop = ytests_dict[dataset]
-                
-            for fe in feature_extraction_methods:
-                
-                y_hat_full = np.full(shape_pereira_full, fill_value=np.nan)
+        resultsPath_loop = f"{resultsPath}results_{dataset}/shuffled/"
+        shuffle_str = 'shuffled'
+        y_test_loop = ytests_dict_shuffled[dataset]
 
-                if dataset == 'pereira':
-                    
-                    for network in np.unique(networks_arr_pereira):
-                        
-                        network_indices_384 = np.argwhere(br_labels_dict['384']==network).squeeze()
-                        network_indices_243 = np.argwhere(br_labels_dict['243']==network).squeeze()
-                        
-                    
-                        gpt2_xl_384_dict, gpt2_xl_384_bl, gpt2_xl_384_bl_perf = find_best_layer(np.arange(0,49), noL2_str=noL2_str, exp='_384', 
-                                                                            resultsPath=resultsPath_loop, selected_network_indices=network_indices_384, dataset=dataset, 
-                                                                            subjects=subjects_dict['384'], perf=perf, feature_extraction=fe)
-                        gpt2_xl_243_dict, gpt2_xl_243_bl, gpt2_xl_243_bl_perf = find_best_layer(np.arange(0,49), noL2_str=noL2_str, exp='_243', 
-                                                                    resultsPath=resultsPath_loop, selected_network_indices=network_indices_243, dataset=dataset, 
-                                                                    subjects=subjects_dict['243'], perf=perf, feature_extraction=fe)
-                        
-                    
-                        best_layer_384 = max(gpt2_xl_384_dict, key=gpt2_xl_384_dict.get)
-                        best_layer_243 = max(gpt2_xl_243_dict, key=gpt2_xl_243_dict.get)
-                        
-                        y_hat_384 = np.load(f"{resultsPath_loop}{dataset}_gpt2-xl{fe}_layer_{best_layer_384}_1_384.npz")['y_hat']
-                        y_hat_243 = np.load(f"{resultsPath_loop}{dataset}_gpt2-xl{fe}_layer_{best_layer_243}_1_243.npz")['y_hat']
-                        
-                        y_hat_384[:, ~network_indices_384] = np.nan
-                        y_hat_243[:, ~network_indices_243] = np.nan
-                        
-                
-                        y_hat_full[:243, non_nan_indices_243] = y_hat_243
-                        y_hat_full[243:, non_nan_indices_384] = y_hat_384
-                        
-                    
-                    mse_best_layer[f"{dataset}_{shuffle_str}_{fe}"] = (y_test_loop-y_hat_full)**2
-                    
-                else:
-                
-                    gpt2_xl_dict, gpt2_xl_bl, gpt2_xl_bl_perf = find_best_layer(np.arange(0,49), noL2_str=noL2_str, exp='', 
-                                                    subjects=subjects_arr_dict[dataset], resultsPath=resultsPath_loop, dataset=dataset, perf=perf, feature_extraction=fe)
-                    
-                    best_layer = max(gpt2_xl_dict, key=gpt2_xl_dict.get)
-                    
-                
-                    y_hat = np.load(f"{resultsPath_loop}{dataset}_gpt2-xl{fe}_layer_{best_layer}_1.npz")['y_hat']
+        for fe in feature_extraction_methods:
             
-                    
-                    mse_best_layer[f"{dataset}_{shuffle_str}_{fe}"] = (y_test_loop-y_hat)**2
-                    
+            y_hat_full = np.full(shape_pereira_full, fill_value=np.nan)
+            y_hat_full_stacked = np.full(shape_pereira_full, fill_value=np.nan)
+            
+            if dataset == 'pereira':
                 
+                network = 'language'
+                
+                best_sigma_value_384 = best_sigma[f"{dataset}_384_out_of_sample_r2_shuffled"]
+                best_sigma_value_243 = best_sigma[f"{dataset}_243_out_of_sample_r2_shuffled"]
+            
+                network_indices_384 = np.argwhere(br_labels_dict['384']==network).squeeze()
+                network_indices_243 = np.argwhere(br_labels_dict['243']==network).squeeze()
+                
+                y_hat_384 = np.load(f"{resultsPath_loop}{dataset}_OASM-all-sigma_{best_sigma_value_384}_1_384.npz")['y_hat']
+                y_hat_243 = np.load(f"{resultsPath_loop}{dataset}_OASM-all-sigma_{best_sigma_value_243}_1_243.npz")['y_hat']
+                
+                y_hat_384_stacked = np.load(f"{resultsPath_loop}{dataset}_gpt2-xl{fe}_OASM_384_layer1_1000_384.npz")['y_hat']
+                y_hat_243_stacked = np.load(f"{resultsPath_loop}{dataset}_gpt2-xl{fe}_OASM_243_layer1_1000_243.npz")['y_hat']
+                
+                y_hat_384[:, ~network_indices_384] = np.nan
+                y_hat_243[:, ~network_indices_243] = np.nan
+                
+                y_hat_384_stacked[:, ~network_indices_384] = np.nan
+                y_hat_384_stacked[:, ~network_indices_243] = np.nan
+        
+                y_hat_full[:243, non_nan_indices_243] = y_hat_243
+                y_hat_full[243:, non_nan_indices_384] = y_hat_384
+                
+                y_hat_full_stacked[:243, non_nan_indices_243] = y_hat_243_stacked
+                y_hat_full_stacked[243:, non_nan_indices_384] = y_hat_384_stacked
+                    
+                mse_best_layer[f"{dataset}_{shuffle_str}_{fe}"] = (y_test_loop-y_hat_full)**2
+                mse_best_layer[f"{dataset}_{shuffle_str}_{fe}_stacked"] = (y_test_loop-y_hat_full_stacked)**2
+                
+            else:
+            
+                best_sigma_value = best_sigma[f"{dataset}_out_of_sample_r2_shuffled"]
+                
+                y_hat = np.load(f"{resultsPath_loop}{dataset}_OASM-all-sigma_{best_sigma_value}_1.npz")['y_hat']
+                y_hat_stacked = np.load(f"{resultsPath_loop}{dataset}_gpt2-xl{fe}_OASM_layer1_1000.npz")['y_hat']
+            
+                mse_best_layer[f"{dataset}_{shuffle_str}_{fe}"] = (y_test_loop-y_hat)**2
+                mse_best_layer[f"{dataset}_{shuffle_str}_{fe}_stacked"] = (y_test_loop-y_hat_stacked)**2
+                
+            
     store_subject_network_idxs_384 = {}
     store_subject_network_idxs_243 = {}
     mse_subject_network_best_layer = {}
@@ -537,7 +521,7 @@ if create_sig:
     network = 'language'
 
     # Step 2) Compute p values by doing a t-test for each voxel/electrode/fROI between the squared error values of 
-    # GPT2XL best layer and the corresponding intercept only model
+    # GPT2XL best layer and the GPT2XL + OASM model
     for dataset in ['pereira', 'blank', 'fedorenko']:
         
         pvalues_pd = {'fe': [], 'subject': [], 'pval': [], 'pval_orig': [], 'shuffled': [], 'network': []}
@@ -551,187 +535,45 @@ if create_sig:
         else:
             subjects_arr = subjects_arr_fed
             networks_arr = np.repeat(['language'], len(subjects_arr_fed))
-            
-        if dataset == 'pereira':
-            # loaded these from before because pereira takes forever
-            pvalues_pd = pd.read_csv('figures_data/pvalues_pereira.csv')
-        
-        else:
-            
-            for shuffle in shuffled_arr:
-                
-                if shuffle == 'shuffled':
-                    shuffle_str = 'shuffled'
-                    
-                    if dataset == 'pereira':
-                        mse_intercept_loop = mse_intercept_pereira_full_shuffled
-                    elif dataset == 'blank':
-                        mse_intercept_loop = mse_intercept_blank_shuffled
-                    else:
-                        mse_intercept_loop = mse_intercept_fed_shuffled
-                    
-                else:
-                    shuffle_str = 'contig'
-                    
-                    if dataset == 'pereira':
-                        mse_intercept_loop = mse_intercept_pereira_full  
-                    elif dataset == 'blank':
-                        mse_intercept_loop = mse_intercept_blank
-                    else:
-                        mse_intercept_loop = mse_intercept_fed
-                        
-                for fe in feature_extraction_methods:
-                    
-                    mse_best_layer_fe = mse_best_layer[f"{dataset}_{shuffle_str}_{fe}"]
-
-                    for subject in np.unique(subjects_arr):
-                        for network in np.unique(networks_arr):
-                            subject_idxs = np.argwhere(subjects_arr==subject)
-                            network_idxs = np.argwhere(networks_arr_pereira==network)
-                            subject_network_idxs =  list(np.intersect1d(subject_idxs, network_idxs))
-                            
-                            # do a t-test between the intercept only model and the 
-                            stat, pval = ttest_rel(mse_best_layer_fe[:,  subject_network_idxs], mse_intercept_loop[:, subject_network_idxs], axis=0, nan_policy='omit', alternative='less')
-                        
-                            pval = pval[~np.isnan(pval)]
-                            
-                            pval_fdr = false_discovery_control(pval, method='bh')
-                            
-                            pvalues_pd['pval'].extend(pval_fdr)
-                            pvalues_pd['pval_orig'].extend(pval)
-                            pvalues_pd['subject'].extend(np.repeat(subject,len(pval)))
-                            pvalues_pd['network'].extend(np.repeat(network,len(pval)))
-                            pvalues_pd['shuffled'].extend(np.repeat(shuffle_str,len(pval)))
-                            
-                            if len(fe) == 0:
-                                fe_name = '-lt'
-                            else:
-                                fe_name = fe
-                                
-                            pvalues_pd['fe'].extend(np.repeat(fe_name,len(pval)))
-                        
-                            
-            pvalues_pd = pd.DataFrame(pvalues_pd)
-         
-
-        pvalues_pd.to_csv(f'/home2/ebrahim/beyond-brainscore/analyze_results/figures_code/figures_data/pvalues_{dataset}.csv')
-        
-        shuffled_str_arr = ['shuffled', 'contig']
-        pvals_arr = ['pval']
-
-        if dataset == 'pereira':
-            fig, ax = plt.subplots(1,2, figsize=(12,6))
-            fontsize=30
-            ms = 7
-        else:
-            fig, ax = plt.subplots(1,2, figsize=(7,4))
-            fontsize=25
-            ms = 10
-        
-        for i, shuffle_str in enumerate(shuffled_str_arr):
-            
-            for j, pval in enumerate(pvals_arr):
-                
-                pvalues_pd_loop = pvalues_pd.loc[pvalues_pd.shuffled==shuffle_str]
-                
-                # Group by 'network' and calculate fraction of p-values under 0.05
-                fraction_under_005_fdr = pvalues_pd_loop.groupby(['subject', 'network', 'fe'])['pval_orig'].apply(lambda x: (x < 0.05).mean()).reset_index()
-                
-                fraction_under_005_fdr = fraction_under_005_fdr.rename(columns={'pval_orig': 'perf', 'network': 'Network', 'fe': 'Model'})
-                
-                if dataset == 'pereira':
-                    dodge = True
-                    color_palette = None
-                else:
-                    dodge = True
-                    color_palette = ['black']
-
-                plot_across_subjects(subject_avg_pd=fraction_under_005_fdr.reset_index(), hue_var='Network', x_var='Model', dict_pd_merged=None, figurePath=None, dataset='dataset', 
-                                    selected_networks=['language', 'DMN', 'MD', 'visual', 'auditory'], line_extend=0.05, hue_order=['language', 'DMN', 'MD', 'visual', 'auditory'], 
-                                    ylabel_str='', plot_legend=False, ax_select=ax[i], ms=ms, alpha=0.4, dodge=dodge, color_palette=color_palette, plot_xlabel=False, alpha_dots=0.6) 
-
-                ylim_max = min(round(float(ax[i].get_ylim()[1]),2),1)
-                ax[i].set_yticks((0, ylim_max))
-                ax[i].set_yticklabels((0, ylim_max), fontsize=fontsize)
-                #ax[i].set_xlabel('')
-                #ax[i].set_xticklabels('')
-                #ax[i].set_xticks([])
-                ax[i].spines['bottom'].set_position(('data', 0))
-                ax[i].set_ylim(bottom=0)
-                ax[i].legend().set_visible(False)
-                
-        
-        fig.savefig(f"/home2/ebrahim/beyond-brainscore/analyze_results/figures_code/figures/new_figures/figure2/stats_obi/{dataset}.png")
-        fig.savefig(f"/home2/ebrahim/beyond-brainscore/analyze_results/figures_code/figures/new_figures/figure2/stats_obi/{dataset}.pdf", bbox_inches='tight')
-        
-        
-if False:
-    
-    noL2_str = ''
-    resultsPath_pereira = f"{resultsPath}results_pereira/"
-    perf = 'out_of_sample_r2'
-    dataset = 'pereira'
-    feature_extraction_methods = ['', '-sp', '-mp']
-    shuffled_arr = [True, False]
-
-    results_dict = {'Model': [], 'shuffled': [], 'Network': [], 'subjects': [], 'perf': [], 'Exp': []}
-    sigma_values = np.linspace(0.1, 4.8, 48)
-    for shuffle in shuffled_arr:
-        
-        if shuffle:
-            resultsPath_loop = f"{resultsPath_pereira}shuffled/"
-            shuffle_str = 'shuffled'
-        else:
-            resultsPath_loop = resultsPath_pereira
-            shuffle_str = 'contig'
         
         for fe in feature_extraction_methods:
-        
-            best_results = np.full(shape_pereira_full, fill_value=np.nan)
-                
-            for network in np.unique(networks_arr_pereira):
-        
-                network_indices_384 = np.argwhere(br_labels_dict['384'] == network).squeeze()
-                network_indices_243 = np.argwhere(br_labels_dict['243'] == network).squeeze()
-                    
-                gpt2_xl_384_dict, gpt2_xl_384_bl, gpt2_xl_384_bl_perf = find_best_layer(np.arange(0,49), noL2_str=noL2_str, exp='_384', 
-                                                            resultsPath=resultsPath_loop, selected_network_indices=network_indices_384, dataset=dataset, 
-                                                            subjects=subjects_dict['384'], perf=perf, feature_extraction=fe)
-                gpt2_xl_243_dict, gpt2_xl_243_bl, gpt2_xl_243_bl_perf = find_best_layer(np.arange(0,49), noL2_str=noL2_str, exp='_243', 
-                                                            resultsPath=resultsPath_loop, selected_network_indices=network_indices_243, dataset=dataset, 
-                                                            subjects=subjects_dict['243'], perf=perf, feature_extraction=fe)
+            
+            mse_oasm = mse_best_layer[f"{dataset}_{shuffle_str}_{fe}"]
+            mse_gpt2xl_oasm = mse_best_layer[f"{dataset}_{shuffle_str}_{fe}_stacked"]
             
 
-
-                results_dict['perf'].extend(gpt2_xl_384_bl_perf[network_indices_384])
-                results_dict['perf'].extend(gpt2_xl_243_bl_perf[network_indices_243])
-                results_dict['Network'].extend(np.repeat(network, len(network_indices_384)))
-                results_dict['Network'].extend(np.repeat(network, len(network_indices_243)))
-                results_dict['subjects'].extend(subjects_dict['384'][network_indices_384])
-                results_dict['subjects'].extend(subjects_dict['243'][network_indices_243])
-                results_dict['Model'].extend(np.repeat(f'GPT2-XL{fe}', len(network_indices_384)))
-                results_dict['Model'].extend(np.repeat(f'GPT2-XL{fe}', len(network_indices_243)))
-                results_dict['shuffled'].extend(np.repeat(shuffle_str, len(network_indices_384)))
-                results_dict['shuffled'].extend(np.repeat(shuffle_str, len(network_indices_243)))
-                results_dict['Exp'].extend(np.repeat('384', len(network_indices_384)))
-                results_dict['Exp'].extend(np.repeat('243', len(network_indices_243)))
+            for subject in np.unique(subjects_arr):
+                for network in np.unique(networks_arr):
+                    
+                    if network == 'language':
+                        
+                        subject_idxs = np.argwhere(subjects_arr==subject)
+                        network_idxs = np.argwhere(networks_arr_pereira==network)
+                        subject_network_idxs =  list(np.intersect1d(subject_idxs, network_idxs))
+                        
+                        # do a t-test between the intercept only model and the 
+                        stat, pval = ttest_rel(mse_gpt2xl_oasm[:,  subject_network_idxs], mse_oasm[:, subject_network_idxs], axis=0, nan_policy='omit', alternative='less')
                 
-                
-    results_dict_pd = pd.DataFrame(results_dict)
-    results_dict_pd.head()
+                        pval = pval[~np.isnan(pval)]
+                        
+                        pval_fdr = false_discovery_control(pval, method='bh')
+                        
+                        pvalues_pd['pval'].extend(pval_fdr)
+                        pvalues_pd['pval_orig'].extend(pval)
+                        pvalues_pd['subject'].extend(np.repeat(subject,len(pval)))
+                        pvalues_pd['network'].extend(np.repeat(network,len(pval)))
+                        pvalues_pd['shuffled'].extend(np.repeat(shuffle_str,len(pval)))
+                        
+                        if len(fe) == 0:
+                            fe_name = '-lt'
+                        else:
+                            fe_name = fe
+                            
+                        pvalues_pd['fe'].extend(np.repeat(fe_name,len(pval)))
+                    
+                        
+        pvalues_pd = pd.DataFrame(pvalues_pd)
     
-    fig, ax = plt.subplots(1,2, figsize=(12,6))
-    for i, shuffle in enumerate(results_dict_pd.shuffled.unique()):
+        pvalues_pd.to_csv(f'/home2/ebrahim/beyond-brainscore/analyze_results/figures_code/figures_data/figure2/pvalues_{dataset}.csv')
         
-        results_dict_pd_s = results_dict_pd.loc[results_dict_pd.shuffled==shuffle]
-        results_dict_pd_s = results_dict_pd_s.drop(axis=1, labels='shuffled')
-        yticks=None
-        subject_avg_pd, dict_pd_merged, dict_pd_with_all = plot_across_subjects(results_dict_pd_s, None, dataset='pereira', selected_networks=np.unique(networks_arr_pereira), clip_zero=True, plot_legend=False, 
-                                                                                ylabel=False, x_var='Model', hue_var='Network', hue_order=['language', 'DMN', 'MD', 'visual', 'auditory'], line_extend=0.04, plot_xlabel=True, yticks=yticks, 
-                                                                                ax_select=ax[i], median=False)
-        ax[i].set_ylabel('')
-        ax[i].set_xticklabels('', fontsize=20)
-        ax[i].set_yticklabels()
-        
-    plt.show()
-
+       

@@ -7,6 +7,7 @@ import pandas as pd
 import seaborn as sns
 from nilearn import plotting
 import matplotlib
+from stats_funcs import correct_banded_models
 
 
 resultsPath_base = '/data/LLMs/brainscore/'
@@ -133,7 +134,7 @@ for perf in perf_arr:
                     else:
                         gaussian = load_perf(f'/data/LLMs/brainscore/results_pereira/pereira_gaussian_layer_45_1{exp}.npz', perf)
                         
-                    simple_perf_corrected = elementwise_max([SP_SL, SL, SP, gaussian])
+                    simple_perf_corrected = elementwise_max([SP_SL, SL, SP])
                     simple_perf = SP_SL
                     load_r2_into_3d(SP_SL, exp.strip('_'), subjects_to_plot=np.unique(subjects_arr), 
                                                             subjects_all=subjects_arr, save_name=f'SP+SL_{perf}{exp}', 
@@ -250,16 +251,16 @@ for perf in perf_arr:
                     load_r2_into_3d(np.clip(simple_perf, 0, np.inf) - np.clip((perf_across_seeds_gpt2xlu/num_seeds), 0, np.inf), exp.strip('_'), f'SP+SL-GPT2-XLU{fe}_{perf}{exp}', 
                                             subjects_to_plot=np.unique(subjects_arr), subjects_all=subjects_arr, lang_indices=selected_lang_indices, clip_zero=False)
                 if d == 'pereira':
-                    banded_perf = elementwise_max([perf_across_seeds_gpt2xlu, perf_across_seeds_gpt2xlu_sl, perf_across_seeds_gpt2xlu_sp, 
-                                                    perf_across_seeds_gpt2xlu_sp_sl])
+                    banded_perf = elementwise_max([perf_across_seeds_gpt2xlu/num_seeds, perf_across_seeds_gpt2xlu_sl/num_seeds, perf_across_seeds_gpt2xlu_sp/num_seeds, 
+                                                    perf_across_seeds_gpt2xlu_sp_sl/num_seeds])
                 elif d == 'fedorenko':
-                    banded_perf = elementwise_max([perf_across_seeds_gpt2xlu, perf_across_seeds_gpt2xlu_WP])
+                    banded_perf = elementwise_max([perf_across_seeds_gpt2xlu/num_seeds, perf_across_seeds_gpt2xlu_WP/num_seeds])
                 elif d == 'blank':
-                    banded_perf = elementwise_max([perf_across_seeds_gpt2xlu, perf_across_seeds_gpt2xlu_POS_WN, 
-                                                    perf_across_seeds_gpt2xlu_POS, perf_across_seeds_gpt2xlu_WN])
+                    banded_perf = elementwise_max([perf_across_seeds_gpt2xlu/num_seeds, perf_across_seeds_gpt2xlu_POS_WN/num_seeds, 
+                                                    perf_across_seeds_gpt2xlu_POS/num_seeds, perf_across_seeds_gpt2xlu_WN/num_seeds])
                     
                 
-                results_dict_gpt2_untrained_banded['perf'].extend(banded_perf/num_seeds)
+                results_dict_gpt2_untrained_banded['perf'].extend(banded_perf)
                 results_dict_gpt2_untrained_banded['subjects'].extend(subjects_arr)
                 results_dict_gpt2_untrained_banded['Network'].extend(networks_arr)
                 results_dict_gpt2_untrained_banded['Model'].extend(np.repeat(f'Banded{fe_str}', len(banded_perf)))
@@ -386,6 +387,9 @@ for perf in perf_arr:
                     remove_y_axis = False
                 else:
                     remove_y_axis = True
+                    
+                                    
+                results_banded_fe = correct_banded_models(d, results_banded_fe, full_model=f'Banded{fe_str}', sub_model='Simple_corrected', llm_model=f'GPT2XLU{fe_str}')
                 
                 subject_avg_pd, dict_pd_merged, dict_pd_with_all = plot_across_subjects(results_banded_fe.copy(), figurePath=figurePath,  selected_networks=['language'],
                                                             dataset=d, saveName=f'{d}_{fe}', order=['language'], clip_zero=clip_zero, 

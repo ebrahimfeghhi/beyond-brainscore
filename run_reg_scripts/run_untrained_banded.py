@@ -3,14 +3,14 @@ sys.path.append('/home2/ebrahim/beyond-brainscore/generate_activations/')
 from banded_reg_func import himalaya_regression_caller
 
 datasets = ['pereira', 'fedorenko', 'blank']
-models = ['gpt2-xl-untrained']
+models = ['gpt2-xl-untrained', 'gpt2-xl-untrained-mp', 'gpt2-xl-untrained-sp']
 shuffled_options = [False]
 start = 0
 N = 5
 save_y_hat = True
 
 data_folder = '/data/LLMs/data_processed'
-device = 1
+device = 0
 
 for d in datasets:
     

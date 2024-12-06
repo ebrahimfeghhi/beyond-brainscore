@@ -5,10 +5,12 @@ For pereira, fedorenko, and blank
 
 from banded_reg_func import himalaya_regression_caller
 
-datasets = ['pereira', 'fedorenko']
+datasets = ['pereira', 'fedorenko', 'blank']
 models = ['gpt2-xl', 'gpt2-xl-sp', 'gpt2-xl-mp']
 linear_reg_options = [False] # if False, do L2 regularized only
 shuffled_options = [False]
+
+save_y_hat = True
 
 data_folder = '/data/LLMs/data_processed'
 device = 2
@@ -23,8 +25,6 @@ for d in datasets:
         else:
             model_str = f"{m}_soft+grow"
             features_list = [1600, 9]
-        
-        save_y_hat = False
     
         if d == 'pereira':
             exp_options = ['384', '243']

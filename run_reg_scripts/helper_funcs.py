@@ -575,7 +575,7 @@ def obtain_val_predictions(alphas, X_train, y_train, pereira_cv):
 def run_himalayas(X_train, y_train, X_test, 
                   y_test, alphas, device, train_labels, feature_grouper, n_iter, 
                   use_kernelized, dataset, selected_exp=None, first_second_half=None, 
-                  linear_reg=False, customL2=True):
+                  linear_reg=False, custom_linear=True):
     
     
     '''
@@ -590,6 +590,7 @@ def run_himalayas(X_train, y_train, X_test,
     :param str selected_exp: 243 or 384 for pereira
     :param str first_second_half: -fh or -sh
     :param bool linear_reg: if true, run vanilla linear regression for Schrimpf style
+    :param bool custom_linear: use gpu optimized regression
     '''
     
     if device == 'cpu':
@@ -610,7 +611,7 @@ def run_himalayas(X_train, y_train, X_test,
         n_alphas_batch = 2
         targets_batch = 1000
     else:
-        n_alphas_batch = len(alphas)
+        n_alphas_batch = 10
         targets_batch = y_train.shape[1]
         
     scaler = StandardScaler()
@@ -621,10 +622,9 @@ def run_himalayas(X_train, y_train, X_test,
         
     X_train = scaler.fit_transform(X_train)
     X_test = scaler.transform(X_test)
-        
     if linear_reg:
         
-        if customL2:
+        if custom_linear:
             w = linear_regression_from_scratch(X_train, y_train, device)
             y_pred = predict_scratch(X_test, w, device)
             y_pred = y_pred.cpu().numpy()
@@ -644,12 +644,10 @@ def run_himalayas(X_train, y_train, X_test,
                                         solver_params=solver_params)
             
         else:
-            
             model = GroupRidgeCV(groups="input", fit_intercept=True, cv=cv, 
                             solver_params={'alphas': alphas, 'n_iter': n_iter, 'warn': False, 
                                         'n_alphas_batch': n_alphas_batch, 'n_targets_batch': targets_batch})
- 
-
+        
         pipe = make_pipeline(feature_grouper, model)
         _ = pipe.fit(X_train, y_train)
         
@@ -691,6 +689,8 @@ def preprocess_himalayas(n_features_list, use_kernelized):
         return column_scaler
 
 # Linear regression function with optional bias term
+
+'''
 def linear_regression_from_scratch(X_train, y_train, add_bias=True, device=2):
     # Convert inputs to torch tensors if they aren't already
     X_train = torch.tensor(X_train, dtype=torch.float32).to(device)
@@ -714,14 +714,14 @@ def predict_scratch(X, w, add_bias=True, device=2):
         X = torch.cat([torch.ones(X.shape[0], 1).to(device), X], dim=1)
     
     return X @ w
-
+'''
 
 def linear_regression_from_scratch(X_train, y_train, add_bias=True, device=2):
     # Convert inputs to torch tensors if they aren't already
     X_train = torch.tensor(X_train, dtype=torch.float32).to(device)
     y_train = torch.tensor(y_train, dtype=torch.float32).to(device)
 
-    # Optionally add a bias (intercept) term by appending a column of ones to X_train
+    # Optionally add a bias (intercept) term by subtracting the mean of the target (y)
     if add_bias:
         y_train_reg = y_train - y_train.mean(0)
     else:

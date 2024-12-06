@@ -113,8 +113,7 @@ def himalaya_regression_caller(model: Union[str, dict, np.ndarray],
     if untrained:
         full_results_folder = f"{full_results_folder}untrained/"
         print("saving results to: ", full_results_folder)
-        
-
+    
     alphas = np.exp2(np.arange(-5, 35))
     alphas = np.hstack((0,alphas))
 
@@ -144,11 +143,11 @@ def himalaya_regression_caller(model: Union[str, dict, np.ndarray],
             
     for idx, (layer_name, X) in enumerate(X_all_layers.items()):
         
+        
         if len(features_dict_per_layer) > 0:
             features_list_layer = features_dict_per_layer[layer_name]
         else:
             features_list_layer = deepcopy(features_list)
-            
             
         if len(features_list_layer) == 1:
             print("resetting niter to 1")

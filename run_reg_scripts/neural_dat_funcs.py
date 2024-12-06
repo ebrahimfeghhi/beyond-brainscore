@@ -61,7 +61,7 @@ def construct_splits_pereira(X, y, data_labels, alphas, device, feature_grouper,
                 y_train = y[train_indices]
                 X_test = X[test_indices]
                 y_test = y[test_indices]
-     
+
                 mse_test, mse_intercept, y_pred, mse_intercept_non_avg = run_himalayas(X_train, 
                                                 y_train, X_test, y_test, alphas, device, 
                                                 train_labels, feature_grouper, n_iter, use_kernelized, 

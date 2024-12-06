@@ -15,6 +15,8 @@ dataset_arr = ['pereira', 'fedorenko', 'blank']
 perf_arr = ['pearson_r', 'out_of_sample_r2']
 feature_extraction = ['', '-sp', '-mp']
 
+median = True
+
 save_best_sigma = {}
 save_best_layer = {}
 
@@ -161,7 +163,7 @@ for perf in perf_arr:
                 results_simple_gpt2xl = pd.concat((results_dict_simple, results_dict_gpt2))
                     
                 if perf == 'pearson_r':
-                    median = False
+                    median = median
                     clip_zero = False
                     perf_str = 'Pearson r'
                     plot_xlabel = False
@@ -235,8 +237,13 @@ for perf in perf_arr:
                     ax[i].set_ylabel('')
                     ax[i].set_xlabel('')
 
-                fig.savefig(f'{figurePath}figure1{noL2_str}{shuffled_str}.png')
-                fig.savefig(f'{figurePath}figure1{noL2_str}{shuffled_str}.pdf',  bbox_inches='tight')
+                if median:
+                    fig.savefig(f'{figurePath}figure1{noL2_str}{shuffled_str}_median.png')
+                    fig.savefig(f'{figurePath}figure1{noL2_str}{shuffled_str}_median.pdf',  bbox_inches='tight')
+                           
+                else:
+                    fig.savefig(f'{figurePath}figure1{noL2_str}{shuffled_str}.png')
+                    fig.savefig(f'{figurePath}figure1{noL2_str}{shuffled_str}.pdf',  bbox_inches='tight')
                                             
 
 np.savez('best_layer_sigma_info/best_sigma', **save_best_sigma)

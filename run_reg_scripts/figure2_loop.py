@@ -23,6 +23,7 @@ for d in datasets:
         OASM_size = 1317    
 
     for m in models:
+        
         banded_model = f"{m}_OASM"
         
         for lr in linear_reg_options:
@@ -34,11 +35,6 @@ for d in datasets:
                     save_y_hat = True
                 else:
                     save_y_hat = False 
-                  
-                if m == 'OASM-all-sigma' and shuffled == False:
-                    print("Skipping OASM because doing contiguous splits")
-                    continue
-                
                 
                 if d == 'pereira':
                     exp_options = ['384', '243']
@@ -47,13 +43,17 @@ for d in datasets:
                     
                 for exp in exp_options:
                     
-                    print(f"Running model {banded_model}, experiment {exp}, dataset {d}, linear {lr}, shuffled {shuffled}, save_y_hat {save_y_hat}")
+                    if d == 'pereira':
+                        banded_model_exp = f"{banded_model}_{exp}"
+                    else:
+                        banded_model_exp = banded_model
                     
-                    or2 = himalaya_regression_caller(model=banded_model, y='', data_labels='', features_list=[1600, OASM_size], 
+                    print(f"Running model {banded_model_exp}, experiment {exp}, dataset {d}, linear {lr}, shuffled {shuffled}, save_y_hat {save_y_hat}")
+                    
+                    or2 = himalaya_regression_caller(model=banded_model_exp, y='', data_labels='', features_list=[1600, OASM_size], 
                         n_iter=1000, dataset=d, data_folder=data_folder, exp=exp, 
                         save_results=True, save_y_hat=save_y_hat, save_new=False, 
-                        device=device, untrained=False, linear_reg=lr, shuffled=shuffled, 
-                        approx_linear=False) 
+                        device=device, untrained=False, linear_reg=lr, shuffled=shuffled) 
 
                     
                 
