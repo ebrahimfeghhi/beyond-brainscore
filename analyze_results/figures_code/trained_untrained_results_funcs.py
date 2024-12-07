@@ -7,31 +7,32 @@ Functions used for both trained and untrained pereira results.
 '''
 
 
-def select_rows_with_lower_error(array1, array2):
+def select_columns_with_lower_error(*arrays):
     """
-    Compare rows of two 2D arrays and create a new array where each row is chosen
-    from the input arrays based on lower mean error.
 
     Parameters:
-    - array1: np.ndarray of shape (N, M), first array.
-    - array2: np.ndarray of shape (N, M), second array.
+    - * arrays: where each array is of shape N (timesteps) x M (voxels/electrodes/fROIs), contains 
+    squared error values 
+    
 
     Returns:
-    - np.ndarray: New array of shape (N, M), rows selected based on lower mean error.
+    - np.ndarray: New array of shape (N, M), where the squared error values for a given column is set equal
+    to the array with the lowest MSE
     """
-    if array1.shape != array2.shape:
-        raise ValueError("Both arrays must have the same shape.")
+    # Stack arrays into a 3D array of shape (num_models, N, M)
+    stacked_arrays = np.stack(arrays, axis=0)
     
-
-    # Compute mean error per voxel (row-wise mean) for both arrays
-    mean_error1 = np.nanmean(array1, axis=0)
-    mean_error2 = np.nanmean(array2, axis=0)
-
-    # Create a mask where True means array1 has lower error, False means array2 has lower error
-    mask = mean_error1 < mean_error2
     
-    # Create the new array by selecting rows from array1 or array2 based on the mask
-    result = np.where(mask[None, :], array1, array2)
+    mean_errors = np.nanmean(stacked_arrays, axis=1)  # Shape: (num_models, M)
+    
+    
+    # Find the index of the model with the lowest error for each column
+    best_model_indices = np.argmin(mean_errors, axis=0)  # Shape: (M,)
+    
+    # Create the new array by selecting columns from the best models for each column
+    result = np.zeros_like(arrays[0])  # Initialize the result array
+    for col in range(result.shape[1]):  # Iterate over columns
+        result[:, col] = stacked_arrays[best_model_indices[col], :, col]
 
     return result
 
@@ -93,13 +94,35 @@ def load_mean_sem_perf(model_name, dataset, feature_extraction, layer_num,
       return float(subject_avg_pd.mean().iloc[0])
 
 
-def load_perf(filepath, perf, clip_zero=False):
+def load_perf(filepath, perf, clip_zero=False, return_SE=False, shape_pereira_full=None, non_nan_indices_dict=None, exp='', dataset=None):
     
     perf_arr = np.nan_to_num(np.load(filepath)[perf])
     
     if clip_zero:
         return np.clip(perf_arr, 0, np.inf)
-
+    
+    if return_SE:
+        
+        se = compute_squared_error(np.load(filepath)['y_hat'], dataset, exp)
+        
+        if len(exp)>0:
+            
+            exp = exp.strip('_')
+            
+            se_full = np.full(shape_pereira_full, fill_value=np.nan)
+            
+            if '243' in exp:
+                se_full[:243, non_nan_indices_dict[exp]] = se
+                
+            else:
+                se_full[243:, non_nan_indices_dict[exp]] = se
+                
+            return perf_arr, se_full
+                
+        else:
+            
+            return perf_arr, se
+    
     return perf_arr
     
 def custom_add_2d(arr1, arr2):
@@ -222,7 +245,7 @@ def find_best_layer(layer_range, noL2_str='', exp='', resultsPath='/data/LLMs/br
         
         if perf != 'pearson_r':
             layer_perf = np.clip(layer_perf, 0, np.inf)
- 
+
         if dataset == 'pereira':
             layer_perf = layer_perf[selected_network_indices]
             

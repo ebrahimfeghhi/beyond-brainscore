@@ -4,7 +4,7 @@ from sklearn.metrics import mean_squared_error
 import sys
 sys.path.append(base)
 from plotting_functions import plot_across_subjects, plot_2d_hist_scatter_updated, load_r2_into_3d, save_nii
-from trained_untrained_results_funcs import calculate_omega, find_best_layer, find_best_sigma, load_perf, elementwise_max, select_rows_with_lower_error
+from trained_untrained_results_funcs import calculate_omega, find_best_layer, find_best_sigma, load_perf, elementwise_max, select_columns_with_lower_error
 from untrained_results_funcs import compute_p_val
 import pandas as pd
 from scipy.stats import false_discovery_control
@@ -521,7 +521,16 @@ if create_sig:
                 
             se_gpt2 = (y_test_loop-y_hat_full_gpt2)**2
             se_stacked = (y_test_loop-y_hat_full_stacked)**2
-            se_stacked_corrected = select_rows_with_lower_error(se_gpt2, se_stacked)
+            
+            if dataset == 'pereira':
+                # find the best model per experiment 
+                se_stacked_corrected_243 = select_columns_with_lower_error(se_gpt2[:243], se_stacked[:243])
+                se_stacked_corrected_384 = select_columns_with_lower_error(se_gpt2[243:], se_stacked[243:])
+                se_stacked_corrected = np.vstack((se_stacked_corrected_243, se_stacked_corrected_384))
+
+            else:
+                se_stacked_corrected = select_columns_with_lower_error(se_gpt2, se_stacked)
+                
             
             mse_best_layer[f"{dataset}_{shuffle_str}_{fe}"] = (y_test_loop-y_hat_full)**2
             
@@ -564,8 +573,8 @@ if create_sig:
                     if network == 'language':
                         
                         subject_idxs = np.argwhere(subjects_arr==subject)
-                        network_idxs = np.argwhere(networks_arr_pereira==network)
-                        subject_network_idxs =  list(np.intersect1d(subject_idxs, network_idxs))
+                        network_idxs = np.argwhere(networks_arr==network)
+                        subject_network_idxs =  np.intersect1d(subject_idxs, network_idxs).squeeze()
 
                         stat, pval = ttest_rel(mse_gpt2xl_oasm[:,  subject_network_idxs], mse_oasm[:, subject_network_idxs], axis=0, nan_policy='omit', alternative='less')
                 
