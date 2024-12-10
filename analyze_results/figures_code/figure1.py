@@ -169,7 +169,7 @@ for perf in perf_arr:
                     plot_xlabel = False
                 else:
                     median = False
-                    clip_zero = True
+                    clip_zero = False
                     perf_str = r'$R^2$'
                     plot_xlabel = False
 

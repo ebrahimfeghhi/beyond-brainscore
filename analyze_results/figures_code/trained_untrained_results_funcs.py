@@ -297,11 +297,47 @@ def calculate_omega(df, model_combined, model_A, model_B):
             banded_perf = subject_data.loc[subject_data['Model'] == model_combined, 'perf'].values[0]
             gpt2_perf = subject_data.loc[subject_data['Model'] == model_A, 'perf'].values[0]
             oasm_perf = subject_data.loc[subject_data['Model'] == model_B, 'perf'].values[0]
+        
+            if gpt2_perf == 0.0:
+                print(gpt2_perf)
+                result = 100
+            else:
+                # Perform the calculation
+                result = np.clip((banded_perf - oasm_perf) / gpt2_perf, 0, 1)
+                result = (1-result)*100
             
+            # Append result as a dictionary for the subjectco
+            results.append({
+                'subjects': subject,
+                'metric': result
+            })
+    
+    # Convert results to a DataFrame
+    result_df = pd.DataFrame(results)
+    return result_df
+
+def calculate_omega_voxel_level(df, model_combined, model_A, model_B):
+    # Ensure the required models are present for each subject
+    required_models = {model_combined, model_A, model_B}
+    results = []
+    
+    df['perf'] = np.clip(df['perf'], 0,np.inf)
+    
+    # Iterate through each unique subject
+    for subject in df['subjects'].unique():
+        # Filter data for the current subject
+        subject_data = df[df['subjects'] == subject]
+        # Check if all required models are present for the subject
+        if required_models.issubset(subject_data['Model'].unique()):
+            # Get performance values for each specified model
+            banded_perf = np.array(subject_data.loc[subject_data['Model'] == model_combined, 'perf'])
+            gpt2_perf = np.array(subject_data.loc[subject_data['Model'] == model_A, 'perf'])
+            oasm_perf = np.array(subject_data.loc[subject_data['Model'] == model_B, 'perf'])
+        
             # Perform the calculation
             result = (banded_perf - oasm_perf) / gpt2_perf
-            result = np.clip((1 - result) * 100, 0, 100)
-            
+            result[np.argwhere(gpt2_perf<=0)] = np.nan
+            result = np.clip((1 - np.nanmean(result)) * 100, 0, 100)
             # Append result as a dictionary for the subject
             results.append({
                 'subjects': subject,
@@ -311,6 +347,7 @@ def calculate_omega(df, model_combined, model_A, model_B):
     # Convert results to a DataFrame
     result_df = pd.DataFrame(results)
     return result_df
+
 
 def elementwise_max(arrays):
     

@@ -1,5 +1,5 @@
 import numpy as np
-from trained_untrained_results_funcs import find_best_layer, elementwise_max, calculate_omega, custom_add_2d, load_perf, select_columns_with_lower_error
+from trained_untrained_results_funcs import find_best_layer, elementwise_max, calculate_omega_voxel_level, custom_add_2d, load_perf, select_columns_with_lower_error, calculate_omega
 from untrained_results_funcs import load_untrained_data
 from plotting_functions import plot_across_subjects, load_r2_into_3d, save_nii, plot_2d_hist_scatter_updated
 from matplotlib import pyplot as plt
@@ -35,12 +35,9 @@ perf_arr = ['out_of_sample_r2']
 shuffled_arr = ['']
 shuffled = ''
 dataset_arr = ['pereira', 'fedorenko', 'blank']
-exp = ['243', '384']
 
 
-
-
-for e in exp:
+for e in ['243', '384']:
 
     bre = np.load(f'{data_processed_folder_pereira}/networks_{e}.npy', allow_pickle=True)
     br_labels_dict[e] = bre
@@ -76,9 +73,9 @@ for perf in perf_arr:
                 
     if perf == 'pearson_r':
         clip_zero = False
-        median = True
+        median = False
     else:
-        clip_zero = True
+        clip_zero = False
         median = False
         
     fig, ax = plt.subplots(1, len(dataset_arr), figsize=(15,5))
@@ -124,8 +121,9 @@ for perf in perf_arr:
                 fe_str = fe
         
         
-            for exp in exp_arr:
+            for exp_idx, exp in enumerate(exp_arr):
                 
+                print(exp_idx, exp)
                 
                 if len(exp) > 0:
                     selected_lang_indices = lang_indices_dict[exp].squeeze()
@@ -203,17 +201,11 @@ for perf in perf_arr:
                         simple_dict['Exp'].extend(np.repeat(exp.strip('_'), len(simple_perf)*2))
 
                             
-                
-                gpt2_dict, gpt2_bl, _   = find_best_layer(np.arange(49), noL2_str='', exp=exp, 
-                                                            resultsPath=f"{resultsPath_base}results_{d}/{shuffled}", 
-                                                            perf=perf, feature_extraction=fe, selected_network_indices=selected_lang_indices, 
-                                                            subjects=subjects_arr, dataset=d, model_name='gpt2-xl', return_SE=False)
-
                 gpt2_bl_perf, GPT2XL_se = load_perf(f"/data/LLMs/brainscore/results_{d}/{d}_trained-var-par{exp}{fe}_gpt2xl_1{exp}.npz", perf, return_SE=True, 
                                                     shape_pereira_full=shape_pereira_full, non_nan_indices_dict=non_nan_indices_dict, exp=exp, dataset=d)
 
                 if d == 'pereira':
-                    GPT2XL_SP_SL_GLOVE,GPT2XL_SP_SL_GLOVE_se  = load_perf(f"/data/LLMs/brainscore/results_pereira/pereira_trained-var-par{exp}{fe}_pos+WN+gpt2xl+glove_1000{exp}.npz", perf, return_SE=True, 
+                    GPT2XL_SP_SL_GLOVE, GPT2XL_SP_SL_GLOVE_se  = load_perf(f"/data/LLMs/brainscore/results_pereira/pereira_trained-var-par{exp}{fe}_pos+WN+gpt2xl+glove_1000{exp}.npz", perf, return_SE=True, 
                                                                           shape_pereira_full=shape_pereira_full, non_nan_indices_dict=non_nan_indices_dict, exp=exp, dataset=d)
                     GPT2XL_GLOVE, GPT2XL_GLOVE_se = load_perf(f"/data/LLMs/brainscore/results_pereira/pereira_trained-var-par{exp}{fe}_gpt2xl+glove_1000{exp}.npz", perf, return_SE=True, 
                                                               shape_pereira_full=shape_pereira_full, non_nan_indices_dict=non_nan_indices_dict, exp=exp, dataset=d)
@@ -261,7 +253,7 @@ for perf in perf_arr:
                     
                     # need to perform clipping before doing subtraction, otherwise subtracting a negative value
                     # leads to weird results
-                    load_r2_into_3d(np.clip(simple_perf, 0, np.inf) - np.clip(gpt2_bl_perf, 0, np.inf),
+                    load_r2_into_3d(simple_perf - gpt2_bl_perf,
                                             exp.strip('_'), f'SP+SL+GloVe-GPT2-XL{fe}_{perf}{exp}', 
                                             subjects_to_plot=np.unique(subjects_arr), subjects_all=subjects_arr, 
                                             lang_indices=selected_lang_indices, clip_zero=False)
@@ -275,11 +267,11 @@ for perf in perf_arr:
                                                                            GPT2XL_SP_GLOVE_se[243:], GPT2XL_SL_GLOVE_se[243:], GPT2XL_SP_SL_GLOVE_se[243:], 
                                                                            GPT2XL_se[243:])
                         
-                if d == 'pereira':
                     banded_perf = elementwise_max([gpt2_bl_perf, GPT2XL_SP_SL_GLOVE, GPT2XL_SL_GLOVE, GPT2XL_SP_GLOVE, 
                                                    GPT2XL_GLOVE, GPT2XL_SP_SL, GPT2XL_SL, GPT2XL_SP])
                 elif d == 'fedorenko':
                     banded_perf = elementwise_max([gpt2_bl_perf, GPT2XL_WP])
+                    
                 elif d == 'blank':
                     banded_perf = elementwise_max([gpt2_bl_perf, GPT2XL_POS_WN, GPT2XL_POS, GPT2XL_WN])
                     
@@ -291,8 +283,7 @@ for perf in perf_arr:
                 if d == 'pereira':
                     results_dict_gpt2['Exp'].extend(np.repeat(exp.strip('_'), num_vox_dict[exp.strip('_')]))
                     results_dict_gpt2_banded['Exp'].extend(np.repeat(exp.strip('_'), num_vox_dict[exp.strip('_')]))
-            
-            
+
             if d == 'pereira':
                 se_corrected_gpt2 = np.vstack((se_gpt2_243, se_gpt2_384))
                 se_corrected = np.vstack((se_corrected_243, se_corrected_384))
@@ -306,7 +297,6 @@ for perf in perf_arr:
                 
             pvalues_pd = compute_paired_ttest(pvalues_pd.copy(), se_corrected_gpt2, se_corrected,
                                               subjects_stats_dict[d], networks_stats_dict[d], fe)
-            
             
             save_nii(f'GPT2-XL{fe}_{perf}')
             save_nii(f'SP+SL+GloVe_{perf}')
@@ -336,7 +326,7 @@ for perf in perf_arr:
             nodes = [0.0, 0.25, 0.5, 0.75, 1.0]   # Define transition points in [0, 1]
 
             custom_cmap = LinearSegmentedColormap.from_list("custom_cmap", list(zip(nodes, colors)))
-
+            '''
             plotting.plot_glass_brain(f'/data/LLMs/brainscore/results_pereira/glass_brain_plots/SP+SL+GloVe_{perf}_subj_avg.nii', 
             colorbar=True, display_mode='l',vmax=0.25, vmin=0,
             output_file=f'/home2/ebrahim/beyond-brainscore/analyze_results/figures_code/figures/new_figures/figure4/glass_brain/SP+SL+GloVe_{perf}_subj_avg_cmap.pdf', cmap=custom_cmap)
@@ -358,6 +348,7 @@ for perf in perf_arr:
             colorbar=False, display_mode='l', vmax=0.25, vmin=-0.25,
             output_file=f'/home2/ebrahim/beyond-brainscore/analyze_results/figures_code/figures/new_figures/figure4/glass_brain/SP+SL+GloVe-GPT2-XL{fe}_{perf}_subj_avg.pdf', cmap='seismic', 
             plot_abs=False)
+            '''
         
     
         results_dict_gpt2 = pd.DataFrame(results_dict_gpt2)
@@ -441,7 +432,7 @@ for perf in perf_arr:
                 ax2[2].spines['left'].set_visible(False)
                 ax2[2].yaxis.set_visible(False)
                 ax2[2].set_yticks([])
-                
+                    
                 omega = calculate_omega(subject_avg_pd.reset_index(), f'Banded{fe_str}', f'GPT2XL{fe_str}', f'Simple_corrected')
                 omega_metric['feature_extraction'].extend(np.repeat(f"{fe_str}", len(omega['metric'])))
                 omega_metric['dataset'].extend(np.repeat(f"{d}", len(omega['metric'])))

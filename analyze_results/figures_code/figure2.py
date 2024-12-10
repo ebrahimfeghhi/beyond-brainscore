@@ -4,7 +4,7 @@ from sklearn.metrics import mean_squared_error
 import sys
 sys.path.append(base)
 from plotting_functions import plot_across_subjects, plot_2d_hist_scatter_updated, load_r2_into_3d, save_nii
-from trained_untrained_results_funcs import calculate_omega, find_best_layer, find_best_sigma, load_perf, elementwise_max, select_columns_with_lower_error
+from trained_untrained_results_funcs import calculate_omega, calculate_omega_voxel_level, find_best_layer, find_best_sigma, load_perf, elementwise_max, select_columns_with_lower_error
 from untrained_results_funcs import compute_p_val
 import pandas as pd
 from scipy.stats import false_discovery_control
@@ -21,9 +21,9 @@ dataset_arr = ['pereira', 'blank', 'fedorenko']
 shuffled_arr = ['shuffled', '']
 perf_arr = ['out_of_sample_r2', 'pearson_r']
 
-create_banded = False
+create_banded = True
 create_across_layer = False
-create_sig = True
+create_sig = False
 
 exp = ['243', '384']
 
@@ -128,7 +128,7 @@ custom_cmap = LinearSegmentedColormap.from_list("custom_cmap", list(zip(nodes, c
 if create_banded:
     
     perf = 'out_of_sample_r2'
-    clip_zero = True
+    clip_zero = False
     
     omega_metric = {'feature_extraction': [], 'dataset': [], 'values': []}
     
@@ -175,7 +175,7 @@ if create_banded:
                     ticks_hist2d = [-0.05, 0.4]
                     
                 else:
-                    
+        
                     banded_model = load_perf(f'/data/LLMs/brainscore/results_{dataset}/shuffled/{dataset}_gpt2-xl{fe}_OASM_layer1_1000.npz', perf)
                     gpt2_model = load_perf(f'/data/LLMs/brainscore/results_{dataset}/shuffled/{dataset}_gpt2-xl{fe}_layer_{bl}_1.npz', perf)
                     OASM_model = load_perf(f'/data/LLMs/brainscore/results_{dataset}/shuffled/{dataset}_OASM-all-sigma_{bs}_1.npz', perf)
@@ -197,9 +197,9 @@ if create_banded:
                     load_r2_into_3d(gpt2_model, exp, subjects_to_plot=np.unique(subjects_dict[exp]), 
                                                             subjects_all=subjects_dict[exp], save_name=f'GPT2{fe}_shuffled_{perf}_{exp}', 
                                                             lang_indices=lang_indices_dict[exp], clip_zero=clip_zero)
-                    load_r2_into_3d(np.clip(OASM_model, 0, np.inf)- np.clip(gpt2_model,0,np.inf), exp, subjects_to_plot=np.unique(subjects_dict[exp]), 
+                    load_r2_into_3d(OASM_model - gpt2_model, exp, subjects_to_plot=np.unique(subjects_dict[exp]), 
                                                             subjects_all=subjects_dict[exp], save_name=f'OASM-GPT2{fe}_{perf}_{exp}', 
-                                                            lang_indices=lang_indices_dict[exp], clip_zero=False)
+                                                            lang_indices=lang_indices_dict[exp], clip_zero=clip_zero)
                     
                     
                 num_vals = len(banded_model)
@@ -274,14 +274,12 @@ if create_banded:
                               savePath_figures_data='/home2/ebrahim/beyond-brainscore/analyze_results/figures_code/figures_data/figure2/')
         
             
-            
             subject_avg_pd, dict_pd_merged, dict_pd_with_all = plot_across_subjects(banded_gpt2_OASM_pd, dataset=dataset, selected_networks=['language'], 
                                                                                 figurePath=None, clip_zero=clip_zero, ms=12, 
                                 ylabel_str='', median=False, line_extend=0.05, draw_lines=True, ax_select=ax[i], hue_order=['OASM', 'Banded', f'GPT2{fe_str}'], 
                                 color_palette=palette, plot_legend=False)
             
             omega = calculate_omega(subject_avg_pd.reset_index(), 'Banded', f'GPT2{fe_str}', 'OASM')
-  
             omega_metric['feature_extraction'].extend(np.repeat(f"{fe_str}", len(omega['metric'])))
             omega_metric['dataset'].extend(np.repeat(f"{dataset}", len(omega['metric'])))
             omega_metric['values'].extend(omega['metric'])

@@ -71,9 +71,9 @@ for perf in perf_arr:
                 
     if perf == 'pearson_r':
         clip_zero = False
-        median = True
+        median = False
     else:
-        clip_zero = True
+        clip_zero = False
         median = False
         
     fig, ax = plt.subplots(1, len(dataset_arr), figsize=(15,5))
@@ -285,8 +285,8 @@ for perf in perf_arr:
                 if d == 'pereira':
                     load_r2_into_3d(perf_across_seeds_gpt2xlu/num_seeds, exp.strip('_'), f'GPT2-XLU{fe}_{perf}{exp}', 
                                             subjects_to_plot=np.unique(subjects_arr), subjects_all=subjects_arr, lang_indices=selected_lang_indices, clip_zero=clip_zero)
-                    load_r2_into_3d(np.clip(simple_perf, 0, np.inf) - np.clip((perf_across_seeds_gpt2xlu/num_seeds), 0, np.inf), exp.strip('_'), f'SP+SL-GPT2-XLU{fe}_{perf}{exp}', 
-                                            subjects_to_plot=np.unique(subjects_arr), subjects_all=subjects_arr, lang_indices=selected_lang_indices, clip_zero=False)
+                    load_r2_into_3d(simple_perf - perf_across_seeds_gpt2xlu/num_seeds, exp.strip('_'), f'SP+SL-GPT2-XLU{fe}_{perf}{exp}', 
+                                            subjects_to_plot=np.unique(subjects_arr), subjects_all=subjects_arr, lang_indices=selected_lang_indices, clip_zero=clip_zero)
                     
                     banded_perf = elementwise_max([perf_across_seeds_gpt2xlu/num_seeds, perf_across_seeds_gpt2xlu_sl/num_seeds, perf_across_seeds_gpt2xlu_sp/num_seeds, 
                                                     perf_across_seeds_gpt2xlu_sp_sl/num_seeds])

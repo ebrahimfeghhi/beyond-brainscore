@@ -212,7 +212,7 @@ def load_model_to_pd(model_name, layer_name, niters, br_labels, subject_labels, 
 
 
 def plot_across_subjects(dict_pd_merged, figurePath, dataset, selected_networks, ax_select=None, yticks=None, saveName=None,
-                         color_palette=None, hue_order=None, order=None, clip_zero=True, draw_lines=False, plot_legend=False, plot_legend_under=False, ms=6, width=0.8, 
+                         color_palette=None, hue_order=None, order=None, clip_zero=False, draw_lines=False, plot_legend=False, plot_legend_under=False, ms=6, width=0.8, 
                          LLM_perf=None, ylabel=True, median=False, ylabel_str=r'$R^2$', legend_fontsize=25, remove_yaxis=False, 
                          subject_avg_pd=None, plot_xlabel=False, x_var='Network', hue_var='Model', line_extend=0.08, lw=3, alpha=0.4, dodge=True, alpha_dots=None):
     
@@ -295,6 +295,8 @@ def plot_across_subjects(dict_pd_merged, figurePath, dataset, selected_networks,
       
     if alpha_dots is None:
         alpha_dots = alpha 
+        
+    subject_avg_pd['perf'] = np.clip(subject_avg_pd['perf'], 0, np.inf)
       
     sns.stripplot(data=subject_avg_pd, x=x_var, y='perf', hue=hue_var, dodge=dodge, palette=color_palette, 
                    size=ms, hue_order=hue_order, order=order, ax=ax_select, legend=False, alpha=alpha_dots)
