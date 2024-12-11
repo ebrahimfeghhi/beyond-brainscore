@@ -212,9 +212,11 @@ def load_model_to_pd(model_name, layer_name, niters, br_labels, subject_labels, 
 
 
 def plot_across_subjects(dict_pd_merged, figurePath, dataset, selected_networks, ax_select=None, yticks=None, saveName=None,
-                         color_palette=None, hue_order=None, order=None, clip_zero=False, draw_lines=False, plot_legend=False, plot_legend_under=False, ms=6, width=0.8, 
+                         color_palette=None, hue_order=None, order=None, clip_zero=False, draw_lines=False, plot_legend=False,
+                         plot_legend_under=False, ms=6, width=0.8, 
                          LLM_perf=None, ylabel=True, median=False, ylabel_str=r'$R^2$', legend_fontsize=25, remove_yaxis=False, 
-                         subject_avg_pd=None, plot_xlabel=False, x_var='Network', hue_var='Model', line_extend=0.08, lw=3, alpha=0.4, dodge=True, alpha_dots=None):
+                         subject_avg_pd=None, plot_xlabel=False, x_var='Network', hue_var='Model', line_extend=0.08, lw=3,
+                         alpha=0.4, dodge=True, alpha_dots=None):
     
     '''
         :param DataFrame dict_pd_merged: pandas df with the following columns: [subjects, Network, Model, perf]
@@ -546,9 +548,22 @@ def plot_2d_hist_scatter_updated(dataset, simplemodel, gpt2model, results_combin
         
         sns.despine()
         if dataset == 'pereira':
-            ax3.hist2d(y=gpt2model_perf_combined, x=simple_perf_combined, norm=matplotlib.colors.LogNorm(), bins=100, cmap=custom_cmap)
+            h, xedges, yedges, im = ax3.hist2d(y=gpt2model_perf_combined, x=simple_perf_combined, norm=matplotlib.colors.LogNorm(), bins=100, cmap=custom_cmap)
+            
+                # Create a separate figure for the color bar
+            fig_cb, ax_cb = plt.subplots(figsize=(0.5, 4))  # Adjust size for better aspect ratio
+            cb = plt.colorbar(im, cax=ax_cb)
+            # Customize the y-axis tick font size and remove the label
+            cb.ax.tick_params(labelsize=20)  # Increase font size for the ticks
+            cb.set_label('')  # Remove the label if any
+            
+            # Save the color bar figure to a file
+            fig_cb.savefig(f"{savePath}colorbar_{fe_str}.pdf", bbox_inches='tight')
         else:
             ax3.scatter(y=gpt2model_perf_combined, x=simple_perf_combined, s=100, color='tab:gray')
+            
+        
+
             
         ax3.set_ylim(ticks_hist2d[0], ticks_hist2d[1])
         ax3.set_yticks([0, ticks_hist2d[1]])

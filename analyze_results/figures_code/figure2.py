@@ -4,7 +4,7 @@ from sklearn.metrics import mean_squared_error
 import sys
 sys.path.append(base)
 from plotting_functions import plot_across_subjects, plot_2d_hist_scatter_updated, load_r2_into_3d, save_nii
-from trained_untrained_results_funcs import calculate_omega, calculate_omega_voxel_level, find_best_layer, find_best_sigma, load_perf, elementwise_max, select_columns_with_lower_error
+from trained_untrained_results_funcs import calculate_omega, load_perf, elementwise_max, select_columns_with_lower_error
 from untrained_results_funcs import compute_p_val
 import pandas as pd
 from scipy.stats import false_discovery_control
@@ -343,9 +343,6 @@ if create_across_layer:
                                 else:
                                     layer_perf =  load_perf(f'/data/LLMs/brainscore/results_{dataset}/{shuffled}/{dataset}_gpt2-xl{fe}_layer_{l}_1.npz', perf)
                                 
-                                if perf == 'out_of_sample_r2':
-                                    layer_perf = np.clip(layer_perf, 0, np.inf)
-                                    
                                 num_vals = len(layer_perf)
                                 
                                 layer_perf_pd['perf'].extend(layer_perf)
