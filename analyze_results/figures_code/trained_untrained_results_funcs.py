@@ -243,9 +243,6 @@ def find_best_layer(layer_range, noL2_str='', exp='', resultsPath='/data/LLMs/br
         
         layer_perf = load_perf(f'{resultsPath}/{dataset}_{model_name}{feature_extraction}{seed_str}_layer_{l}_{niter}{noL2_str}{exp}.npz', perf)
         
-        if perf != 'pearson_r':
-            layer_perf = np.clip(layer_perf, 0, np.inf)
-
         if dataset == 'pereira':
             layer_perf = layer_perf[selected_network_indices]
             

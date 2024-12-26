@@ -252,10 +252,6 @@ def plot_across_subjects(dict_pd_merged, figurePath, dataset, selected_networks,
         
         dict_pd_merged['perf'] = np.nan_to_num(dict_pd_merged['perf'])
         
-        if clip_zero:
-            print("Clipping 0 values")
-            dict_pd_merged['perf'] = np.where(dict_pd_merged['perf']<0, 0, dict_pd_merged['perf'])
-    
         dict_pd_with_all = dict_pd_merged.copy()
         pattern = '|'.join(selected_networks)
         dict_pd_merged = dict_pd_merged.loc[dict_pd_merged['Network'].str.contains(pattern)]
@@ -264,17 +260,24 @@ def plot_across_subjects(dict_pd_merged, figurePath, dataset, selected_networks,
             print("Taking median value across voxels with a participant")
             if dataset == 'pereira':
                 subject_avg_pd = dict_pd_merged.groupby(['subjects', 'Network', 'Model', 'Exp']).median()
+                subject_avg_pd['perf'] = np.clip(subject_avg_pd['perf'], 0, np.inf)
                 subject_avg_pd = subject_avg_pd.groupby(['subjects', 'Network', 'Model']).mean() # mean across experiments 
             else:
                 subject_avg_pd = dict_pd_merged.groupby(['subjects', 'Network', 'Model']).median()
+                subject_avg_pd['perf'] = np.clip(subject_avg_pd['perf'], 0, np.inf)
             
         else:
             print("Taking mean value across voxels with a participant")
             if dataset == 'pereira':
                 subject_avg_pd = dict_pd_merged.groupby(['subjects', 'Network', 'Model', 'Exp']).mean()
+                
+                subject_avg_pd['perf'] = np.clip(subject_avg_pd['perf'], 0, np.inf)
+                    
                 subject_avg_pd = subject_avg_pd.groupby(['subjects', 'Network', 'Model']).mean() # mean across experiments
             else:
                 subject_avg_pd = dict_pd_merged.groupby(['subjects', 'Network', 'Model']).mean()
+                
+                subject_avg_pd['perf'] = np.clip(subject_avg_pd['perf'], 0, np.inf)
                 
     else:
         dict_pd_merged = None
@@ -294,12 +297,9 @@ def plot_across_subjects(dict_pd_merged, figurePath, dataset, selected_networks,
     else:
         estimator = 'mean'
       
-      
     if alpha_dots is None:
         alpha_dots = alpha 
         
-    subject_avg_pd['perf'] = np.clip(subject_avg_pd['perf'], 0, np.inf)
-      
     sns.stripplot(data=subject_avg_pd, x=x_var, y='perf', hue=hue_var, dodge=dodge, palette=color_palette, 
                    size=ms, hue_order=hue_order, order=order, ax=ax_select, legend=False, alpha=alpha_dots)
         
@@ -558,13 +558,11 @@ def plot_2d_hist_scatter_updated(dataset, simplemodel, gpt2model, results_combin
             cb.set_label('')  # Remove the label if any
             
             # Save the color bar figure to a file
-            fig_cb.savefig(f"{savePath}colorbar_{fe_str}.pdf", bbox_inches='tight')
+            fig_cb.savefig(f"{savePath}colorbar_{fe_str}_{perf}.pdf", bbox_inches='tight')
         else:
             ax3.scatter(y=gpt2model_perf_combined, x=simple_perf_combined, s=100, color='tab:gray')
             
         
-
-            
         ax3.set_ylim(ticks_hist2d[0], ticks_hist2d[1])
         ax3.set_yticks([0, ticks_hist2d[1]])
         ax3.set_xlim(ticks_hist2d[0], ticks_hist2d[1])
@@ -588,11 +586,11 @@ def plot_2d_hist_scatter_updated(dataset, simplemodel, gpt2model, results_combin
         fig3.savefig(f"{savePath}hist2d{fe_str}_{perf}_{shuffled}_{dataset}.png")
         
     if len(feature_extraction_arr) == 1:
-        np.savez(f'{savePath_figures_data}gpt2xl_combined{fe_str}_{dataset}', **gpt2model_combined_perf_save)
-        np.savez(f'{savePath_figures_data}simple_combined{fe_str}_{dataset}', **simple_combined_perf_save)
+        np.savez(f'{savePath_figures_data}gpt2xl_combined{fe_str}_{dataset}_{perf}', **gpt2model_combined_perf_save)
+        np.savez(f'{savePath_figures_data}simple_combined{fe_str}_{dataset}_{perf}', **simple_combined_perf_save)
     else:
-        np.savez(f'{savePath_figures_data}simple_combined_{dataset}', **simple_combined_perf_save)
-        np.savez(f'{savePath_figures_data}gpt2xl_combined_{dataset}', **gpt2model_combined_perf_save)
+        np.savez(f'{savePath_figures_data}simple_combined_{dataset}_{perf}', **simple_combined_perf_save)
+        np.savez(f'{savePath_figures_data}gpt2xl_combined_{dataset}_{perf}', **gpt2model_combined_perf_save)
         
 
 def pass_info_plot_hist2d(df, best_DEM_model, best_LLM_model, max_val_dict, min_val, figurePath, saveName):
@@ -681,13 +679,13 @@ def plot_hist2d(df, model1, model2, cmaps, max_val, networks, min_val, figurePat
     
     
     
-def load_r2_into_3d(save_vals, exp, save_name, 
+def load_into_3d(save_vals, exp, save_name, 
                      subjects_to_plot, subjects_all, results_path = '/data/LLMs/brainscore/results_pereira/glass_brain_plots/',
                      col_to_coords_store = '/home3/ebrahim/what-is-brainscore/data_processed/pereira/', 
                      lang_indices=None, clip_zero=True):
     
     '''
-        :param ndarray save_vals: r2 values for each voxel
+        :param ndarray save_vals: perf values for each voxel
         :param str exp: which experiment 
         :param str subjects_to_plot: which subject to save data for
         :param array subjects_all: of shape num_voxels, indicates which subject each voxel belongs ot 

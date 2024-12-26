@@ -12,10 +12,10 @@ from trained_untrained_results_funcs import find_best_layer, find_best_sigma
 noL2_str_arr = ['_noL2', '_noL2custom', '']
 shuffled_arr = [False, True]
 dataset_arr = ['pereira', 'fedorenko', 'blank']
-perf_arr = ['pearson_r', 'out_of_sample_r2']
+perf_arr = ['out_of_sample_r2', 'pearson_r']
 feature_extraction = ['', '-sp', '-mp']
 
-median = True
+median = False
 
 save_best_sigma = {}
 save_best_layer = {}
@@ -217,8 +217,11 @@ for perf in perf_arr:
                                                         remove_yaxis=remove_y_axis, plot_xlabel=plot_xlabel)
                 
                 subject_avg_pd = subject_avg_pd.reset_index()
-                subject_avg_pd.to_csv(f"/home2/ebrahim/beyond-brainscore/analyze_results/figures_code/figures_data/figure1/{dataset}_{perf}{noL2_str}{shuffled_save_str}.csv", index=False)                
-            
+                if median:
+                    subject_avg_pd.to_csv(f"/home2/ebrahim/beyond-brainscore/analyze_results/figures_code/figures_data/figure1/{dataset}_{perf}{noL2_str}{shuffled_save_str}_median.csv", index=False)                
+                else:
+                    subject_avg_pd.to_csv(f"/home2/ebrahim/beyond-brainscore/analyze_results/figures_code/figures_data/figure1/{dataset}_{perf}{noL2_str}{shuffled_save_str}.csv", index=False)                
+                    
                 # so I just do it manually here (fed is always index 1)
                 ax[1].spines['left'].set_visible(False)   # Hide the left spine
                 ax[1].yaxis.set_visible(False)            # Hide the y-axis
