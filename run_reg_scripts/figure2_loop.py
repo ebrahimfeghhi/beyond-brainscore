@@ -7,11 +7,10 @@ from banded_reg_func import himalaya_regression_caller
 
 datasets = ['pereira', 'fedorenko', 'blank']
 models = ['gpt2-xl', 'gpt2-xl-sp', 'gpt2-xl-mp']
-linear_reg_options = [False] # if False, do L2 regularized only
 shuffled_options = [True]
-
+save_y_hat = True
 data_folder = '/data/LLMs/data_processed'
-device = 1
+device = 2
 
 for d in datasets:
     
@@ -26,34 +25,26 @@ for d in datasets:
         
         banded_model = f"{m}_OASM"
         
-        for lr in linear_reg_options:
-            
-            for shuffled in shuffled_options:
-              
-                # save y hat for L2 regularized so we can perform statistical testing
-                if lr == False:
-                    save_y_hat = True
-                else:
-                    save_y_hat = False 
+        for shuffled in shuffled_options:
+        
+            if d == 'pereira':
+                exp_options = ['384', '243']
+            else:
+                exp_options = ['']
+                
+            for exp in exp_options:
                 
                 if d == 'pereira':
-                    exp_options = ['384', '243']
+                    banded_model_exp = f"{banded_model}_{exp}"
                 else:
-                    exp_options = ['']
-                    
-                for exp in exp_options:
-                    
-                    if d == 'pereira':
-                        banded_model_exp = f"{banded_model}_{exp}"
-                    else:
-                        banded_model_exp = banded_model
-                    
-                    print(f"Running model {banded_model_exp}, experiment {exp}, dataset {d}, linear {lr}, shuffled {shuffled}, save_y_hat {save_y_hat}")
-                    
-                    or2 = himalaya_regression_caller(model=banded_model_exp, y='', data_labels='', features_list=[1600, OASM_size], 
-                        n_iter=1000, dataset=d, data_folder=data_folder, exp=exp, 
-                        save_results=True, save_y_hat=save_y_hat, save_new=False, 
-                        device=device, untrained=False, linear_reg=lr, shuffled=shuffled) 
-
-                    
+                    banded_model_exp = banded_model
                 
+                print(f"Running model {banded_model_exp}, experiment {exp}, dataset {d}, shuffled {shuffled}, save_y_hat {save_y_hat}")
+                
+                or2 = himalaya_regression_caller(model=banded_model_exp, y='', data_labels='', features_list=[1600, OASM_size], 
+                    n_iter=1000, dataset=d, data_folder=data_folder, exp=exp, 
+                    save_results=True, save_y_hat=save_y_hat, save_new=False, 
+                    device=device, untrained=False, shuffled=shuffled) 
+
+                
+            

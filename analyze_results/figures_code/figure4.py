@@ -1,7 +1,7 @@
 import numpy as np
 from trained_untrained_results_funcs import find_best_layer, elementwise_max, calculate_omega_voxel_level, custom_add_2d, load_perf, select_columns_with_lower_error, calculate_omega
 from untrained_results_funcs import load_untrained_data
-from plotting_functions import plot_across_subjects, load_r2_into_3d, save_nii, plot_2d_hist_scatter_updated
+from plotting_functions import plot_across_subjects, load_into_3d, save_nii, plot_2d_hist_scatter_updated
 from matplotlib import pyplot as plt
 from stats_funcs import compute_paired_ttest
 import pandas as pd
@@ -11,7 +11,7 @@ import matplotlib
 
 
 resultsPath_base = '/data/LLMs/brainscore/'
-figurePath = 'figures/new_figures/figure4/'
+figurePath = 'figures/new_figures/figusure4/'
 
 br_labels_dict = {}
 num_vox_dict = {}
@@ -27,7 +27,7 @@ omega_metric = {'feature_extraction': [], 'dataset': [], 'values': []}
 plot_legend = False
 palette = ['gray', 'blue', 'black']
 perf_str=''
-plot_xlabel=False
+plot_xlabel = False
 remove_y_axis = False
 num_seeds = 5
 feature_extraction_arr = ['', '-mp', '-sp']
@@ -35,7 +35,6 @@ perf_arr = ['out_of_sample_r2']
 shuffled_arr = ['']
 shuffled = ''
 dataset_arr = ['pereira', 'fedorenko', 'blank']
-
 
 for e in ['243', '384']:
 
@@ -67,17 +66,11 @@ non_nan_indices_dict = {'384': non_nan_indices_384, '243': non_nan_indices_243}
 
                     
 save_best_layer = []
-
+clip_zero = False 
+median = False
 
 for perf in perf_arr:
-                
-    if perf == 'pearson_r':
-        clip_zero = False
-        median = False
-    else:
-        clip_zero = False
-        median = False
-        
+              
     fig, ax = plt.subplots(1, len(dataset_arr), figsize=(15,5))
             
     for dnum, d in enumerate(dataset_arr):
@@ -101,6 +94,7 @@ for perf in perf_arr:
         
         if d == 'pereira':
             exp_arr = ['384', '243']
+            
         else:
             
             exp_arr = ['']
@@ -119,7 +113,6 @@ for perf in perf_arr:
                 fe_str = '-lt'
             else:
                 fe_str = fe
-        
         
             for exp_idx, exp in enumerate(exp_arr):
                 
@@ -164,7 +157,7 @@ for perf in perf_arr:
                 
                     simple_perf = SP_SL_GLOVE
                     
-                    load_r2_into_3d(SP_SL_GLOVE, exp.strip('_'), subjects_to_plot=np.unique(subjects_arr), 
+                    load_into_3d(SP_SL_GLOVE, exp.strip('_'), subjects_to_plot=np.unique(subjects_arr), 
                                                             subjects_all=subjects_arr, save_name=f'SP+SL+GloVe_{perf}{exp}', 
                                                             lang_indices=selected_lang_indices, clip_zero=clip_zero)
         
@@ -220,25 +213,25 @@ for perf in perf_arr:
                     GPT2XL_SP, GPT2XL_SP_se = load_perf(f"/data/LLMs/brainscore/results_pereira/pereira_trained-var-par{exp}{fe}_pos+gpt2xl_1000{exp}.npz", perf, return_SE=True, 
                                                         shape_pereira_full=shape_pereira_full, non_nan_indices_dict=non_nan_indices_dict, exp=exp, dataset=d)
                     simple_color = sns.color_palette("Greens", 5)[3]  
-                    yticks_perf = [0, 0.10]
-                    yticks_perf_banded = [0, 0.10]
-                    ticks_hist2d = [-0.05, 0.25]
+                    yticks_perf = [0, 0.3]
+                    yticks_perf_banded = [0, 0.3]
+                    ticks_hist2d = [-0.15, 0.5]
                     
                 elif d == 'fedorenko':    
                     GPT2XL_WP, GPT2XL_WP_se = load_perf(f"/data/LLMs/brainscore/results_fedorenko/fedorenko_trained-var-par{exp}{fe}_WP+gpt2xl_1000{exp}.npz", perf, return_SE=True, dataset=d)
                     simple_color = sns.color_palette("Reds", 5)[3] 
-                    yticks_perf = [0, 0.10]
-                    yticks_perf_banded = [0, 0.10]
-                    ticks_hist2d = [-0.05, 0.30]
+                    yticks_perf = [0, 0.30]
+                    yticks_perf_banded = [0, 0.30]
+                    ticks_hist2d = [-0.05, 0.55]
                     
                 elif d == 'blank':
                     GPT2XL_POS_WN, GPT2XL_POS_WN_se = load_perf(f"/data/LLMs/brainscore/results_blank/blank_trained-var-par{exp}{fe}_pos+WN+gpt2xl_1000{exp}.npz", perf, return_SE=True, dataset=d)
                     GPT2XL_POS, GPT2XL_POS_se = load_perf(f"/data/LLMs/brainscore/results_blank/blank_trained-var-par{exp}{fe}_pos+gpt2xl_1000{exp}.npz", perf, return_SE=True, dataset=d)
                     GPT2XL_WN, GPT2XL_WN_se = load_perf(f"/data/LLMs/brainscore/results_blank/blank_trained-var-par{exp}{fe}_WN+gpt2xl_1000{exp}.npz", perf, return_SE=True, dataset=d)
                     simple_color = sns.color_palette("Oranges", 5)[3] 
-                    yticks_perf = [0, 0.02]
-                    yticks_perf_banded = [0, 0.02]
-                    ticks_hist2d = [-0.015, 0.02]
+                    yticks_perf = [0, 0.15]
+                    yticks_perf_banded = [0, 0.15]
+                    ticks_hist2d = [-0.10, 0.20]
             
                 results_dict_gpt2['perf'].extend(gpt2_bl_perf)
                 results_dict_gpt2['subjects'].extend(subjects_arr)
@@ -247,13 +240,11 @@ for perf in perf_arr:
                 
                 
                 if d == 'pereira':
-                    load_r2_into_3d(gpt2_bl_perf, exp.strip('_'), f'GPT2-XL{fe}_{perf}{exp}', 
+                    load_into_3d(gpt2_bl_perf, exp.strip('_'), f'GPT2-XL{fe}_{perf}{exp}', 
                                             subjects_to_plot=np.unique(subjects_arr), subjects_all=subjects_arr, 
                                             lang_indices=selected_lang_indices, clip_zero=clip_zero)
                     
-                    # need to perform clipping before doing subtraction, otherwise subtracting a negative value
-                    # leads to weird results
-                    load_r2_into_3d(simple_perf - gpt2_bl_perf,
+                    load_into_3d(simple_perf - gpt2_bl_perf,
                                             exp.strip('_'), f'SP+SL+GloVe-GPT2-XL{fe}_{perf}{exp}', 
                                             subjects_to_plot=np.unique(subjects_arr), subjects_all=subjects_arr, 
                                             lang_indices=selected_lang_indices, clip_zero=False)
@@ -326,30 +317,29 @@ for perf in perf_arr:
             nodes = [0.0, 0.25, 0.5, 0.75, 1.0]   # Define transition points in [0, 1]
 
             custom_cmap = LinearSegmentedColormap.from_list("custom_cmap", list(zip(nodes, colors)))
-            '''
+       
             plotting.plot_glass_brain(f'/data/LLMs/brainscore/results_pereira/glass_brain_plots/SP+SL+GloVe_{perf}_subj_avg.nii', 
-            colorbar=True, display_mode='l',vmax=0.25, vmin=0,
+            colorbar=True, display_mode='l',vmax=0.5, vmin=0,
             output_file=f'/home2/ebrahim/beyond-brainscore/analyze_results/figures_code/figures/new_figures/figure4/glass_brain/SP+SL+GloVe_{perf}_subj_avg_cmap.pdf', cmap=custom_cmap)
             
             plotting.plot_glass_brain(f'/data/LLMs/brainscore/results_pereira/glass_brain_plots/SP+SL+GloVe_{perf}_subj_avg.nii', 
-            colorbar=False, display_mode='l',vmax=0.25, vmin=0,
+            colorbar=False, display_mode='l',vmax=0.5, vmin=0,
             output_file=f'/home2/ebrahim/beyond-brainscore/analyze_results/figures_code/figures/new_figures/figure4/glass_brain/SP+SL+GloVe_{perf}_subj_avg.pdf', cmap=custom_cmap)
             
             plotting.plot_glass_brain(f'/data/LLMs/brainscore/results_pereira/glass_brain_plots/GPT2-XL{fe}_{perf}_subj_avg.nii', 
-            colorbar=False, display_mode='l', vmax=0.25, vmin=0,
+            colorbar=False, display_mode='l', vmax=0.5, vmin=0,
             output_file=f'/home2/ebrahim/beyond-brainscore/analyze_results/figures_code/figures/new_figures/figure4/glass_brain/GPT2-XL{fe}_{perf}_subj_avg.pdf', cmap=custom_cmap)
             
             plotting.plot_glass_brain(f'/data/LLMs/brainscore/results_pereira/glass_brain_plots/SP+SL+GloVe-GPT2-XL{fe}_{perf}_subj_avg.nii', 
-            colorbar=True, display_mode='l', vmax=0.25, vmin=-0.25,
+            colorbar=True, display_mode='l', vmax=0.5, vmin=-0.5,
             output_file=f'/home2/ebrahim/beyond-brainscore/analyze_results/figures_code/figures/new_figures/figure4/glass_brain/SP+SL-GPT2-XL{fe}_{perf}_subj_avg_cmap.pdf', cmap='seismic', 
             plot_abs=False)
                
             plotting.plot_glass_brain(f'/data/LLMs/brainscore/results_pereira/glass_brain_plots/SP+SL+GloVe-GPT2-XL{fe}_{perf}_subj_avg.nii', 
-            colorbar=False, display_mode='l', vmax=0.25, vmin=-0.25,
+            colorbar=False, display_mode='l', vmax=0.5, vmin=-0.5,
             output_file=f'/home2/ebrahim/beyond-brainscore/analyze_results/figures_code/figures/new_figures/figure4/glass_brain/SP+SL+GloVe-GPT2-XL{fe}_{perf}_subj_avg.pdf', cmap='seismic', 
             plot_abs=False)
-            '''
-        
+ 
     
         results_dict_gpt2 = pd.DataFrame(results_dict_gpt2)
         results_dict_gpt2_banded = pd.DataFrame(results_dict_gpt2_banded)
@@ -371,20 +361,26 @@ for perf in perf_arr:
             
         results_combined['Model'] = results_combined['Model'].apply(lambda x: 'Simple' if 'simple' in x.lower() else x)
         
-        subject_avg_pd, dict_pd_merged, dict_pd_with_all = plot_across_subjects(results_combined.copy(), figurePath=figurePath,  selected_networks=['language'],
+        subject_avg_pd, dict_pd_merged, dict_pd_with_all = plot_across_subjects(results_combined.copy(), figurePath=f'{figurePath}/model_comp/',  selected_networks=['language'],
                                                             dataset=d, saveName=f'{d}_{fe}', order=['language'], clip_zero=clip_zero, 
                                                             draw_lines=False, ms=15, plot_legend=False,  
                                                             plot_legend_under=False, width=0.7, median=median, ylabel_str=perf_str, legend_fontsize=30, ax_select=ax_select,
                                                             remove_yaxis=False, plot_xlabel=plot_xlabel, alpha=0.5, color_palette=color_palette,
                                                             hue_order=['GPT2XL-lt', 'GPT2XL-mp', 'GPT2XL-sp', 'Simple'], 
                                                             yticks=yticks_perf)
-
+        subject_avg_pd = subject_avg_pd.reset_index()
         
+        if median:
+            subject_avg_pd.to_csv(f"/home2/ebrahim/beyond-brainscore/analyze_results/figures_code/figures_data/figure4/{d}_{perf}_median.csv", index=False)                
+        else:
+            subject_avg_pd.to_csv(f"/home2/ebrahim/beyond-brainscore/analyze_results/figures_code/figures_data/figure4/{d}_{perf}.csv", index=False)                
+                
+
         plot_2d_hist_scatter_updated(dataset=d, simplemodel='Simple', gpt2model='GPT2XL', results_combined=results_combined, ticks_hist2d=ticks_hist2d, 
-                              savePath='/home2/ebrahim/beyond-brainscore/analyze_results/figures_code/figures/new_figures/figure4/', 
+                              savePath='/home2/ebrahim/beyond-brainscore/analyze_results/figures_code/figures/new_figures/figure4/histograms/', 
                               feature_extraction_arr=feature_extraction_arr, custom_cmap=custom_cmap, subjects_arr_pereira=subjects_arr_pereira, 
                               networks_arr_pereira=networks_arr_pereira, non_nan_indices_dict=non_nan_indices_dict, 
-                              exp_arr=['384', '243'], perf='out_of_sample_r2', shuffled='', 
+                              exp_arr=['384', '243'], perf=perf, shuffled='', 
                               savePath_figures_data='/home2/ebrahim/beyond-brainscore/analyze_results/figures_code/figures_data/figure4/')
 
         fig2, ax2 = plt.subplots(1,3, figsize=(15,6))
@@ -417,14 +413,15 @@ for perf in perf_arr:
                     remove_y_axis = True
                     
                 
-                subject_avg_pd, dict_pd_merged, dict_pd_with_all = plot_across_subjects(results_banded_fe.copy(), figurePath=figurePath,  selected_networks=['language'],
+                subject_avg_pd, dict_pd_merged, dict_pd_with_all = plot_across_subjects(results_banded_fe.copy(), 
+                                                            figurePath=f'{figurePath}/banded/',  selected_networks=['language'],
                                                             dataset=d, saveName=f'{d}_{fe}', order=['language'], clip_zero=clip_zero, 
                                                             draw_lines=True, ms=15, plot_legend=False,  
                                                             plot_legend_under=False, width=0.7, median=median, ylabel_str=perf_str, legend_fontsize=30, ax_select=ax2[ja],
                                                             remove_yaxis=remove_y_axis, plot_xlabel=plot_xlabel, alpha=0.5, color_palette=color_palette_banded, 
                                                             hue_order=[f'Simple_corrected', f'Banded{fe_str}', f'GPT2XL{fe_str}'], 
                                                             yticks=yticks_perf_banded)
-                
+
                 ax2[1].spines['left'].set_visible(False)
                 ax2[1].yaxis.set_visible(False)
                 ax2[1].set_yticks([])
@@ -438,15 +435,15 @@ for perf in perf_arr:
                 omega_metric['dataset'].extend(np.repeat(f"{d}", len(omega['metric'])))
                 omega_metric['values'].extend(omega['metric'])
                 
-            fig2.savefig(f"/home2/ebrahim/beyond-brainscore/analyze_results/figures_code/figures/new_figures/figure4/banded_{perf}_{shuffled}_{d}.pdf", bbox_inches='tight')
-            fig2.savefig(f"/home2/ebrahim/beyond-brainscore/analyze_results/figures_code/figures/new_figures/figure4/banded_{perf}_{shuffled}_{d}.png")
+            fig2.savefig(f"/home2/ebrahim/beyond-brainscore/analyze_results/figures_code/figures/new_figures/figure4/banded/banded_{perf}_{d}.pdf", bbox_inches='tight')
+            fig2.savefig(f"/home2/ebrahim/beyond-brainscore/analyze_results/figures_code/figures/new_figures/figure4/banded/banded_{perf}_{d}.png")
             
         pvalues_pd = pd.DataFrame(pvalues_pd)
 
         pvalues_pd.to_csv(f'/home2/ebrahim/beyond-brainscore/analyze_results/figures_code/figures_data/figure4/pvalues_{d}.csv')
             
-    fig.savefig(f"/home2/ebrahim/beyond-brainscore/analyze_results/figures_code/figures/new_figures/figure4/{perf}_{shuffled}.png")
-    fig.savefig(f"/home2/ebrahim/beyond-brainscore/analyze_results/figures_code/figures/new_figures/figure4/{perf}_{shuffled}.pdf", bbox_inches='tight')
+    fig.savefig(f"/home2/ebrahim/beyond-brainscore/analyze_results/figures_code/figures/new_figures/figure4/model_comp/{perf}.png")
+    fig.savefig(f"/home2/ebrahim/beyond-brainscore/analyze_results/figures_code/figures/new_figures/figure4/model_comp/{perf}.pdf", bbox_inches='tight')
 
 omega_metric = pd.DataFrame(omega_metric)
 omega_metric.to_csv("/home2/ebrahim/beyond-brainscore/analyze_results/figures_code/figures_data/figure4/gpt2xl_omega_values.csv")
