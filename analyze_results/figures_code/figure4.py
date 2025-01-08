@@ -1,5 +1,5 @@
 import numpy as np
-from trained_untrained_results_funcs import find_best_layer, elementwise_max, calculate_omega_voxel_level, custom_add_2d, load_perf, select_columns_with_lower_error, calculate_omega
+from trained_untrained_results_funcs import find_best_layer, elementwise_max, custom_add_2d, load_perf, select_columns_with_lower_error, calculate_omega
 from untrained_results_funcs import load_untrained_data
 from plotting_functions import plot_across_subjects, load_into_3d, save_nii, plot_2d_hist_scatter_updated
 from matplotlib import pyplot as plt
@@ -64,6 +64,21 @@ non_nan_indices_243 = np.load(f"{data_processed_folder_pereira}/non_nan_indices_
 non_nan_indices_384 = np.load(f"{data_processed_folder_pereira}/non_nan_indices_384.npy") # voxels which are in 384
 non_nan_indices_dict = {'384': non_nan_indices_384, '243': non_nan_indices_243}
 
+resultsPath = '/data/LLMs/brainscore/'
+
+se_intercept_243 = np.load(f'{resultsPath}results_pereira/mse_intercept_243.npy')
+se_intercept_384 = np.load(f'{resultsPath}results_pereira/mse_intercept_384.npy')
+se_intercept_pereira_full = np.full(shape_pereira_full, fill_value=np.nan)
+se_intercept_pereira_full[:243, non_nan_indices_243] = se_intercept_243
+se_intercept_pereira_full[243:, non_nan_indices_384] = se_intercept_384
+
+se_intercept_fed = np.load(f'{resultsPath}results_fedorenko/mse_intercept.npy')
+
+se_intercept_blank = np.load(f'{resultsPath}results_blank/mse_intercept.npy')
+
+
+se_intercept_dict = {'pereira': se_intercept_pereira_full, 'fedorenko': se_intercept_fed, 
+                     'blank': se_intercept_blank}
                     
 save_best_layer = []
 clip_zero = False 
@@ -76,7 +91,7 @@ for perf in perf_arr:
     for dnum, d in enumerate(dataset_arr):
         
         pvalues_pd = {'fe': [], 'subject': [], 'pval': [], 
-                'pval_orig': [], 'network': []}
+                'pval_orig': [], 'network': [], 'pval_gpt2xl_sig':[]}
         
         results_dict_gpt2 = {'perf':[], 'subjects': [], 'Network': [], 
                                     'Model': []}
@@ -193,10 +208,13 @@ for perf in perf_arr:
                     if d == 'pereira':
                         simple_dict['Exp'].extend(np.repeat(exp.strip('_'), len(simple_perf)*2))
 
-                            
-                gpt2_bl_perf, GPT2XL_se = load_perf(f"/data/LLMs/brainscore/results_{d}/{d}_trained-var-par{exp}{fe}_gpt2xl_1{exp}.npz", perf, return_SE=True, 
-                                                    shape_pereira_full=shape_pereira_full, non_nan_indices_dict=non_nan_indices_dict, exp=exp, dataset=d)
-
+                _, _, gpt2_bl_perf, GPT2XL_se  = find_best_layer(np.arange(49), noL2_str='', exp=exp, 
+                                                                resultsPath=f"{resultsPath_base}results_{d}/", 
+                                                                perf=perf, feature_extraction=fe, selected_network_indices=selected_lang_indices, 
+                                                                subjects=subjects_arr, dataset=d, model_name='gpt2-xl', return_SE=True, shape_pereira_full=shape_pereira_full, 
+                                                                non_nan_indices_dict=non_nan_indices_dict)
+                
+                
                 if d == 'pereira':
                     GPT2XL_SP_SL_GLOVE, GPT2XL_SP_SL_GLOVE_se  = load_perf(f"/data/LLMs/brainscore/results_pereira/pereira_trained-var-par{exp}{fe}_pos+WN+gpt2xl+glove_1000{exp}.npz", perf, return_SE=True, 
                                                                           shape_pereira_full=shape_pereira_full, non_nan_indices_dict=non_nan_indices_dict, exp=exp, dataset=d)
@@ -216,6 +234,7 @@ for perf in perf_arr:
                     yticks_perf = [0, 0.3]
                     yticks_perf_banded = [0, 0.3]
                     ticks_hist2d = [-0.15, 0.5]
+                    
                     
                 elif d == 'fedorenko':    
                     GPT2XL_WP, GPT2XL_WP_se = load_perf(f"/data/LLMs/brainscore/results_fedorenko/fedorenko_trained-var-par{exp}{fe}_WP+gpt2xl_1000{exp}.npz", perf, return_SE=True, dataset=d)
@@ -286,7 +305,7 @@ for perf in perf_arr:
                 se_corrected_gpt2 = select_columns_with_lower_error(GPT2XL_se, GPT2XL_POS_se, GPT2XL_POS_WN_se, GPT2XL_WN_se)
                 se_corrected = select_columns_with_lower_error(POS_se, WN_se, POS_WN_se)
                 
-            pvalues_pd = compute_paired_ttest(pvalues_pd.copy(), se_corrected_gpt2, se_corrected,
+            pvalues_pd = compute_paired_ttest(pvalues_pd.copy(), se_corrected_gpt2, se_corrected, GPT2XL_se, se_intercept_dict[d], 
                                               subjects_stats_dict[d], networks_stats_dict[d], fe)
             
             save_nii(f'GPT2-XL{fe}_{perf}')
@@ -438,9 +457,10 @@ for perf in perf_arr:
             fig2.savefig(f"/home2/ebrahim/beyond-brainscore/analyze_results/figures_code/figures/new_figures/figure4/banded/banded_{perf}_{d}.pdf", bbox_inches='tight')
             fig2.savefig(f"/home2/ebrahim/beyond-brainscore/analyze_results/figures_code/figures/new_figures/figure4/banded/banded_{perf}_{d}.png")
             
-        pvalues_pd = pd.DataFrame(pvalues_pd)
 
-        pvalues_pd.to_csv(f'/home2/ebrahim/beyond-brainscore/analyze_results/figures_code/figures_data/figure4/pvalues_{d}.csv')
+        if perf == 'out_of_sample_r2':
+            pvalues_pd = pd.DataFrame(pvalues_pd)
+            pvalues_pd.to_csv(f'/home2/ebrahim/beyond-brainscore/analyze_results/figures_code/figures_data/figure4/pvalues_{d}.csv')
             
     fig.savefig(f"/home2/ebrahim/beyond-brainscore/analyze_results/figures_code/figures/new_figures/figure4/model_comp/{perf}.png")
     fig.savefig(f"/home2/ebrahim/beyond-brainscore/analyze_results/figures_code/figures/new_figures/figure4/model_comp/{perf}.pdf", bbox_inches='tight')

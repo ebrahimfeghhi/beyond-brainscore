@@ -230,9 +230,10 @@ def find_best_sigma(sigma_range, noL2_str, exp, resultsPath, dataset, subjects, 
 
     return sigma_perf_dict, best_sigma, OASM_perf_best
 
-def find_best_layer(layer_range, noL2_str='', exp='', resultsPath='/data/LLMs/brainscore/results_pereira/', subjects=None, dataset='pereira', perf='pearson_r', 
+def find_best_layer(layer_range, noL2_str='', exp='', resultsPath='/data/LLMs/brainscore/results_pereira/', 
+                    subjects=None, dataset='pereira', perf='pearson_r', 
                     selected_network_indices = None, feature_extraction = '', model_name='gpt2-xl', seed_number=None, 
-                    return_SE=False, niter=1, median=False):
+                    return_SE=False, niter=1, median=False, shape_pereira_full=None, non_nan_indices_dict=None):
     
     layer_perf_dict = {}
     
@@ -269,6 +270,21 @@ def find_best_layer(layer_range, noL2_str='', exp='', resultsPath='/data/LLMs/br
         
         layer_perf_best_se = compute_squared_error(np.load(f'{resultsPath}/{dataset}_{model_name}{feature_extraction}{seed_str}_layer_{best_layer}_{niter}{noL2_str}{exp}.npz')['y_hat'], 
                             dataset=dataset, exp=exp)
+        
+        if len(exp)>0:
+            
+            exp = exp.strip('_')
+            
+            se_full = np.full(shape_pereira_full, fill_value=np.nan)
+            
+            if '243' in exp:
+                se_full[:243, non_nan_indices_dict[exp]] = layer_perf_best_se
+                
+            else:
+                se_full[243:, non_nan_indices_dict[exp]] = layer_perf_best_se
+                
+            layer_perf_best_se = se_full
+
         return layer_perf_dict, best_layer, layer_perf_best, layer_perf_best_se
         
     return layer_perf_dict, best_layer, layer_perf_best  

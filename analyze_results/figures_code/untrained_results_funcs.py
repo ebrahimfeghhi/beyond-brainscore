@@ -33,26 +33,33 @@ def load_untrained_data(bl, model, exp, i, fe, dat, perf="out_of_sample_r2", sav
 
     file_path = f"/data/LLMs/brainscore/results_{dat}/untrained/{dat}_gpt2-xl-untrained{fe}-{save_str}{exp}_m{i}{model}_layer_{bl}_{niter}{exp}.npz"
     data = np.nan_to_num(np.load(file_path)[perf])
-
-
+    
     if return_SE:
-        se = compute_squared_error(np.load(file_path)['y_hat'], dat, exp)
         
-        if dat == 'pereira':
+        if perf == 'out_of_sample_r2':
+        
+            se = compute_squared_error(np.load(file_path)['y_hat'], dat, exp)
             
-            exp = exp.strip('_')
-            
-            se_full = np.full(shape_pereira_full, fill_value=np.nan)
-            
-            if '243' in exp:
-                se_full[:243, non_nan_indices_dict[exp]] = se
+            if dat == 'pereira':
                 
-            else:
-                se_full[243:, non_nan_indices_dict[exp]] = se
+                exp = exp.strip('_')
+                
+                se_full = np.full(shape_pereira_full, fill_value=np.nan)
+                
+                if '243' in exp:
+                    se_full[:243, non_nan_indices_dict[exp]] = se
+                    
+                else:
+                    se_full[243:, non_nan_indices_dict[exp]] = se
+                
+                return data, se_full
             
-            return data, se_full
+            return data, se
         
-        return data, se
+        else:
+            
+            return data, 0
+    
         
     return data
             
