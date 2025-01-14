@@ -143,7 +143,6 @@ def himalaya_regression_caller(model: Union[str, dict, np.ndarray],
             
     for idx, (layer_name, X) in enumerate(X_all_layers.items()):
         
-        
         if len(features_dict_per_layer) > 0:
             features_list_layer = features_dict_per_layer[layer_name]
         else:

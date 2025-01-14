@@ -2,10 +2,10 @@ import sys
 sys.path.append('/home2/ebrahim/beyond-brainscore/generate_activations/')
 from banded_reg_func import himalaya_regression_caller
 
-datasets = ['blank']
+datasets = ['pereira', 'fedorenko', 'blank']
 models = ['gpt2-xl-untrained', 'gpt2-xl-untrained-sp', 'gpt2-xl-untrained-mp']
 linear_reg_options = [False] # if False, do L2 regularized only
-shuffled_options = [True, False]
+shuffled_options = [False]
 model_name = 'gpt2-xl'
 start = 0
 N = 5

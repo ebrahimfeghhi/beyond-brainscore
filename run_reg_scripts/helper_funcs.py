@@ -27,6 +27,7 @@ from sklearn.impute import SimpleImputer
 from scipy.stats import pearsonr
 from sklearn.linear_model import LinearRegression
 
+
 def pearson_corr_schrimpf_style(y_test_folds, y_hat_folds):
     
     '''
@@ -39,13 +40,33 @@ def pearson_corr_schrimpf_style(y_test_folds, y_hat_folds):
     num_voxels = y_test_folds[0].shape[1]
     
     pearsonr_values = np.zeros(num_voxels)
+            
+    threshold = 1e-5 # this is based on scipy guidelines for float32
     
-    for yt, yh in zip(y_test_folds, y_hat_folds):
+    for i, (yt, yh) in enumerate(zip(y_test_folds, y_hat_folds)):
         
-        r, p = pearsonr(yt, yh, axis=0) # correlation per voxel
+        yt_mean = np.mean(yt, axis=0)
+        yh_mean = np.mean(yh, axis=0)
+
+        # Compute norms for all voxels
+        yt_norm = np.linalg.norm(yt - yt_mean, axis=0)
+        yh_norm = np.linalg.norm(yh - yh_mean, axis=0)
         
-        pearsonr_values += r
+        pearsonr_loop = np.zeros(num_voxels)
+
+        # Apply the condition to determine valid voxels
+        invalid_voxels = (yt_norm <= threshold * np.abs(yt_mean)) + (yh_norm <= threshold * np.abs(yh_mean))
+
+        # Mask the data to exclude invalid voxels
+        yt = yt[:, ~invalid_voxels]
+        yh = yh[:, ~invalid_voxels]
         
+        pearson_r, p = pearsonr(yt, yh, axis=0) # correlation per voxel
+        
+        pearsonr_loop[~invalid_voxels] = pearson_r
+
+        pearsonr_values += pearsonr_loop
+
     return pearsonr_values/num_folds
 
 def compute_R2(model_dict, neural_data, dataset, resultsFolder, exp='both', use_last=None):
