@@ -13,7 +13,7 @@ N = 5
 save_y_hat = True
 
 data_folder = '/data/LLMs/data_processed'
-device = 1
+device = 2
 
 for d in datasets:
     

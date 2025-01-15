@@ -41,6 +41,7 @@ parser.add_argument("--linear_reg", action='store_true', default=False, help="If
 parser.add_argument("--shuffled", action='store_true', default=False, help="If true, use shuffled train-test splits")
 parser.add_argument("--save_res", type=bool, default=True)
 parser.add_argument("--custom_linear", action='store_true', default=False, help="Custom linear reg")
+parser.add_argument("--specified_layers", default=[], help="If not empty, only layer names in this list are run")
 
 # Parse the command-line arguments
 args = parser.parse_args()
@@ -58,6 +59,7 @@ linear_reg = args.linear_reg
 shuffled = args.shuffled
 save_res = args.save_res
 custom_linear = args.custom_linear
+specified_layers = args.specified_layers
 
 if device == -1:
     device = 'cpu'
@@ -68,6 +70,6 @@ or2 = himalaya_regression_caller(model, y='', data_labels='', features_list=f_li
                             n_iter=niter, dataset=dataset, data_folder=data_folder, exp=exp, 
                             save_results=save_res, save_y_hat=y_hat, save_new=save_new, 
                             device=device, untrained=untrained, linear_reg=linear_reg, shuffled=shuffled, 
-                            custom_linear=custom_linear)
+                            custom_linear=custom_linear, specified_layers=specified_layers)
 
 

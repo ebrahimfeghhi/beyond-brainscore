@@ -15,7 +15,8 @@ def himalaya_regression_caller(model: Union[str, dict, np.ndarray],
                                save_y_hat: bool = True, save_new: bool= False, 
                                device: Union[str, int] = 'cpu', untrained: bool = False,
                                results_folder: str = '/data/LLMs/brainscore', linear_reg: bool = False, 
-                               shuffled: bool = False, custom_linear: bool = False):
+                               shuffled: bool = False, custom_linear: bool = False,
+                               specified_layers: list=[]):
     
     '''
     This function performs banded regression based on the himalaya package. 
@@ -61,6 +62,8 @@ def himalaya_regression_caller(model: Union[str, dict, np.ndarray],
     
     shuffled: If true, use shuffled train-test splits
     
+    
+    specified_layers: If empty, run all layers. Else, only run layers in the list
     '''
     
     if len(exp) == 0 and dataset == 'pereira':
@@ -114,7 +117,8 @@ def himalaya_regression_caller(model: Union[str, dict, np.ndarray],
         full_results_folder = f"{full_results_folder}untrained/"
         print("saving results to: ", full_results_folder)
     
-    alphas = np.exp2(np.arange(-5, 35))
+
+    alphas = np.exp2(np.arange(-5, 20))    
     alphas = np.hstack((0,alphas))
 
     test_fold_size = []
@@ -142,6 +146,10 @@ def himalaya_regression_caller(model: Union[str, dict, np.ndarray],
         os.makedirs(full_results_folder)
             
     for idx, (layer_name, X) in enumerate(X_all_layers.items()):
+        
+        if len(specified_layers) != 0:
+            if layer_name not in specified_layers:
+                continue
         
         if len(features_dict_per_layer) > 0:
             features_list_layer = features_dict_per_layer[layer_name]
@@ -257,9 +265,11 @@ def himalaya_regression_caller(model: Union[str, dict, np.ndarray],
                 else:
                     file_name = f"{file_name}_noL2"
                     
+
             if dataset == 'pereira':
                 file_name = f"{file_name}_{exp}"
                 
+
             complete_file_name = f"{file_name}.npz"
         
             results_stored = {'pnum': features_list, 
