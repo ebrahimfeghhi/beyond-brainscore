@@ -9,9 +9,8 @@ import seaborn as sns
 from nilearn import plotting
 import matplotlib
 
-
 resultsPath_base = '/data/LLMs/brainscore/'
-figurePath = 'figures/new_figures/figusure4/'
+figurePath = 'figures/new_figures/figure4/'
 
 br_labels_dict = {}
 num_vox_dict = {}
@@ -41,7 +40,7 @@ for e in ['243', '384']:
     bre = np.load(f'{data_processed_folder_pereira}/networks_{e}.npy', allow_pickle=True)
     br_labels_dict[e] = bre
     num_vox_dict[e] = bre.shape[0]
-    subjects_dict[e] = np.load(f"{data_processed_folder_pereira}/subjects_{e}.npy", allow_pickle=True)
+    subjects_dict[e] = np.load(f"{data_processed_folder_pereira}/subjects_{e}_lang.npy", allow_pickle=True)
     
 lang_indices_384 = np.argwhere(br_labels_dict['384'] == 'language').squeeze()
 lang_indices_243 = np.argwhere(br_labels_dict['243'] == 'language').squeeze()
@@ -51,23 +50,23 @@ lang_indices_dict['243'] = lang_indices_243
 
 subjects_arr_fed  = np.load(f"{data_processed_folder_fed}/subjects.npy", allow_pickle=True)
 subjects_arr_blank  = np.load(f"{data_processed_folder_blank}/subjects.npy", allow_pickle=True)
-subjects_arr_pereira = np.load(f"{data_processed_folder_pereira}/subjects_complete.npy", allow_pickle=True)
+subjects_arr_pereira = np.load(f"{data_processed_folder_pereira}/subjects_complete_lang.npy", allow_pickle=True)
 subjects_stats_dict = {'pereira': subjects_arr_pereira, 'fedorenko': subjects_arr_fed, 'blank': subjects_arr_blank}
+networks_arr_pereira = np.load(f"{data_processed_folder_pereira}/network_complete_lang.npy", allow_pickle=True)
 
-networks_arr_pereira = np.load(f"{data_processed_folder_pereira}/network_complete.npy", allow_pickle=True)
 networks_stats_dict = {'pereira': networks_arr_pereira, 'fedorenko': np.repeat('language', len(subjects_arr_fed)), 
                       'blank': np.repeat('language', len(subjects_arr_blank))}
 
 shape_pereira_full = (627, int(subjects_arr_pereira.shape[0]))
 
-non_nan_indices_243 = np.load(f"{data_processed_folder_pereira}/non_nan_indices_243.npy") # voxels which are in 243
-non_nan_indices_384 = np.load(f"{data_processed_folder_pereira}/non_nan_indices_384.npy") # voxels which are in 384
+non_nan_indices_243 = np.load(f"{data_processed_folder_pereira}/non_nan_indices_243_lang.npy") # voxels which are in 243
+non_nan_indices_384 = np.load(f"{data_processed_folder_pereira}/non_nan_indices_384_lang.npy") # voxels which are in 384
 non_nan_indices_dict = {'384': non_nan_indices_384, '243': non_nan_indices_243}
 
 resultsPath = '/data/LLMs/brainscore/'
 
-se_intercept_243 = np.load(f'{resultsPath}results_pereira/mse_intercept_243.npy')
-se_intercept_384 = np.load(f'{resultsPath}results_pereira/mse_intercept_384.npy')
+se_intercept_243 = np.load(f'{resultsPath}results_pereira/mse_intercept_243_lang.npy')
+se_intercept_384 = np.load(f'{resultsPath}results_pereira/mse_intercept_384_lang.npy')
 se_intercept_pereira_full = np.full(shape_pereira_full, fill_value=np.nan)
 se_intercept_pereira_full[:243, non_nan_indices_243] = se_intercept_243
 se_intercept_pereira_full[243:, non_nan_indices_384] = se_intercept_384
@@ -84,6 +83,11 @@ save_best_layer = []
 clip_zero = False 
 median = False
 
+pereira_best_layers_simple = np.load('/home2/ebrahim/beyond-brainscore/analyze_results/figures_code/best_layer_sigma_info/best_layer_other_pereira.npz')
+
+LLM_name = 'roberta-large'
+LLM_name_results = 'roberta-large'
+
 for perf in perf_arr:
               
     fig, ax = plt.subplots(1, len(dataset_arr), figsize=(15,5))
@@ -91,20 +95,20 @@ for perf in perf_arr:
     for dnum, d in enumerate(dataset_arr):
         
         pvalues_pd = {'fe': [], 'subject': [], 'pval': [], 
-                'pval_orig': [], 'network': [], 'pval_gpt2xl_sig':[]}
+                'pval_orig': [], 'network': [], 'pval_LLM_sig':[]}
         
-        results_dict_gpt2 = {'perf':[], 'subjects': [], 'Network': [], 
+        results_dict_LLM = {'perf':[], 'subjects': [], 'Network': [], 
                                     'Model': []}
         
-        results_dict_gpt2_banded = {'perf':[], 'subjects': [], 'Network': [], 
+        results_dict_LLM_banded = {'perf':[], 'subjects': [], 'Network': [], 
                                     'Model': []}
         
         simple_dict = {'perf':[], 'subjects': [], 'Network': [], 
                                     'Model': []}
         
         if d == 'pereira':
-            results_dict_gpt2['Exp'] = []
-            results_dict_gpt2_banded['Exp'] = []
+            results_dict_LLM['Exp'] = []
+            results_dict_LLM_banded['Exp'] = []
             simple_dict['Exp'] = []
         
         if d == 'pereira':
@@ -143,11 +147,18 @@ for perf in perf_arr:
                     selected_lang_indices = None
                     
                 if d == 'pereira':
-                
-                    SP_SL_GLOVE, SP_SL_GLOVE_se = load_perf(f"/data/LLMs/brainscore/results_pereira/pereira_trained-var-par{exp}-sp_pos+WN+glove_1000{exp}.npz", perf, return_SE=True, 
-                                                            shape_pereira_full=shape_pereira_full, non_nan_indices_dict=non_nan_indices_dict, exp=exp, dataset=d)
+
                     SL_GLOVE, SL_GLOVE_se = load_perf(f"/data/LLMs/brainscore/results_pereira/pereira_trained-var-par{exp}-sp_WN+glove_1000{exp}.npz", perf, return_SE=True, 
                                                       shape_pereira_full=shape_pereira_full, non_nan_indices_dict=non_nan_indices_dict, exp=exp, dataset=d)
+                    
+                    if perf == 'out_of_sample_r2':
+                        SP_SL_GLOVE, SP_SL_GLOVE_se = load_perf(f"/data/LLMs/brainscore/results_pereira/pereira_trained-var-par{exp}-sp_pos+WN+glove_1000{exp}.npz", perf, return_SE=True, 
+                                                            shape_pereira_full=shape_pereira_full, non_nan_indices_dict=non_nan_indices_dict, exp=exp, dataset=d)
+                    else:
+                        SP_SL_GLOVE = load_perf(f"/data/LLMs/brainscore/results_pereira/pereira_glove-sp_PWR{exp}_layer_1_1000{exp}.npz", perf, return_SE=False, 
+                                                            shape_pereira_full=shape_pereira_full, non_nan_indices_dict=non_nan_indices_dict, exp=exp, dataset=d)
+                        SP_SL_GLOVE_se = np.zeros_like(SL_GLOVE_se)
+                        
                     SP_GLOVE, SP_GLOVE_se = load_perf(f"/data/LLMs/brainscore/results_pereira/pereira_trained-var-par{exp}-sp_pos+glove_1000{exp}.npz", perf, return_SE=True, 
                                                       shape_pereira_full=shape_pereira_full, non_nan_indices_dict=non_nan_indices_dict, exp=exp, dataset=d)
                     GLOVE, GLOVE_se = load_perf(f"/data/LLMs/brainscore/results_pereira/pereira_trained-var-par{exp}-sp_glove_1{exp}.npz", perf, return_SE=True,
@@ -175,26 +186,36 @@ for perf in perf_arr:
                     load_into_3d(SP_SL_GLOVE, exp.strip('_'), subjects_to_plot=np.unique(subjects_arr), 
                                                             subjects_all=subjects_arr, save_name=f'SP+SL+GloVe_{perf}{exp}', 
                                                             lang_indices=selected_lang_indices, clip_zero=clip_zero)
-        
+
                 elif d == 'fedorenko':
                     
-                    simple_perf, se_corrected = load_perf(f"/data/LLMs/brainscore/results_{d}/{d}_trained-var-par{exp}-sp_WP_1{exp}.npz", perf, return_SE=True, 
-                                                          dataset=d)
-                    simple_models = [simple_perf]
+                    if perf == 'pearson_r':
+                        best_layer_WP_fed = '4.3'
+                    else:
+                        best_layer_WP_fed = '4.7'
+                        
+                    simple_perf, se_corrected = load_perf(f"/data/LLMs/brainscore/results_{d}/{d}_pos_layer_{best_layer_WP_fed}_1.npz", perf, return_SE=True, 
+                                                          dataset='fedorenko')
+                    
                     simple_perf_corrected = simple_perf
                     
                 elif d == 'blank':
                     
-                    POS_WN, POS_WN_se = load_perf(f"/data/LLMs/brainscore/results_blank/blank_trained-var-par{exp}-sp_pos+WN_1{exp}.npz", perf, return_SE=True, dataset=d)
-                    POS, POS_se = load_perf(f"/data/LLMs/brainscore/results_blank/blank_trained-var-par{exp}-sp_pos_1{exp}.npz", perf, return_SE=True, dataset=d)
-                    WN, WN_se = load_perf(f"/data/LLMs/brainscore/results_blank/blank_trained-var-par{exp}-sp_WN_1{exp}.npz", perf, return_SE=True, dataset=d)
+                    if perf == 'pearson_r':
+                        best_layer_pos_blank = 12
+                    else:
+                        best_layer_pos_blank = 11
+                    
+                    POS_WN, POS_WN_se = load_perf(f"/data/LLMs/brainscore/results_blank/blank_pos-WN_layer_{best_layer_pos_blank}_1{exp}.npz", perf, return_SE=True, dataset='blank')
+                    POS, POS_se = load_perf(f"/data/LLMs/brainscore/results_blank/blank_pos_layer_{best_layer_pos_blank}_1{exp}.npz", perf, return_SE=True, dataset='blank')
+                    WN, WN_se = load_perf(f"/data/LLMs/brainscore/results_blank/blank_trained-var-par{exp}-sp_WN_1{exp}.npz", perf, return_SE=True, dataset='blank')
     
+                    se_corrected = select_columns_with_lower_error(POS_WN_se, POS_se, WN_se)
                     simple_perf = POS_WN
-                    simple_models = [WN, POS, POS_WN]
-                    simple_perf_corrected = elementwise_max(simple_models)
+                    simple_perf_corrected = elementwise_max([WN, POS, POS_WN])
                     
                 # just do it for the first fe since simple model does not depend on feature extraction
-                if fe == '':
+                if fe == '':  
                     simple_dict['perf'].extend(np.nan_to_num(simple_perf))
                     simple_dict['subjects'].extend(subjects_arr)
                     simple_dict['Network'].extend(networks_arr)
@@ -208,109 +229,109 @@ for perf in perf_arr:
                     if d == 'pereira':
                         simple_dict['Exp'].extend(np.repeat(exp.strip('_'), len(simple_perf)*2))
 
-                _, _, gpt2_bl_perf, GPT2XL_se  = find_best_layer(np.arange(49), noL2_str='', exp=exp, 
+                _, _, llm_bl_perf, LLM_se  = find_best_layer(np.arange(49), noL2_str='', exp=exp, 
                                                                 resultsPath=f"{resultsPath_base}results_{d}/", 
                                                                 perf=perf, feature_extraction=fe, selected_network_indices=selected_lang_indices, 
-                                                                subjects=subjects_arr, dataset=d, model_name='gpt2-xl', return_SE=True, shape_pereira_full=shape_pereira_full, 
+                                                                subjects=subjects_arr, dataset=d, model_name=LLM_name, return_SE=True, shape_pereira_full=shape_pereira_full, 
                                                                 non_nan_indices_dict=non_nan_indices_dict)
                 
                 
                 if d == 'pereira':
-                    GPT2XL_SP_SL_GLOVE, GPT2XL_SP_SL_GLOVE_se  = load_perf(f"/data/LLMs/brainscore/results_pereira/pereira_trained-var-par{exp}{fe}_pos+WN+gpt2xl+glove_1000{exp}.npz", perf, return_SE=True, 
+                    LLM_SP_SL_GLOVE, LLM_SP_SL_GLOVE_se  = load_perf(f"/data/LLMs/brainscore/results_pereira/pereira_trained-var-par{exp}{fe}_pos+WN+{LLM_name_results}+glove_1000{exp}.npz", perf, return_SE=True, 
                                                                           shape_pereira_full=shape_pereira_full, non_nan_indices_dict=non_nan_indices_dict, exp=exp, dataset=d)
-                    GPT2XL_GLOVE, GPT2XL_GLOVE_se = load_perf(f"/data/LLMs/brainscore/results_pereira/pereira_trained-var-par{exp}{fe}_gpt2xl+glove_1000{exp}.npz", perf, return_SE=True, 
+                    LLM_GLOVE, LLM_GLOVE_se = load_perf(f"/data/LLMs/brainscore/results_pereira/pereira_trained-var-par{exp}{fe}_{LLM_name_results}+glove_1000{exp}.npz", perf, return_SE=True, 
                                                               shape_pereira_full=shape_pereira_full, non_nan_indices_dict=non_nan_indices_dict, exp=exp, dataset=d)
-                    GPT2XL_SL_GLOVE, GPT2XL_SL_GLOVE_se = load_perf(f"/data/LLMs/brainscore/results_pereira/pereira_trained-var-par{exp}{fe}_WN+gpt2xl+glove_1000{exp}.npz", perf, return_SE=True, 
+                    LLM_SL_GLOVE, LLM_SL_GLOVE_se = load_perf(f"/data/LLMs/brainscore/results_pereira/pereira_trained-var-par{exp}{fe}_WN+{LLM_name_results}+glove_1000{exp}.npz", perf, return_SE=True, 
                                                                     shape_pereira_full=shape_pereira_full, non_nan_indices_dict=non_nan_indices_dict, exp=exp, dataset=d)
-                    GPT2XL_SP_GLOVE, GPT2XL_SP_GLOVE_se = load_perf(f"/data/LLMs/brainscore/results_pereira/pereira_trained-var-par{exp}{fe}_pos+gpt2xl+glove_1000{exp}.npz", perf, return_SE=True, 
+                    LLM_SP_GLOVE, LLM_SP_GLOVE_se = load_perf(f"/data/LLMs/brainscore/results_pereira/pereira_trained-var-par{exp}{fe}_pos+{LLM_name_results}+glove_1000{exp}.npz", perf, return_SE=True, 
                                                                     shape_pereira_full=shape_pereira_full, non_nan_indices_dict=non_nan_indices_dict, exp=exp, dataset=d)
-                    GPT2XL_SP_SL, GPT2XL_SP_SL_se = load_perf(f"/data/LLMs/brainscore/results_pereira/pereira_trained-var-par{exp}{fe}_pos+WN+gpt2xl_1000{exp}.npz", perf, return_SE=True, 
+                    LLM_SP_SL, LLM_SP_SL_se = load_perf(f"/data/LLMs/brainscore/results_pereira/pereira_trained-var-par{exp}{fe}_pos+WN+LLM_1000{exp}.npz", perf, return_SE=True, 
                                                               shape_pereira_full=shape_pereira_full, non_nan_indices_dict=non_nan_indices_dict, exp=exp, dataset=d)
-                    GPT2XL_SL, GPT2XL_SL_se = load_perf(f"/data/LLMs/brainscore/results_pereira/pereira_trained-var-par{exp}{fe}_WN+gpt2xl_1000{exp}.npz", perf, return_SE=True, 
+                    LLM_SL, LLM_SL_se = load_perf(f"/data/LLMs/brainscore/results_pereira/pereira_trained-var-par{exp}{fe}_WN+LLM_1000{exp}.npz", perf, return_SE=True, 
                                                         shape_pereira_full=shape_pereira_full, non_nan_indices_dict=non_nan_indices_dict, exp=exp, dataset=d)
-                    GPT2XL_SP, GPT2XL_SP_se = load_perf(f"/data/LLMs/brainscore/results_pereira/pereira_trained-var-par{exp}{fe}_pos+gpt2xl_1000{exp}.npz", perf, return_SE=True, 
+                    LLM_SP, LLM_SP_se = load_perf(f"/data/LLMs/brainscore/results_pereira/pereira_trained-var-par{exp}{fe}_pos+{LLM_name_results}_1000{exp}.npz", perf, return_SE=True, 
                                                         shape_pereira_full=shape_pereira_full, non_nan_indices_dict=non_nan_indices_dict, exp=exp, dataset=d)
                     simple_color = sns.color_palette("Greens", 5)[3]  
                     yticks_perf = [0, 0.3]
                     yticks_perf_banded = [0, 0.3]
-                    ticks_hist2d = [-0.15, 0.5]
+                    ticks_hist2d = [-0.25, 0.55]
                     
                     
                 elif d == 'fedorenko':    
-                    GPT2XL_WP, GPT2XL_WP_se = load_perf(f"/data/LLMs/brainscore/results_fedorenko/fedorenko_trained-var-par{exp}{fe}_WP+gpt2xl_1000{exp}.npz", perf, return_SE=True, dataset=d)
+                    LLM_WP, LLM_WP_se = load_perf(f"/data/LLMs/brainscore/results_fedorenko/fedorenko_trained-var-par{exp}{fe}_WP+{LLM_name_results}_1000{exp}.npz", perf, return_SE=True, dataset=d)
                     simple_color = sns.color_palette("Reds", 5)[3] 
                     yticks_perf = [0, 0.30]
                     yticks_perf_banded = [0, 0.30]
-                    ticks_hist2d = [-0.05, 0.55]
+                    ticks_hist2d = [-0.20, 0.60]
                     
                 elif d == 'blank':
-                    GPT2XL_POS_WN, GPT2XL_POS_WN_se = load_perf(f"/data/LLMs/brainscore/results_blank/blank_trained-var-par{exp}{fe}_pos+WN+gpt2xl_1000{exp}.npz", perf, return_SE=True, dataset=d)
-                    GPT2XL_POS, GPT2XL_POS_se = load_perf(f"/data/LLMs/brainscore/results_blank/blank_trained-var-par{exp}{fe}_pos+gpt2xl_1000{exp}.npz", perf, return_SE=True, dataset=d)
-                    GPT2XL_WN, GPT2XL_WN_se = load_perf(f"/data/LLMs/brainscore/results_blank/blank_trained-var-par{exp}{fe}_WN+gpt2xl_1000{exp}.npz", perf, return_SE=True, dataset=d)
+                    LLM_POS_WN, LLM_POS_WN_se = load_perf(f"/data/LLMs/brainscore/results_blank/blank_trained-var-par{exp}{fe}_pos+WN+{LLM_name_results}_1000{exp}.npz", perf, return_SE=True, dataset=d)
+                    LLM_POS, LLM_POS_se = load_perf(f"/data/LLMs/brainscore/results_blank/blank_trained-var-par{exp}{fe}_pos+{LLM_name_results}_1000{exp}.npz", perf, return_SE=True, dataset=d)
+                    LLM_WN, LLM_WN_se = load_perf(f"/data/LLMs/brainscore/results_blank/blank_trained-var-par{exp}{fe}_WN+{LLM_name_results}_1000{exp}.npz", perf, return_SE=True, dataset=d)
                     simple_color = sns.color_palette("Oranges", 5)[3] 
                     yticks_perf = [0, 0.15]
                     yticks_perf_banded = [0, 0.15]
-                    ticks_hist2d = [-0.10, 0.20]
+                    ticks_hist2d = [-0.15, 0.20]
             
-                results_dict_gpt2['perf'].extend(gpt2_bl_perf)
-                results_dict_gpt2['subjects'].extend(subjects_arr)
-                results_dict_gpt2['Network'].extend(networks_arr)
-                results_dict_gpt2['Model'].extend(np.repeat(f'GPT2XL{fe_str}', len(gpt2_bl_perf)))
+                results_dict_LLM['perf'].extend(llm_bl_perf)
+                results_dict_LLM['subjects'].extend(subjects_arr)
+                results_dict_LLM['Network'].extend(networks_arr)
+                results_dict_LLM['Model'].extend(np.repeat(f'{LLM_name_results}{fe_str}', len(llm_bl_perf)))
                 
                 
                 if d == 'pereira':
-                    load_into_3d(gpt2_bl_perf, exp.strip('_'), f'GPT2-XL{fe}_{perf}{exp}', 
+                    load_into_3d(llm_bl_perf, exp.strip('_'), f'{LLM_name}{fe}_{perf}{exp}', 
                                             subjects_to_plot=np.unique(subjects_arr), subjects_all=subjects_arr, 
                                             lang_indices=selected_lang_indices, clip_zero=clip_zero)
                     
-                    load_into_3d(simple_perf - gpt2_bl_perf,
-                                            exp.strip('_'), f'SP+SL+GloVe-GPT2-XL{fe}_{perf}{exp}', 
+                    load_into_3d(simple_perf - llm_bl_perf,
+                                            exp.strip('_'), f'SP+SL+GloVe-{LLM_name}{fe}_{perf}{exp}', 
                                             subjects_to_plot=np.unique(subjects_arr), subjects_all=subjects_arr, 
                                             lang_indices=selected_lang_indices, clip_zero=False)
                     
                     if '243' in exp:
-                        se_gpt2_243 = select_columns_with_lower_error(GPT2XL_SP_SL_se[:243], GPT2XL_SP_se[:243], GPT2XL_SL_se[:243], GPT2XL_GLOVE_se[:243], 
-                                                                           GPT2XL_SP_GLOVE_se[:243], GPT2XL_SL_GLOVE_se[:243], GPT2XL_SP_SL_GLOVE_se[:243], 
-                                                                           GPT2XL_se[:243])
+                        se_llm_243 = select_columns_with_lower_error(LLM_SP_SL_se[:243], LLM_SP_se[:243], LLM_SL_se[:243], LLM_GLOVE_se[:243], 
+                                                                           LLM_SP_GLOVE_se[:243], LLM_SL_GLOVE_se[:243], LLM_SP_SL_GLOVE_se[:243], 
+                                                                           LLM_se[:243])
                     else:
-                        se_gpt2_384 = select_columns_with_lower_error(GPT2XL_SP_SL_se[243:], GPT2XL_SP_se[243:], GPT2XL_SL_se[243:], GPT2XL_GLOVE_se[243:],
-                                                                           GPT2XL_SP_GLOVE_se[243:], GPT2XL_SL_GLOVE_se[243:], GPT2XL_SP_SL_GLOVE_se[243:], 
-                                                                           GPT2XL_se[243:])
+                        se_llm_384 = select_columns_with_lower_error(LLM_SP_SL_se[243:], LLM_SP_se[243:], LLM_SL_se[243:], LLM_GLOVE_se[243:],
+                                                                           LLM_SP_GLOVE_se[243:], LLM_SL_GLOVE_se[243:], LLM_SP_SL_GLOVE_se[243:], 
+                                                                           LLM_se[243:])
                         
-                    banded_perf = elementwise_max([gpt2_bl_perf, GPT2XL_SP_SL_GLOVE, GPT2XL_SL_GLOVE, GPT2XL_SP_GLOVE, 
-                                                   GPT2XL_GLOVE, GPT2XL_SP_SL, GPT2XL_SL, GPT2XL_SP])
+                    banded_perf = elementwise_max([llm_bl_perf, LLM_SP_SL_GLOVE, LLM_SL_GLOVE, LLM_SP_GLOVE, 
+                                                   LLM_GLOVE, LLM_SP_SL, LLM_SL, LLM_SP])
                 elif d == 'fedorenko':
-                    banded_perf = elementwise_max([gpt2_bl_perf, GPT2XL_WP])
+                    banded_perf = elementwise_max([llm_bl_perf, LLM_WP])
                     
                 elif d == 'blank':
-                    banded_perf = elementwise_max([gpt2_bl_perf, GPT2XL_POS_WN, GPT2XL_POS, GPT2XL_WN])
+                    banded_perf = elementwise_max([llm_bl_perf, LLM_POS_WN, LLM_POS, LLM_WN])
                     
-                results_dict_gpt2_banded['perf'].extend(banded_perf)
-                results_dict_gpt2_banded['subjects'].extend(subjects_arr)
-                results_dict_gpt2_banded['Network'].extend(networks_arr)
-                results_dict_gpt2_banded['Model'].extend(np.repeat(f'Banded{fe_str}', len(banded_perf)))
+                results_dict_LLM_banded['perf'].extend(banded_perf)
+                results_dict_LLM_banded['subjects'].extend(subjects_arr)
+                results_dict_LLM_banded['Network'].extend(networks_arr)
+                results_dict_LLM_banded['Model'].extend(np.repeat(f'Banded{fe_str}', len(banded_perf)))
                 
                 if d == 'pereira':
-                    results_dict_gpt2['Exp'].extend(np.repeat(exp.strip('_'), num_vox_dict[exp.strip('_')]))
-                    results_dict_gpt2_banded['Exp'].extend(np.repeat(exp.strip('_'), num_vox_dict[exp.strip('_')]))
+                    results_dict_LLM['Exp'].extend(np.repeat(exp.strip('_'), num_vox_dict[exp.strip('_')]))
+                    results_dict_LLM_banded['Exp'].extend(np.repeat(exp.strip('_'), num_vox_dict[exp.strip('_')]))
 
             if d == 'pereira':
-                se_corrected_gpt2 = np.vstack((se_gpt2_243, se_gpt2_384))
+                se_corrected_llm = np.vstack((se_llm_243, se_llm_384))
                 se_corrected = np.vstack((se_corrected_243, se_corrected_384))
                 
             elif d == 'fedorenko':
-                se_corrected_gpt2 = select_columns_with_lower_error(GPT2XL_se, GPT2XL_WP_se)
+                se_corrected_llm = select_columns_with_lower_error(LLM_se, LLM_WP_se)
             
             else:
-                se_corrected_gpt2 = select_columns_with_lower_error(GPT2XL_se, GPT2XL_POS_se, GPT2XL_POS_WN_se, GPT2XL_WN_se)
+                se_corrected_llm = select_columns_with_lower_error(LLM_se, LLM_POS_se, LLM_POS_WN_se, LLM_WN_se)
                 se_corrected = select_columns_with_lower_error(POS_se, WN_se, POS_WN_se)
                 
-            pvalues_pd = compute_paired_ttest(pvalues_pd.copy(), se_corrected_gpt2, se_corrected, GPT2XL_se, se_intercept_dict[d], 
+            pvalues_pd = compute_paired_ttest(pvalues_pd.copy(), se_corrected_llm, se_corrected, LLM_se, se_intercept_dict[d], 
                                               subjects_stats_dict[d], networks_stats_dict[d], fe)
             
-            save_nii(f'GPT2-XL{fe}_{perf}')
+            save_nii(f'{LLM_name}{fe}_{perf}')
             save_nii(f'SP+SL+GloVe_{perf}')
-            save_nii(f'SP+SL+GloVe-GPT2-XL{fe}_{perf}')
+            save_nii(f'SP+SL+GloVe-{LLM_name}{fe}_{perf}')
             
             from matplotlib.colors import ListedColormap
             
@@ -345,31 +366,31 @@ for perf in perf_arr:
             colorbar=False, display_mode='l',vmax=0.5, vmin=0,
             output_file=f'/home2/ebrahim/beyond-brainscore/analyze_results/figures_code/figures/new_figures/figure4/glass_brain/SP+SL+GloVe_{perf}_subj_avg.pdf', cmap=custom_cmap)
             
-            plotting.plot_glass_brain(f'/data/LLMs/brainscore/results_pereira/glass_brain_plots/GPT2-XL{fe}_{perf}_subj_avg.nii', 
+            plotting.plot_glass_brain(f'/data/LLMs/brainscore/results_pereira/glass_brain_plots/{LLM_name}{fe}_{perf}_subj_avg.nii', 
             colorbar=False, display_mode='l', vmax=0.5, vmin=0,
-            output_file=f'/home2/ebrahim/beyond-brainscore/analyze_results/figures_code/figures/new_figures/figure4/glass_brain/GPT2-XL{fe}_{perf}_subj_avg.pdf', cmap=custom_cmap)
+            output_file=f'/home2/ebrahim/beyond-brainscore/analyze_results/figures_code/figures/new_figures/figure4/glass_brain/{LLM_name}{fe}_{perf}_subj_avg.pdf', cmap=custom_cmap)
             
-            plotting.plot_glass_brain(f'/data/LLMs/brainscore/results_pereira/glass_brain_plots/SP+SL+GloVe-GPT2-XL{fe}_{perf}_subj_avg.nii', 
+            plotting.plot_glass_brain(f'/data/LLMs/brainscore/results_pereira/glass_brain_plots/SP+SL+GloVe-{LLM_name}{fe}_{perf}_subj_avg.nii', 
             colorbar=True, display_mode='l', vmax=0.5, vmin=-0.5,
-            output_file=f'/home2/ebrahim/beyond-brainscore/analyze_results/figures_code/figures/new_figures/figure4/glass_brain/SP+SL-GPT2-XL{fe}_{perf}_subj_avg_cmap.pdf', cmap='seismic', 
+            output_file=f'/home2/ebrahim/beyond-brainscore/analyze_results/figures_code/figures/new_figures/figure4/glass_brain/SP+SL-{LLM_name}{fe}_{perf}_subj_avg_cmap.pdf', cmap='seismic', 
             plot_abs=False)
                
-            plotting.plot_glass_brain(f'/data/LLMs/brainscore/results_pereira/glass_brain_plots/SP+SL+GloVe-GPT2-XL{fe}_{perf}_subj_avg.nii', 
+            plotting.plot_glass_brain(f'/data/LLMs/brainscore/results_pereira/glass_brain_plots/SP+SL+GloVe-{LLM_name}{fe}_{perf}_subj_avg.nii', 
             colorbar=False, display_mode='l', vmax=0.5, vmin=-0.5,
-            output_file=f'/home2/ebrahim/beyond-brainscore/analyze_results/figures_code/figures/new_figures/figure4/glass_brain/SP+SL+GloVe-GPT2-XL{fe}_{perf}_subj_avg.pdf', cmap='seismic', 
+            output_file=f'/home2/ebrahim/beyond-brainscore/analyze_results/figures_code/figures/new_figures/figure4/glass_brain/SP+SL+GloVe-{LLM_name}{fe}_{perf}_subj_avg.pdf', cmap='seismic', 
             plot_abs=False)
  
     
-        results_dict_gpt2 = pd.DataFrame(results_dict_gpt2)
-        results_dict_gpt2_banded = pd.DataFrame(results_dict_gpt2_banded)
+        results_dict_LLM = pd.DataFrame(results_dict_LLM)
+        results_dict_LLM_banded = pd.DataFrame(results_dict_LLM_banded)
         
         simple_dict = pd.DataFrame(simple_dict)
         
         simple_dict_corrected = simple_dict.loc[simple_dict.Model.str.contains('corrected')]
         simple_dict_noncorrected = simple_dict.loc[~simple_dict.Model.str.contains('corrected')]
         
-        results_combined = pd.concat((results_dict_gpt2, simple_dict_noncorrected))
-        results_combined_with_banded = pd.concat((results_dict_gpt2, simple_dict_corrected, results_dict_gpt2_banded))
+        results_combined = pd.concat((results_dict_LLM, simple_dict_noncorrected))
+        results_combined_with_banded = pd.concat((results_dict_LLM, simple_dict_corrected, results_dict_LLM_banded))
         
         if len(dataset_arr) == 1:
             ax_select = ax
@@ -381,21 +402,21 @@ for perf in perf_arr:
         results_combined['Model'] = results_combined['Model'].apply(lambda x: 'Simple' if 'simple' in x.lower() else x)
         
         subject_avg_pd, dict_pd_merged, dict_pd_with_all = plot_across_subjects(results_combined.copy(), figurePath=f'{figurePath}/model_comp/',  selected_networks=['language'],
-                                                            dataset=d, saveName=f'{d}_{fe}', order=['language'], clip_zero=clip_zero, 
+                                                            dataset=d, saveName=f'old', order=['language'], clip_zero=clip_zero, 
                                                             draw_lines=False, ms=15, plot_legend=False,  
                                                             plot_legend_under=False, width=0.7, median=median, ylabel_str=perf_str, legend_fontsize=30, ax_select=ax_select,
                                                             remove_yaxis=False, plot_xlabel=plot_xlabel, alpha=0.5, color_palette=color_palette,
-                                                            hue_order=['GPT2XL-lt', 'GPT2XL-mp', 'GPT2XL-sp', 'Simple'], 
+                                                            hue_order=['{LLM_name_results}-lt', '{LLM_name_results}-mp', '{LLM_name_results}-sp', 'Simple'], 
                                                             yticks=yticks_perf)
         subject_avg_pd = subject_avg_pd.reset_index()
         
         if median:
-            subject_avg_pd.to_csv(f"/home2/ebrahim/beyond-brainscore/analyze_results/figures_code/figures_data/figure4/{d}_{perf}_median.csv", index=False)                
+            subject_avg_pd.to_csv(f"/home2/ebrahim/beyond-brainscore/analyze_results/figures_code/figures_data/figure4/{d}_{perf}_{LLM_name_results}_median.csv", index=False)                
         else:
-            subject_avg_pd.to_csv(f"/home2/ebrahim/beyond-brainscore/analyze_results/figures_code/figures_data/figure4/{d}_{perf}.csv", index=False)                
+            subject_avg_pd.to_csv(f"/home2/ebrahim/beyond-brainscore/analyze_results/figures_code/figures_data/figure4/{d}_{perf}_{LLM_name_results}.csv", index=False)                
                 
 
-        plot_2d_hist_scatter_updated(dataset=d, simplemodel='Simple', gpt2model='GPT2XL', results_combined=results_combined, ticks_hist2d=ticks_hist2d, 
+        plot_2d_hist_scatter_updated(dataset=d, simplemodel='Simple', llm_model=LLM_name_results, results_combined=results_combined, ticks_hist2d=ticks_hist2d, 
                               savePath='/home2/ebrahim/beyond-brainscore/analyze_results/figures_code/figures/new_figures/figure4/histograms/', 
                               feature_extraction_arr=feature_extraction_arr, custom_cmap=custom_cmap, subjects_arr_pereira=subjects_arr_pereira, 
                               networks_arr_pereira=networks_arr_pereira, non_nan_indices_dict=non_nan_indices_dict, 
@@ -438,7 +459,7 @@ for perf in perf_arr:
                                                             draw_lines=True, ms=15, plot_legend=False,  
                                                             plot_legend_under=False, width=0.7, median=median, ylabel_str=perf_str, legend_fontsize=30, ax_select=ax2[ja],
                                                             remove_yaxis=remove_y_axis, plot_xlabel=plot_xlabel, alpha=0.5, color_palette=color_palette_banded, 
-                                                            hue_order=[f'Simple_corrected', f'Banded{fe_str}', f'GPT2XL{fe_str}'], 
+                                                            hue_order=[f'Simple_corrected', f'Banded{fe_str}', f'{LLM_name_results}{fe_str}'], 
                                                             yticks=yticks_perf_banded)
 
                 ax2[1].spines['left'].set_visible(False)
@@ -449,21 +470,21 @@ for perf in perf_arr:
                 ax2[2].yaxis.set_visible(False)
                 ax2[2].set_yticks([])
                     
-                omega = calculate_omega(subject_avg_pd.reset_index(), f'Banded{fe_str}', f'GPT2XL{fe_str}', f'Simple_corrected')
+                omega = calculate_omega(subject_avg_pd.reset_index(), f'Banded{fe_str}', f'{LLM_name_results}{fe_str}', f'Simple_corrected')
                 omega_metric['feature_extraction'].extend(np.repeat(f"{fe_str}", len(omega['metric'])))
                 omega_metric['dataset'].extend(np.repeat(f"{d}", len(omega['metric'])))
                 omega_metric['values'].extend(omega['metric'])
                 
-            fig2.savefig(f"/home2/ebrahim/beyond-brainscore/analyze_results/figures_code/figures/new_figures/figure4/banded/banded_{perf}_{d}.pdf", bbox_inches='tight')
-            fig2.savefig(f"/home2/ebrahim/beyond-brainscore/analyze_results/figures_code/figures/new_figures/figure4/banded/banded_{perf}_{d}.png")
+            fig2.savefig(f"/home2/ebrahim/beyond-brainscore/analyze_results/figures_code/figures/new_figures/figure4/banded/banded_{perf}_{d}_{LLM_name_results}.pdf", bbox_inches='tight')
+            fig2.savefig(f"/home2/ebrahim/beyond-brainscore/analyze_results/figures_code/figures/new_figures/figure4/banded/banded_{perf}_{d}_{LLM_name_results}.png")
             
 
         if perf == 'out_of_sample_r2':
             pvalues_pd = pd.DataFrame(pvalues_pd)
-            pvalues_pd.to_csv(f'/home2/ebrahim/beyond-brainscore/analyze_results/figures_code/figures_data/figure4/pvalues_{d}.csv')
+            pvalues_pd.to_csv(f'/home2/ebrahim/beyond-brainscore/analyze_results/figures_code/figures_data/figure4/pvalues_{d}_{LLM_name_results}.csv')
             
-    fig.savefig(f"/home2/ebrahim/beyond-brainscore/analyze_results/figures_code/figures/new_figures/figure4/model_comp/{perf}.png")
-    fig.savefig(f"/home2/ebrahim/beyond-brainscore/analyze_results/figures_code/figures/new_figures/figure4/model_comp/{perf}.pdf", bbox_inches='tight')
+    #fig.savefig(f"/home2/ebrahim/beyond-brainscore/analyze_results/figures_code/figures/new_figures/figure4/model_comp/{perf}.png")
+    #fig.savefig(f"/home2/ebrahim/beyond-brainscore/analyze_results/figures_code/figures/new_figures/figure4/model_comp/{perf}.pdf", bbox_inches='tight')
 
 omega_metric = pd.DataFrame(omega_metric)
-omega_metric.to_csv("/home2/ebrahim/beyond-brainscore/analyze_results/figures_code/figures_data/figure4/gpt2xl_omega_values.csv")
+omega_metric.to_csv(f"/home2/ebrahim/beyond-brainscore/analyze_results/figures_code/figures_data/figure4/{LLM_name_results}_omega_values.csv")

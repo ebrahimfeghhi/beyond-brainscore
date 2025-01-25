@@ -158,17 +158,25 @@ def custom_add_2d(arr1, arr2):
 
 
 # created this function so I don't have to write this for loop a bunch of times
-def loop_through_datasets(dataset_arr, feature_extraction_arr):
+def loop_through_datasets(dataset_arr, feature_extraction_arr, lang_only=False):
 
+    lang_str = ""
+    
     for dataset in dataset_arr:
 
         if dataset == 'pereira':
-
+            
             exp_arr = ['243', '384']
-
+            
+            if lang_only:
+                
+                lang_str = "_lang"
+                
         else:
             
             exp_arr = ['']
+            
+            lang_str = ""
             
         for fe in feature_extraction_arr:
             
@@ -177,11 +185,14 @@ def loop_through_datasets(dataset_arr, feature_extraction_arr):
                 if len(exp) > 0:
                     exp = f"_{exp}"
                     
-                subjects = np.load(f"/data/LLMs/data_processed/{dataset}/dataset/subjects{exp}.npy", allow_pickle=True)
+                subjects = np.load(f"/data/LLMs/data_processed/{dataset}/dataset/subjects{exp}{lang_str}.npy", allow_pickle=True)
                 
                 try:
-                    network = np.load(f"/data/LLMs/data_processed/{dataset}/dataset/networks{exp}.npy", allow_pickle=True)
+                    
+                    network = np.load(f"/data/LLMs/data_processed/{dataset}/dataset/networks{exp}{lang_str}.npy", allow_pickle=True)
+                    
                 except:
+                    
                     network = np.repeat(['language'], len(subjects))
                 
                 yield dataset, fe, exp, subjects, network
@@ -266,6 +277,7 @@ def find_best_layer(layer_range, noL2_str='', exp='', resultsPath='/data/LLMs/br
     
     layer_perf_best =  load_perf(f'{resultsPath}/{dataset}_{model_name}{feature_extraction}{seed_str}_layer_{best_layer}_{niter}{noL2_str}{exp}.npz', perf)
     
+    
     if return_SE:
         
         layer_perf_best_se = compute_squared_error(np.load(f'{resultsPath}/{dataset}_{model_name}{feature_extraction}{seed_str}_layer_{best_layer}_{niter}{noL2_str}{exp}.npz')['y_hat'], 
@@ -294,10 +306,18 @@ def compute_squared_error(y_hat, dataset, exp, shuffled=False):
     
     if shuffled:
         y_test = np.load(f"/data/LLMs/brainscore/results_{dataset}/shuffled/y_test_ordered{exp}.npy")
+        if dataset == 'pereira':
+            y_test_lang = np.load(f"/data/LLMs/brainscore/results_{dataset}/shuffled/y_test_ordered{exp}_lang.npy")
+    
     else:
         y_test = np.load(f"/data/LLMs/brainscore/results_{dataset}/y_test_ordered{exp}.npy")
+        if dataset == 'pereira':
+            y_test_lang = np.load(f"/data/LLMs/brainscore/results_{dataset}/y_test_ordered{exp}_lang.npy")
+        
+    if y_hat.shape == y_test.shape:
+        return (y_hat - y_test)**2
     
-    return (y_hat - y_test)**2
+    return (y_hat - y_test_lang)**2
 
 def calculate_omega(df, model_combined, model_A, model_B):
     # Ensure the required models are present for each subject

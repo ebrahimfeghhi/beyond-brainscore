@@ -21,8 +21,8 @@ dataset_arr = ['pereira', 'blank', 'fedorenko']
 shuffled_arr = ['shuffled', '']
 perf_arr = ['out_of_sample_r2', 'pearson_r']
 
-create_banded = True
-create_across_layer = False
+create_banded = False
+create_across_layer = True
 create_sig = False
 
 exp = ['243', '384']
@@ -185,9 +185,9 @@ if create_banded:
                         OASM_model = load_perf(f'/data/LLMs/brainscore/results_{dataset}/shuffled/{dataset}_OASM-all-sigma_{bs}_1.npz', perf)
                         
                         if dataset == 'fedorenko':
-                            ticks_hist2d = [0, 0.8]
+                            ticks_hist2d = [-0.1, 0.8]
                         else:
-                            ticks_hist2d = [0, 0.8]
+                            ticks_hist2d = [-0.1, 0.8]
 
                         
                     if dataset == 'pereira':
@@ -318,7 +318,7 @@ if create_across_layer:
             print("LOADING PICKLE")
 
     else:
-        
+                
         for dataset in dataset_arr:
             
             if dataset == 'pereira':
@@ -331,7 +331,10 @@ if create_across_layer:
                 
             for perf in perf_arr: 
                 
-                layer_perf_pd_all = {'perf': [], 'type': [], 'Model': [], 'Shuffled': [], 'layer_num': []}
+                layer_perf_pd_all = {'perf': [], 'Model': [], 'Shuffled': [], 'layer_num': []}
+                
+                if dataset == 'pereira':
+                    layer_perf_pd_all['Exp'] = []
                 
                 for i, fe in enumerate(feature_extraction_arr):
                     
@@ -340,6 +343,9 @@ if create_across_layer:
                         for l in range(49):
                                         
                             layer_perf_pd = {'perf': [], 'subjects': [], 'Network': []}
+                            
+                            if dataset == 'pereira':
+                                layer_perf_pd['Exp'] = []
                             
                             for exp in exp_arr:
                                 
@@ -355,7 +361,8 @@ if create_across_layer:
                                 if dataset == 'pereira':
                                     layer_perf_pd['Network'].extend(br_labels_dict[exp])
                                     layer_perf_pd['subjects'].extend(subjects_dict[exp])
-                                    
+                                    layer_perf_pd['Exp'].extend(np.repeat(exp, len(subjects_dict[exp])))
+                                
                                 elif dataset == 'fedorenko':
                                     layer_perf_pd['Network'].extend(np.tile(['language'], num_vals))
                                     layer_perf_pd ['subjects'].extend(subjects_arr_fed)
@@ -368,78 +375,103 @@ if create_across_layer:
                             layer_perf_pd = pd.DataFrame(layer_perf_pd)
                             layer_perf_pd = layer_perf_pd.loc[layer_perf_pd.Network=='language']
                             
-                            perf_avg = np.median(layer_perf_pd.groupby(['subjects'])['perf'].median())
-                            perf_avg_mean = np.mean(layer_perf_pd.groupby(['subjects'])['perf'].mean())              
-                            layer_perf_pd_all['perf'].extend([perf_avg, perf_avg_mean])
-                            layer_perf_pd_all['type'].extend(['median', 'mean'])
-                            layer_perf_pd_all['Model'].extend([f"GPT2-XL{fe}", f"GPT2-XL{fe}"])
-                            layer_perf_pd_all['Shuffled'].extend([f"{shuffled}", f"{shuffled}"])
-                            layer_perf_pd_all['layer_num'].extend([f"{l}", f"{l}"])
-                            
-                        
+                            if dataset == 'pereira':
+                                perf_avg = layer_perf_pd.groupby(['subjects', 'Exp'])['perf'].mean().reset_index()                        
+                                perf_avg_243 = perf_avg.loc[perf_avg.Exp=='243']['perf'].mean()
+                                perf_avg_384 = perf_avg.loc[perf_avg.Exp=='384']['perf'].mean()
+                                # for the combined, we first mean across subjects which have data in both Exp, 
+                                # then do a mean across subject performances
+                                perf_avg = np.mean(perf_avg.groupby(['subjects'])['perf'].mean())
+                                layer_perf_pd_all['perf'].extend([perf_avg_243, perf_avg_384, perf_avg])
+                                layer_perf_pd_all['Exp'].extend(['243', '384', 'Combined'])
+                                layer_perf_pd_all['Model'].extend(np.repeat([f"GPT2-XL{fe}"],3))
+                                layer_perf_pd_all['Shuffled'].extend(np.repeat([f"{shuffled}"],3))
+                                layer_perf_pd_all['layer_num'].extend(np.repeat([f"{l}"],3))
+                            else:
+                                perf_avg = np.mean(layer_perf_pd.groupby(['subjects'])['perf'].mean())
+                                layer_perf_pd_all['perf'].extend([perf_avg])
+                                layer_perf_pd_all['Model'].extend([f"GPT2-XL{fe}"])
+                                layer_perf_pd_all['Shuffled'].extend([f"{shuffled}"])
+                                layer_perf_pd_all['layer_num'].extend([f"{l}"])
+                                
                 layer_pd_dict[f"{dataset}_{perf}"] = pd.DataFrame(layer_perf_pd_all)  
                 
         # Save the dictionary to a pickle file
-        with open('/home2/ebrahim/beyond-brainscore/analyze_results/figures_code/figures_data/layer_pd_dict.pickle', 'wb') as f:
+        file_path = '/home2/ebrahim/beyond-brainscore/analyze_results/figures_code/figures_data/figure2/layer_pd_dict.pickle'
+        
+        # Save the dictionary
+        with open(file_path, 'wb') as f:
             pickle.dump(layer_pd_dict, f)
+            print("SAVED PICKLE")
             
     # Create a custom palette with more distinct shades of blue
     palette = sns.color_palette(["gray", "blue", 'black'])
 
     c = 0
+
+
     for perf in perf_arr:
         for i, dataset in enumerate(dataset_arr):
             
-            fig, ax = plt.subplots(1,2, figsize=(9,4))
-            plt.subplots_adjust(wspace=0.5)  # Decrease wspace to reduce the horizontal space between plots
-            
-            layer_pd_perf_data = layer_pd_dict[f"{dataset}_{perf}"]
-            
-            layer_perf_pd_all_shuffled = layer_pd_perf_data.loc[layer_pd_perf_data['Shuffled']=='shuffled']
-            layer_perf_pd_all_shuffled = layer_perf_pd_all_shuffled.loc[layer_perf_pd_all_shuffled['type']=='mean']
-
-            layer_perf_pd_all = layer_pd_perf_data.loc[layer_pd_perf_data['Shuffled']=='']
-            layer_perf_pd_all = layer_perf_pd_all.loc[layer_perf_pd_all['type']=='mean']
-
-            sns.despine()
-            
-            if c == 0:
-                legend = False
+            if dataset == 'pereira':
+                exp_combined = ['243', '384', 'Combined']
             else:
-                legend = False
+                exp_combined = []
                 
-            c = 1
-            
-            sns.lineplot(layer_perf_pd_all_shuffled, x='layer_num', y='perf', hue='Model', errorbar=None, ax=ax[0], legend=legend, linewidth=3, palette=palette)
-            sns.lineplot(layer_perf_pd_all, x='layer_num', y='perf', hue='Model', errorbar=None, ax=ax[1], legend=False, linewidth=3, palette=palette)
-            ax[0].legend(fontsize=25)  # Set legend font size for the first subplot
-            
-            ax[0].set_xticks([0,48])
-            ax[0].set_xticklabels([0,48], fontsize=25)
-            
-            ax[1].set_xticks([0,48])
-            ax[1].set_xticklabels([0,48], fontsize=25)
-            ax[0].set_ylabel('')
-            ax[0].set_xlabel('')
-            ax[1].set_ylabel('')
-            ax[1].set_xlabel('')
-            
-            ax[0].set_yticks((round(float(ax[0].get_ylim()[0]),2), round(float(ax[0].get_ylim()[1]),2)))
-            ax[0].set_yticklabels(((round(float(ax[0].get_ylim()[0]),2)), round(float(ax[0].get_ylim()[1]),2)), fontsize=25)
-            
-            if dataset == 'blank':
-                round_val = 3
-            else:
-                round_val = 2
+            for exp in exp_combined:
                 
-            ax[1].set_yticks(((round(float(ax[1].get_ylim()[0]),2), round(float(ax[1].get_ylim()[1]),round_val))))
-            ax[1].set_yticklabels(((round(float(ax[1].get_ylim()[0]),2)), round(float(ax[1].get_ylim()[1]),round_val)), fontsize=25)
-            layer_perf_pd_all_shuffled.to_csv(f'/home2/ebrahim/beyond-brainscore/analyze_results/figures_code/figures_data/figure2/{dataset}_{perf}_shuffled.csv')
-            layer_perf_pd_all.to_csv(f'/home2/ebrahim/beyond-brainscore/analyze_results/figures_code/figures_data/figure2/{dataset}_{perf}.csv')
-            fig.savefig(f'/home2/ebrahim/beyond-brainscore/analyze_results/figures_code/figures/new_figures/figure2/across_layer/{dataset}_{perf}.png')
-            fig.savefig(f'/home2/ebrahim/beyond-brainscore/analyze_results/figures_code/figures/new_figures/figure2/across_layer/{dataset}_{perf}.pdf', bbox_inches='tight')
-            plt.show()
-            
+                fig, ax = plt.subplots(1,2, figsize=(9,4))
+                plt.subplots_adjust(wspace=0.5)  # Decrease wspace to reduce the horizontal space between plots
+                
+                layer_pd_perf_data = layer_pd_dict[f"{dataset}_{perf}"]
+                
+                if dataset == 'pereira':
+                    layer_pd_perf_data = layer_pd_perf_data.loc[layer_pd_perf_data.Exp==exp]
+                    exp = f"_{exp}"
+                    
+                layer_perf_pd_all_shuffled = layer_pd_perf_data.loc[layer_pd_perf_data['Shuffled']=='shuffled']
+
+                layer_perf_pd_all = layer_pd_perf_data.loc[layer_pd_perf_data['Shuffled']=='']
+
+                sns.despine()
+                
+                if c == 0:
+                    legend = False
+                else:
+                    legend = False
+                    
+                c = 1
+                
+                sns.lineplot(layer_perf_pd_all_shuffled, x='layer_num', y='perf', hue='Model', errorbar=None, ax=ax[0], legend=legend, linewidth=3, palette=palette)
+                sns.lineplot(layer_perf_pd_all, x='layer_num', y='perf', hue='Model', errorbar=None, ax=ax[1], legend=False, linewidth=3, palette=palette)
+                ax[0].legend(fontsize=25)  # Set legend font size for the first subplot
+                
+                ax[0].set_xticks([0,48])
+                ax[0].set_xticklabels([0,48], fontsize=25)
+                
+                ax[1].set_xticks([0,48])
+                ax[1].set_xticklabels([0,48], fontsize=25)
+                ax[0].set_ylabel('')
+                ax[0].set_xlabel('')
+                ax[1].set_ylabel('')
+                ax[1].set_xlabel('')
+                
+                ax[0].set_yticks((round(float(ax[0].get_ylim()[0]),2), round(float(ax[0].get_ylim()[1]),2)))
+                ax[0].set_yticklabels(((round(float(ax[0].get_ylim()[0]),2)), round(float(ax[0].get_ylim()[1]),2)), fontsize=25)
+                
+                if dataset == 'blank':
+                    round_val = 3
+                else:
+                    round_val = 2
+                    
+                ax[1].set_yticks(((round(float(ax[1].get_ylim()[0]),2), round(float(ax[1].get_ylim()[1]),round_val))))
+                ax[1].set_yticklabels(((round(float(ax[1].get_ylim()[0]),2)), round(float(ax[1].get_ylim()[1]),round_val)), fontsize=25)
+                layer_perf_pd_all_shuffled.to_csv(f'/home2/ebrahim/beyond-brainscore/analyze_results/figures_code/figures_data/figure2/{dataset}_{perf}_shuffled{exp}.csv')
+                layer_perf_pd_all.to_csv(f'/home2/ebrahim/beyond-brainscore/analyze_results/figures_code/figures_data/figure2/{dataset}_{perf}{exp}.csv')
+                fig.savefig(f'/home2/ebrahim/beyond-brainscore/analyze_results/figures_code/figures/new_figures/figure2/across_layer/{dataset}_{perf}{exp}.png')
+                fig.savefig(f'/home2/ebrahim/beyond-brainscore/analyze_results/figures_code/figures/new_figures/figure2/across_layer/{dataset}_{perf}{exp}.pdf', bbox_inches='tight')
+                plt.show()
+                
             
 if create_sig:
     

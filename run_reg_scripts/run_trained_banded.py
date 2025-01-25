@@ -3,12 +3,13 @@ sys.path.append('/home2/ebrahim/beyond-brainscore/generate_activations/')
 from banded_reg_func import himalaya_regression_caller
 import numpy as np
 
-datasets = ['pereira']
-feature_extraction_arr = ['-sp']
+datasets = ['pereira', 'fedorenko', 'blank']
+feature_extraction_arr = ['', '-mp', '-sp']
 
 data_folder = '/data/LLMs/data_processed'
-device = 1
+device = 0
 save_y_hat = True
+LLM_name = ''
 
 for d in datasets:
     
@@ -23,10 +24,13 @@ for d in datasets:
             exp = f"_{exp}"
         
         for fe in feature_extraction_arr:
+            
+            if LLM_name == '' and fe != '-sp':
+                continue
            
             # contains the stacked models as keys
-            model_name = f"trained-var-par{exp}{fe}"
-            f_dict_layers = np.load(f"/data/LLMs/data_processed/{d}/acts/f-list_trained-var-par{exp}{fe}.npz")
+            model_name = f"trained-var-par{LLM_name}{exp}{fe}"
+            f_dict_layers = np.load(f"/data/LLMs/data_processed/{d}/acts/f-list_trained-var-par{LLM_name}{exp}{fe}.npz")
             
             print(f"Model name {model_name}")
             

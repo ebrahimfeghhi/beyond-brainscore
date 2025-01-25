@@ -216,10 +216,10 @@ def plot_across_subjects(dict_pd_merged, figurePath, dataset, selected_networks,
                          plot_legend_under=False, ms=6, width=0.8, 
                          LLM_perf=None, ylabel=True, median=False, ylabel_str=r'$R^2$', legend_fontsize=25, remove_yaxis=False, 
                          subject_avg_pd=None, plot_xlabel=False, x_var='Network', hue_var='Model', line_extend=0.08, lw=3,
-                         alpha=0.4, dodge=True, alpha_dots=None):
+                         alpha=0.4, dodge=True, alpha_dots=None, combine_exp=True):
     
     '''
-        :param DataFrame dict_pd_merged: pandas df with the following columns: [subjects, Network, Model, perf]
+        :param DataFrame dict_pd_merged: pandas df with the following columns: [subjects, Network, Model, perf] (and Exp if Pereira)
         :param str figurePath: where to store figure
         :param list selected_networks: plot data from these networks
         :param ax: matplotlib ax 
@@ -241,6 +241,7 @@ def plot_across_subjects(dict_pd_merged, figurePath, dataset, selected_networks,
         :param int legend_fontsize: how large to make the text for the legend 
         :param bool remove_yaxis: 
         :param DataFrame subject_avg_pd: if 
+        :param bool combine_exp: if true, average results for subjects with data from both exp in pereira
         
         Plots performance, where each dot is a subject and bar is the mean across subjects. Hue is model and 
         x-axis is network. 
@@ -258,7 +259,7 @@ def plot_across_subjects(dict_pd_merged, figurePath, dataset, selected_networks,
         
         if median:
             print("Taking median value across voxels with a participant")
-            if dataset == 'pereira':
+            if dataset == 'pereira' and combine_exp:
                 subject_avg_pd = dict_pd_merged.groupby(['subjects', 'Network', 'Model', 'Exp']).median()
                 subject_avg_pd['perf'] = np.clip(subject_avg_pd['perf'], 0, np.inf)
                 subject_avg_pd = subject_avg_pd.groupby(['subjects', 'Network', 'Model']).mean() # mean across experiments 
@@ -280,6 +281,7 @@ def plot_across_subjects(dict_pd_merged, figurePath, dataset, selected_networks,
                 subject_avg_pd['perf'] = np.clip(subject_avg_pd['perf'], 0, np.inf)
                 
     else:
+        
         dict_pd_merged = None
         dict_pd_with_all = None
     
@@ -500,13 +502,13 @@ def plot_across_seeds(model_names_arr, layers_name_arr, niters, num_seeds, seed_
     return store_pd, store_pd_seed_averaged, store_pd_seed_averaged_all
 
 
-def plot_2d_hist_scatter_updated(dataset, simplemodel, gpt2model, results_combined, ticks_hist2d, savePath,
+def plot_2d_hist_scatter_updated(dataset, simplemodel, llm_model, results_combined, ticks_hist2d, savePath,
                               feature_extraction_arr, custom_cmap=None, subjects_arr_pereira=None, 
                               networks_arr_pereira=None, non_nan_indices_dict=None, 
                               exp_arr=['384', '243'], perf='out_of_sample_r2', shuffled='', 
                               savePath_figures_data=None):
 
-    gpt2model_combined_perf_save = {}
+    llm_model_combined_perf_save = {}
     simple_combined_perf_save = {}
     
     for fe in feature_extraction_arr:
@@ -520,7 +522,7 @@ def plot_2d_hist_scatter_updated(dataset, simplemodel, gpt2model, results_combin
 
         if dataset == 'pereira':             
                 
-            gpt2model_perf_combined = np.full(subjects_arr_pereira.shape[0], fill_value=np.nan)
+            llm_model_perf_combined = np.full(subjects_arr_pereira.shape[0], fill_value=np.nan)
             simple_perf_combined = np.full(subjects_arr_pereira.shape[0], fill_value=np.nan)
             lang_indices = np.argwhere(networks_arr_pereira=='language').squeeze()
             
@@ -529,26 +531,26 @@ def plot_2d_hist_scatter_updated(dataset, simplemodel, gpt2model, results_combin
                 # custom takes the average for voxels that are in both experiments, otherwise sets the value for that voxel to whatever experiment it's in
                 simple_perf_combined[non_nan_indices_dict[exp]] = custom_add_2d(simple_perf_combined[non_nan_indices_dict[exp]],  
                                                                                 results_combined_exp.loc[results_combined_exp.Model==simplemodel]['perf'])
-                gpt2model_perf_combined[non_nan_indices_dict[exp]] = custom_add_2d(gpt2model_perf_combined[non_nan_indices_dict[exp]], 
-                                                                            results_combined_exp.loc[results_combined_exp.Model==f'{gpt2model}{fe_str}']['perf'])
-            gpt2model_perf_combined = gpt2model_perf_combined[lang_indices]
+                llm_model_perf_combined[non_nan_indices_dict[exp]] = custom_add_2d(llm_model_perf_combined[non_nan_indices_dict[exp]], 
+                                                                            results_combined_exp.loc[results_combined_exp.Model==f'{llm_model}{fe_str}']['perf'])
+            llm_model_perf_combined = llm_model_perf_combined[lang_indices]
             simple_perf_combined = simple_perf_combined[lang_indices]
                 
         else:
             
             simple_perf_combined = results_combined.loc[results_combined.Model==simplemodel]['perf']
-            gpt2model_perf_combined = results_combined.loc[results_combined.Model==f'{gpt2model}{fe_str}']['perf']
+            llm_model_perf_combined = results_combined.loc[results_combined.Model==f'{llm_model}{fe_str}']['perf']
             
 
-        gpt2model_combined_perf_save[fe] = gpt2model_perf_combined
+        llm_model_combined_perf_save[fe] = llm_model_perf_combined
         simple_combined_perf_save[''] = simple_perf_combined
             
-        gpt2model_perf_combined = gpt2model_perf_combined[~np.isnan(gpt2model_perf_combined)]
+        llm_model_perf_combined = llm_model_perf_combined[~np.isnan(llm_model_perf_combined)]
         simple_perf_combined = simple_perf_combined[~np.isnan(simple_perf_combined)]
         
         sns.despine()
         if dataset == 'pereira':
-            h, xedges, yedges, im = ax3.hist2d(y=gpt2model_perf_combined, x=simple_perf_combined, norm=matplotlib.colors.LogNorm(), bins=100, cmap=custom_cmap)
+            h, xedges, yedges, im = ax3.hist2d(y=llm_model_perf_combined, x=simple_perf_combined, norm=matplotlib.colors.LogNorm(), bins=100, cmap=custom_cmap)
             
                 # Create a separate figure for the color bar
             fig_cb, ax_cb = plt.subplots(figsize=(0.5, 4))  # Adjust size for better aspect ratio
@@ -560,7 +562,7 @@ def plot_2d_hist_scatter_updated(dataset, simplemodel, gpt2model, results_combin
             # Save the color bar figure to a file
             fig_cb.savefig(f"{savePath}colorbar_{fe_str}_{perf}.pdf", bbox_inches='tight')
         else:
-            ax3.scatter(y=gpt2model_perf_combined, x=simple_perf_combined, s=100, color='tab:gray')
+            ax3.scatter(y=llm_model_perf_combined, x=simple_perf_combined, s=100, color='tab:gray')
             
         
         ax3.set_ylim(ticks_hist2d[0], ticks_hist2d[1])
@@ -586,11 +588,11 @@ def plot_2d_hist_scatter_updated(dataset, simplemodel, gpt2model, results_combin
         fig3.savefig(f"{savePath}hist2d{fe_str}_{perf}_{shuffled}_{dataset}.png")
         
     if len(feature_extraction_arr) == 1:
-        np.savez(f'{savePath_figures_data}gpt2xl_combined{fe_str}_{dataset}_{perf}', **gpt2model_combined_perf_save)
+        np.savez(f'{savePath_figures_data}gpt2xl_combined{fe_str}_{dataset}_{perf}', **llm_model_combined_perf_save)
         np.savez(f'{savePath_figures_data}simple_combined{fe_str}_{dataset}_{perf}', **simple_combined_perf_save)
     else:
         np.savez(f'{savePath_figures_data}simple_combined_{dataset}_{perf}', **simple_combined_perf_save)
-        np.savez(f'{savePath_figures_data}gpt2xl_combined_{dataset}_{perf}', **gpt2model_combined_perf_save)
+        np.savez(f'{savePath_figures_data}gpt2xl_combined_{dataset}_{perf}', **llm_model_combined_perf_save)
         
 
 def pass_info_plot_hist2d(df, best_DEM_model, best_LLM_model, max_val_dict, min_val, figurePath, saveName):

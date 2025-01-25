@@ -3,9 +3,9 @@ sys.path.append('/home2/ebrahim/beyond-brainscore/generate_activations/')
 from banded_reg_func import himalaya_regression_caller
 import numpy as np
 
-datasets = ['pereira']
+datasets = ['pereira', 'fedorenko', 'blank']
 feature_extraction_arr = ['', '-mp', '-sp']
-model_name = 'gpt2-xl-decontext'
+model_name = 'Llama-3.2-3B-Instruct'
 
 data_folder = '/data/LLMs/data_processed'
 device = 1

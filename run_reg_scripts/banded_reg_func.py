@@ -16,7 +16,7 @@ def himalaya_regression_caller(model: Union[str, dict, np.ndarray],
                                device: Union[str, int] = 'cpu', untrained: bool = False,
                                results_folder: str = '/data/LLMs/brainscore', linear_reg: bool = False, 
                                shuffled: bool = False, custom_linear: bool = False,
-                               specified_layers: list=[]):
+                               specified_layers: list=[], lang_only: bool = True):
     
     '''
     This function performs banded regression based on the himalaya package. 
@@ -62,8 +62,9 @@ def himalaya_regression_caller(model: Union[str, dict, np.ndarray],
     
     shuffled: If true, use shuffled train-test splits
     
-    
     specified_layers: If empty, run all layers. Else, only run layers in the list
+    
+    lang_only: If true, the only run regression for lang network voxels for Pereira
     '''
     
     if len(exp) == 0 and dataset == 'pereira':
@@ -89,7 +90,10 @@ def himalaya_regression_caller(model: Union[str, dict, np.ndarray],
         if len(y) == 0:
             if exp is not None and dataset=='pereira':
                 # load neural data and data labels (used for designing splits)
-                y = np.load(f'{data_folder}/dataset/y_{dataset}_{exp}.npy')
+                if lang_only:
+                    y = np.load(f'{data_folder}/dataset/y_{dataset}_{exp}_lang.npy')
+                else:   
+                    y = np.load(f'{data_folder}/dataset/y_{dataset}_{exp}.npy')
             else:
                 y = np.load(f'{data_folder}/dataset/y_{dataset}.npy')
         else:
@@ -172,12 +176,7 @@ def himalaya_regression_caller(model: Union[str, dict, np.ndarray],
         num_features = X.shape[1]
         
         num_samples = X.shape[0]
-        
-        # only run layers that have the same number of samples as our neural data 
-        # (e.g. for some layers in pereira, saved things at word level (instead of sentence-level))
-        #if num_samples > y.shape[0]:
-        #    continue
-        
+
         if len(features_list_layer)==0:
             features_list_layer = [num_features]
             
@@ -236,8 +235,12 @@ def himalaya_regression_caller(model: Union[str, dict, np.ndarray],
         else:
             exp_str = exp
   
-        y_test_ordered_filename = f'{full_results_folder}/y_test_ordered{exp_str}.npy'
-        mse_intercept_filename = f'{full_results_folder}/mse_intercept{exp_str}.npy'
+        if lang_only and dataset == 'pereira':
+            y_test_ordered_filename = f'{full_results_folder}/y_test_ordered{exp_str}_lang.npy'
+            mse_intercept_filename = f'{full_results_folder}/mse_intercept{exp_str}_lang.npy'
+        else:
+            y_test_ordered_filename = f'{full_results_folder}/y_test_ordered{exp_str}.npy'
+            mse_intercept_filename = f'{full_results_folder}/mse_intercept{exp_str}.npy'
         
     
         if ~os.path.isfile(y_test_ordered_filename):  
