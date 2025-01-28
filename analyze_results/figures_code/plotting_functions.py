@@ -683,8 +683,8 @@ def plot_hist2d(df, model1, model2, cmaps, max_val, networks, min_val, figurePat
     
 def load_into_3d(save_vals, exp, save_name, 
                      subjects_to_plot, subjects_all, results_path = '/data/LLMs/brainscore/results_pereira/glass_brain_plots/',
-                     col_to_coords_store = '/home3/ebrahim/what-is-brainscore/data_processed/pereira/', 
-                     lang_indices=None, clip_zero=True):
+                     col_to_coords_store = '/data/LLMs/data_processed/pereira/dataset/', 
+                     lang_indices=None, clip_zero=False):
     
     '''
         :param ndarray save_vals: perf values for each voxel
@@ -708,9 +708,9 @@ def load_into_3d(save_vals, exp, save_name,
     dat_stored = {}
     SPM_dim = (79,95,69)
     
-    col_to_coord_1 = np.load(f"{col_to_coords_store}col_to_coord_1_{exp}.npy")
-    col_to_coord_2 = np.load(f"{col_to_coords_store}col_to_coord_2_{exp}.npy")
-    col_to_coord_3 = np.load(f"{col_to_coords_store}col_to_coord_3_{exp}.npy")
+    col_to_coord_1 = np.load(f"{col_to_coords_store}col_to_coord_1_{exp}_lang.npy")
+    col_to_coord_2 = np.load(f"{col_to_coords_store}col_to_coord_2_{exp}_lang.npy")
+    col_to_coord_3 = np.load(f"{col_to_coords_store}col_to_coord_3_{exp}_lang.npy")
 
     for s in subjects_to_plot:
             

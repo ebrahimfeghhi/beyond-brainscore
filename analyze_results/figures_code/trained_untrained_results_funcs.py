@@ -248,7 +248,7 @@ def find_best_layer(layer_range, noL2_str='', exp='', resultsPath='/data/LLMs/br
     
     layer_perf_dict = {}
     
-    if dataset == 'pereira':
+    if dataset == 'pereira' and selected_network_indices is not None:
         subjects = subjects[selected_network_indices]
         
     if seed_number is not None:
@@ -333,15 +333,15 @@ def calculate_omega(df, model_combined, model_A, model_B):
         if required_models.issubset(subject_data['Model'].unique()):
             # Get performance values for each specified model
             banded_perf = subject_data.loc[subject_data['Model'] == model_combined, 'perf'].values[0]
-            gpt2_perf = subject_data.loc[subject_data['Model'] == model_A, 'perf'].values[0]
+            LLM_perf = subject_data.loc[subject_data['Model'] == model_A, 'perf'].values[0]
             oasm_perf = subject_data.loc[subject_data['Model'] == model_B, 'perf'].values[0]
         
-            if gpt2_perf == 0.0:
-                print(gpt2_perf)
+            if LLM_perf == 0.0:
+                print(LLM_perf)
                 result = 100
             else:
                 # Perform the calculation
-                result = np.clip((banded_perf - oasm_perf) / gpt2_perf, 0, 1)
+                result = np.clip((banded_perf - oasm_perf) / LLM_perf, 0, 1)
                 result = (1-result)*100
             
             # Append result as a dictionary for the subjectco
@@ -369,12 +369,12 @@ def calculate_omega_voxel_level(df, model_combined, model_A, model_B):
         if required_models.issubset(subject_data['Model'].unique()):
             # Get performance values for each specified model
             banded_perf = np.array(subject_data.loc[subject_data['Model'] == model_combined, 'perf'])
-            gpt2_perf = np.array(subject_data.loc[subject_data['Model'] == model_A, 'perf'])
+            LLM_perf = np.array(subject_data.loc[subject_data['Model'] == model_A, 'perf'])
             oasm_perf = np.array(subject_data.loc[subject_data['Model'] == model_B, 'perf'])
         
             # Perform the calculation
-            result = (banded_perf - oasm_perf) / gpt2_perf
-            result[np.argwhere(gpt2_perf<=0)] = np.nan
+            result = (banded_perf - oasm_perf) / LLM_perf
+            result[np.argwhere(LLM_perf<=0)] = np.nan
             result = np.clip((1 - np.nanmean(result)) * 100, 0, 100)
             # Append result as a dictionary for the subject
             results.append({
