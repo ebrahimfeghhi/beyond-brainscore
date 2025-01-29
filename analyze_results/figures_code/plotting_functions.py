@@ -513,7 +513,7 @@ def plot_2d_hist_scatter_updated(dataset, simplemodel, llm_model, results_combin
     
     for fe in feature_extraction_arr:
         
-        fig3, ax3 = plt.subplots(1,1,figsize=(8,6))
+        fig3, ax3 = plt.subplots(1,1,figsize=(6,6))
         
         if len(fe) == 0:
             fe_str = '-lt'

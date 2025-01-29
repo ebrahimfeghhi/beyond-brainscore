@@ -1,5 +1,7 @@
 import numpy as np
-from trained_untrained_results_funcs import load_perf, select_columns_with_lower_error, calculate_omega
+import sys
+sys.path.append("/home2/ebrahim/beyond-brainscore/analyze_results/figures_code")
+from trained_untrained_results_funcs import load_perf, select_columns_with_lower_error, calculate_omega, array_with_highest_mean
 from plotting_functions import plot_across_subjects
 from matplotlib import pyplot as plt
 from stats_funcs import compute_paired_ttest
@@ -8,24 +10,6 @@ import seaborn as sns
 import matplotlib
 import os
 
-def array_with_highest_mean(array_list, subjects_arr):
-    """
-    array_list is a list containing arrays, where each array is of shape N
-    subjects_arr is an array of shape N, containing the subject indices 
-    """
-    if not array_list:
-        raise ValueError("The list is empty.")
-    
-    mean_grouped_by_subject = []
-    for arr in array_list:
-        subject_means = []
-        for subj in np.unique(subjects_arr):
-            subj_indices = np.argwhere(subjects_arr==subj)
-            subject_means.append(np.mean(arr[subj_indices]))
-        mean_grouped_by_subject.append(np.mean(subject_means))
-
-    max_mean_index = np.argmax(mean_grouped_by_subject)
-    return array_list[max_mean_index]
 
 resultsPath_base = '/data/LLMs/brainscore/'
 figurePath = 'figures/new_figures/figure4/'
@@ -209,7 +193,7 @@ for LLM_name, LLM_name_results in zip(models, models_save_name):
                     simple_dict['perf'].extend(np.nan_to_num(simple_perf))
                     simple_dict['subjects'].extend(subjects_arr)
                     simple_dict['Network'].extend(networks_arr)
-                    simple_dict['Model'].extend(np.repeat(f'Simple_corrected', len(simple_perf)))
+                    simple_dict['Model'].extend(np.repeat(f'Simple', len(simple_perf)))
                     
                     if d == 'pereira':
                         simple_dict['Exp'].extend(np.repeat(exp.strip('_'), len(simple_perf)))
@@ -320,7 +304,7 @@ for LLM_name, LLM_name_results in zip(models, models_save_name):
                 
             results_banded_fe = results_combined_with_banded.loc[
                 results_combined_with_banded['Model'].str.contains(fe_str) |
-                results_combined_with_banded['Model'].str.contains("Simple_corrected")
+                results_combined_with_banded['Model'].str.contains("Simple")
             ]
 
             if ja == 0:
@@ -336,7 +320,7 @@ for LLM_name, LLM_name_results in zip(models, models_save_name):
                                                         draw_lines=True, ms=15, plot_legend=False,  
                                                         plot_legend_under=False, width=0.7, median=median, ylabel_str=perf_str, legend_fontsize=30, ax_select=ax2[ja],
                                                         remove_yaxis=remove_y_axis, plot_xlabel=plot_xlabel, alpha=0.5, color_palette=color_palette_banded, 
-                                                        hue_order=[f'Simple_corrected', f'Banded{fe_str}', f'{LLM_name_results}{fe_str}'], 
+                                                        hue_order=[f'Simple', f'Banded{fe_str}', f'{LLM_name_results}{fe_str}'], 
                                                         yticks=yticks_perf_banded)
             
             ax2[1].spines['left'].set_visible(False)
@@ -347,7 +331,7 @@ for LLM_name, LLM_name_results in zip(models, models_save_name):
             ax2[2].yaxis.set_visible(False)
             ax2[2].set_yticks([])
                 
-            omega = calculate_omega(subject_avg_pd.reset_index(), f'Banded{fe_str}', f'{LLM_name_results}{fe_str}', f'Simple_corrected')
+            omega = calculate_omega(subject_avg_pd.reset_index(), f'Banded{fe_str}', f'{LLM_name_results}{fe_str}', f'Simple')
             omega_metric['feature_extraction'].extend(np.repeat(f"{fe_str}", len(omega['metric'])))
             omega_metric['dataset'].extend(np.repeat(f"{d}", len(omega['metric'])))
             omega_metric['values'].extend(omega['metric'])

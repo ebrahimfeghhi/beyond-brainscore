@@ -4,7 +4,7 @@ from sklearn.metrics import mean_squared_error
 import sys
 sys.path.append(base)
 from plotting_functions import plot_across_subjects, plot_2d_hist_scatter_updated, load_into_3d, save_nii
-from trained_untrained_results_funcs import calculate_omega, load_perf, elementwise_max, select_columns_with_lower_error
+from trained_untrained_results_funcs import calculate_omega, load_perf, array_with_highest_mean, select_columns_with_lower_error
 from untrained_results_funcs import compute_p_val
 import pandas as pd
 from scipy.stats import false_discovery_control
@@ -22,8 +22,8 @@ shuffled_arr = ['shuffled', '']
 perf_arr = ['out_of_sample_r2', 'pearson_r']
 
 create_banded = False
-create_across_layer = True
-create_sig = False
+create_across_layer = False
+create_sig = True
 
 exp = ['243', '384']
 
@@ -37,10 +37,10 @@ data_processed_folder_blank = f'/data/LLMs/data_processed/blank/dataset'
 
 for e in exp:
 
-    bre = np.load(f'{data_processed_folder_pereira}/networks_{e}.npy', allow_pickle=True)
+    bre = np.load(f'{data_processed_folder_pereira}/networks_{e}_lang.npy', allow_pickle=True)
     br_labels_dict[e] = bre
     num_vox_dict[e] = bre.shape[0]
-    subjects_dict[e] = np.load(f"{data_processed_folder_pereira}/subjects_{e}.npy", allow_pickle=True)
+    subjects_dict[e] = np.load(f"{data_processed_folder_pereira}/subjects_{e}_lang.npy", allow_pickle=True)
     
 lang_indices_dict = {}
 lang_indices_384 = np.argwhere(br_labels_dict['384'] == 'language').squeeze()
@@ -52,23 +52,23 @@ lang_indices_dict['243'] = lang_indices_243
 subjects_arr_fed  = np.load(f"{data_processed_folder_fed}/subjects.npy", allow_pickle=True)
 subjects_arr_blank  = np.load(f"{data_processed_folder_blank}/subjects.npy", allow_pickle=True)
 
-subjects_arr_pereira = np.load(f"{data_processed_folder_pereira}/subjects_complete.npy", allow_pickle=True)
-networks_arr_pereira = np.load(f"{data_processed_folder_pereira}/network_complete.npy", allow_pickle=True)
+subjects_arr_pereira = np.load(f"{data_processed_folder_pereira}/subjects_complete_lang.npy", allow_pickle=True)
+networks_arr_pereira = np.load(f"{data_processed_folder_pereira}/network_complete_lang.npy", allow_pickle=True)
 lang_indices = np.argwhere(networks_arr_pereira=='language').squeeze()
 
-non_nan_indices_243 = np.load(f"{data_processed_folder_pereira}/non_nan_indices_243.npy") # voxels which are in 243
-non_nan_indices_384 = np.load(f"{data_processed_folder_pereira}/non_nan_indices_384.npy") # voxels which are in 384
+non_nan_indices_243 = np.load(f"{data_processed_folder_pereira}/non_nan_indices_243_lang.npy") # voxels which are in 243
+non_nan_indices_384 = np.load(f"{data_processed_folder_pereira}/non_nan_indices_384_lang.npy") # voxels which are in 384
 non_nan_indices_dict = {'384': non_nan_indices_384, '243': non_nan_indices_243}
 
 resultsPath = '/data/LLMs/brainscore/'
-ytest_243 = np.load(f'{resultsPath}results_pereira/y_test_ordered_243.npy')
-ytest_384 = np.load(f'{resultsPath}results_pereira/y_test_ordered_384.npy')
-ytest_243_shuffled = np.load(f'{resultsPath}results_pereira/shuffled/y_test_ordered_243.npy')
-ytest_384_shuffled = np.load(f'{resultsPath}results_pereira/shuffled/y_test_ordered_384.npy')
-se_intercept_243 = np.load(f'{resultsPath}results_pereira/mse_intercept_243.npy')
-se_intercept_384 = np.load(f'{resultsPath}results_pereira/mse_intercept_384.npy')
-se_intercept_243_shuffled = np.load(f'{resultsPath}results_pereira/shuffled/mse_intercept_243.npy')
-se_intercept_384_shuffled = np.load(f'{resultsPath}results_pereira/shuffled/mse_intercept_384.npy')
+ytest_243 = np.load(f'{resultsPath}results_pereira/y_test_ordered_243_lang.npy')
+ytest_384 = np.load(f'{resultsPath}results_pereira/y_test_ordered_384_lang.npy')
+ytest_243_shuffled = np.load(f'{resultsPath}results_pereira/shuffled/y_test_ordered_243_lang.npy')
+ytest_384_shuffled = np.load(f'{resultsPath}results_pereira/shuffled/y_test_ordered_384_lang.npy')
+se_intercept_243 = np.load(f'{resultsPath}results_pereira/mse_intercept_243_lang.npy')
+se_intercept_384 = np.load(f'{resultsPath}results_pereira/mse_intercept_384_lang.npy')
+se_intercept_243_shuffled = np.load(f'{resultsPath}results_pereira/shuffled/mse_intercept_243_lang.npy')
+se_intercept_384_shuffled = np.load(f'{resultsPath}results_pereira/shuffled/mse_intercept_384_lang.npy')
 
 
 ytest_fed = np.load(f"{resultsPath}results_fedorenko/y_test_ordered.npy")
@@ -90,8 +90,8 @@ ytest_pereira[:243, non_nan_indices_243] = ytest_243
 ytest_pereira[243:, non_nan_indices_384] = ytest_384
 
 ytest_pereira_shuffled  = np.full(shape_pereira_full, fill_value=np.nan)
-ytest_pereira_shuffled [:243, non_nan_indices_243] = ytest_243_shuffled 
-ytest_pereira_shuffled [243:, non_nan_indices_384] = ytest_384_shuffled 
+ytest_pereira_shuffled[:243, non_nan_indices_243] = ytest_243_shuffled 
+ytest_pereira_shuffled[243:, non_nan_indices_384] = ytest_384_shuffled 
 
 se_intercept_pereira_full = np.full(shape_pereira_full, fill_value=np.nan)
 se_intercept_pereira_full[:243, non_nan_indices_243] = se_intercept_243
@@ -206,8 +206,16 @@ if create_banded:
                         
                     num_vals = len(banded_model)
                     
+                    if dataset == 'pereira':
+                        exp_no_underscore = exp.strip('_')
+                        banded_perf = array_with_highest_mean([banded_model, gpt2_model], subjects_dict[exp_no_underscore])
+                    elif dataset == 'fedorenko':
+                        banded_perf = array_with_highest_mean([banded_model, gpt2_model], subjects_arr_fed)
+                    elif dataset == 'blank':
+                        banded_perf = array_with_highest_mean([banded_model, gpt2_model], subjects_arr_blank)
+                        
                     # perform per voxel/electrode/fROI correction
-                    banded_gpt2_OASM['perf'].extend(elementwise_max([banded_model, gpt2_model]))
+                    banded_gpt2_OASM['perf'].extend(banded_perf)
                     banded_gpt2_OASM['perf'].extend(gpt2_model)
                     banded_gpt2_OASM['perf'].extend(OASM_model)
                     
@@ -257,6 +265,8 @@ if create_banded:
                 output_file=f'/home2/ebrahim/beyond-brainscore/analyze_results/figures_code/figures/new_figures/figure2/glass_brain/OASM-GPT2{fe}_{perf}_subj_avg.pdf', cmap='seismic', 
                 plot_abs=False)
                 
+                values_len = [len(value) for key, value in banded_gpt2_OASM.items()]
+                keys_ordering = [key for key, value in banded_gpt2_OASM.items()]
                 banded_gpt2_OASM_pd = pd.DataFrame(banded_gpt2_OASM)
                             
                 if fe == '':
@@ -266,7 +276,7 @@ if create_banded:
                 if fe == '-sp':
                     palette = sns.color_palette(["#FFA500", 'purple', "black"]) 
                     
-                plot_2d_hist_scatter_updated(dataset=dataset, simplemodel='OASM', gpt2model='GPT2', results_combined=banded_gpt2_OASM_pd, ticks_hist2d=ticks_hist2d, 
+                plot_2d_hist_scatter_updated(dataset=dataset, simplemodel='OASM', llm_model='GPT2', results_combined=banded_gpt2_OASM_pd, ticks_hist2d=ticks_hist2d, 
                                 savePath='/home2/ebrahim/beyond-brainscore/analyze_results/figures_code/figures/new_figures/figure2/histograms/', 
                                 feature_extraction_arr=[fe], custom_cmap=custom_cmap, subjects_arr_pereira=subjects_arr_pereira, 
                                 networks_arr_pereira=networks_arr_pereira, non_nan_indices_dict=non_nan_indices_dict, 
@@ -501,16 +511,12 @@ if create_sig:
             
             if dataset == 'pereira':
                 
-                network = 'language'
                 
                 best_layer_384 = best_layer_gpt2[f"{dataset}_384_out_of_sample_r2_shuffled{fe}"]
                 best_layer_243 = best_layer_gpt2[f"{dataset}_243_out_of_sample_r2_shuffled{fe}"]
             
                 best_sigma_value_384 = best_sigma[f"{dataset}_384_out_of_sample_r2_shuffled"]
                 best_sigma_value_243 = best_sigma[f"{dataset}_243_out_of_sample_r2_shuffled"]
-            
-                network_indices_384 = np.argwhere(br_labels_dict['384']==network).squeeze()
-                network_indices_243 = np.argwhere(br_labels_dict['243']==network).squeeze()
                  
                 y_hat_384 = np.load(f"{resultsPath_loop}{dataset}_OASM-all-sigma_{best_sigma_value_384}_1_384.npz")['y_hat']
                 y_hat_243 = np.load(f"{resultsPath_loop}{dataset}_OASM-all-sigma_{best_sigma_value_243}_1_243.npz")['y_hat']
@@ -520,15 +526,6 @@ if create_sig:
                 
                 y_hat_384_stacked = np.load(f"{resultsPath_loop}{dataset}_gpt2-xl{fe}_OASM_384_layer1_1000_384.npz")['y_hat']
                 y_hat_243_stacked = np.load(f"{resultsPath_loop}{dataset}_gpt2-xl{fe}_OASM_243_layer1_1000_243.npz")['y_hat']
-                
-                y_hat_384[:, ~network_indices_384] = np.nan
-                y_hat_243[:, ~network_indices_243] = np.nan
-                
-                y_hat_384_gpt2[:, ~network_indices_384] = np.nan
-                y_hat_243_gpt2[:, ~network_indices_243] = np.nan
-               
-                y_hat_384_stacked[:, ~network_indices_384] = np.nan
-                y_hat_243_stacked[:, ~network_indices_243] = np.nan
         
                 y_hat_full[:243, non_nan_indices_243] = y_hat_243
                 y_hat_full[243:, non_nan_indices_384] = y_hat_384
@@ -548,25 +545,38 @@ if create_sig:
                 y_hat_full_gpt2 = np.load(f"{resultsPath_loop}{dataset}_gpt2-xl{fe}_layer_{best_layer}_1.npz")['y_hat']
                 y_hat_full_stacked = np.load(f"{resultsPath_loop}{dataset}_gpt2-xl{fe}_OASM_layer1_1000.npz")['y_hat']
                 
-                
+            se_OASM = (y_test_loop-y_hat_full)**2
             se_gpt2 = (y_test_loop-y_hat_full_gpt2)**2
             se_stacked = (y_test_loop-y_hat_full_stacked)**2
             
             if dataset == 'pereira':
                 # find the best model per experiment 
-                se_stacked_corrected_243 = select_columns_with_lower_error(se_gpt2[:243], se_stacked[:243])
-                se_stacked_corrected_384 = select_columns_with_lower_error(se_gpt2[243:], se_stacked[243:])
+                se_stacked_corrected_243 = select_columns_with_lower_error(se_intercept_pereira_full_shuffled[:243], se_gpt2[:243], se_stacked[:243])
+                se_stacked_corrected_384 = select_columns_with_lower_error(se_intercept_pereira_full_shuffled[243:], se_gpt2[243:], se_stacked[243:])
                 se_stacked_corrected = np.vstack((se_stacked_corrected_243, se_stacked_corrected_384))
-
-            else:
-                se_stacked_corrected = select_columns_with_lower_error(se_gpt2, se_stacked)
+                se_gpt2_corrected_243 = select_columns_with_lower_error(se_intercept_pereira_full_shuffled[:243], se_gpt2[:243])
+                se_gpt2_corrected_384 = select_columns_with_lower_error(se_intercept_pereira_full_shuffled[243:], se_gpt2[243:])
+                se_gpt2_corrected = np.vstack((se_gpt2_corrected_243, se_gpt2_corrected_384))
                 
-            
-            mse_best_layer[f"{dataset}_{shuffle_str}_{fe}_gpt2xl"] = se_gpt2    
+                se_OASM_corrected_243 = select_columns_with_lower_error(se_intercept_pereira_full_shuffled[:243], se_OASM[:243])
+                se_OASM_corrected_384 = select_columns_with_lower_error(se_intercept_pereira_full_shuffled[243:], se_OASM[243:])
+                se_OASM_corrected = np.vstack((se_OASM_corrected_243, se_OASM_corrected_384))
+                
+            elif dataset == 'fedorenko':
+                se_stacked_corrected = select_columns_with_lower_error(se_intercept_fed_shuffled, se_gpt2, se_stacked)
+                se_gpt2_corrected = select_columns_with_lower_error(se_intercept_fed_shuffled, se_gpt2)
+                se_OASM_corrected = select_columns_with_lower_error(se_intercept_fed_shuffled, se_OASM)
+                
+            elif dataset == 'blank':
+                se_stacked_corrected = select_columns_with_lower_error(se_intercept_blank_shuffled, se_gpt2, se_stacked)
+                se_gpt2_corrected = select_columns_with_lower_error(se_intercept_blank_shuffled, se_gpt2)
+                se_OASM_corrected = select_columns_with_lower_error(se_intercept_blank_shuffled, se_OASM)
+                
+            mse_best_layer[f"{dataset}_{shuffle_str}_{fe}_gpt2xl"] = se_gpt2_corrected    
             
             mse_best_layer[f"{dataset}_{shuffle_str}_{fe}_intercept"] = se_intercept_dict[dataset]
             
-            mse_best_layer[f"{dataset}_{shuffle_str}_{fe}"] = (y_test_loop-y_hat_full)**2
+            mse_best_layer[f"{dataset}_{shuffle_str}_{fe}_OASM"] = se_OASM_corrected
             
             mse_best_layer[f"{dataset}_{shuffle_str}_{fe}_stacked"] = se_stacked_corrected
                 
@@ -584,7 +594,7 @@ if create_sig:
     # GPT2XL best layer and the GPT2XL + OASM model
     for dataset in ['pereira', 'blank', 'fedorenko']:
         
-        pvalues_pd = {'fe': [], 'subject': [], 'pval': [], 'pval_gpt2xl_sig': [], 'pval_orig': [], 'shuffled': [], 'network': []}
+        pvalues_pd = {'fe': [], 'subject': [], 'pval': [], 'pval_LLM_sig': [], 'pval_orig': [], 'shuffled': [], 'network': []}
         
         if dataset == 'pereira':
             subjects_arr = subjects_arr_pereira
@@ -600,7 +610,7 @@ if create_sig:
             
             mse_gpt2xl = mse_best_layer[f"{dataset}_{shuffle_str}_{fe}_gpt2xl"]
             mse_intercept = mse_best_layer[f"{dataset}_{shuffle_str}_{fe}_intercept"]
-            mse_oasm = mse_best_layer[f"{dataset}_{shuffle_str}_{fe}"]
+            mse_oasm = mse_best_layer[f"{dataset}_{shuffle_str}_{fe}_OASM"]
             mse_gpt2xl_oasm = mse_best_layer[f"{dataset}_{shuffle_str}_{fe}_stacked"]
         
             for subject in np.unique(subjects_arr):
@@ -618,15 +628,14 @@ if create_sig:
                         stat, pval = ttest_rel(mse_gpt2xl_oasm[:,  subject_network_idxs], mse_oasm[:, subject_network_idxs], 
                                                axis=0, nan_policy='omit', alternative='less')
                 
-                
-                        pval_gpt2xl_sig = pval_gpt2xl_sig[~np.isnan(pval_gpt2xl_sig)]
-                        pval = pval[~np.isnan(pval)]
+                        pval_gpt2xl_sig[np.isnan(pval_gpt2xl_sig)] = 1 
+                        pval[np.isnan(pval)] = 1 
                         
                         pval_gpt2xl_sig_fdr = false_discovery_control(pval_gpt2xl_sig, method='bh')
                         pval_fdr = false_discovery_control(pval, method='bh')
                         
                         pvalues_pd['pval'].extend(pval_fdr)
-                        pvalues_pd['pval_gpt2xl_sig'].extend(pval_gpt2xl_sig_fdr)
+                        pvalues_pd['pval_LLM_sig'].extend(pval_gpt2xl_sig_fdr)
                         pvalues_pd['pval_orig'].extend(pval)
                         pvalues_pd['subject'].extend(np.repeat(subject,len(pval)))
                         pvalues_pd['network'].extend(np.repeat(network,len(pval)))
@@ -638,7 +647,9 @@ if create_sig:
                             fe_name = fe
                             
                         pvalues_pd['fe'].extend(np.repeat(fe_name,len(pval)))
-                    
+        
+        values_len = [len(value) for key, value in pvalues_pd.items()]
+        keys_ordering = [key for key, value in pvalues_pd.items()]
         pvalues_pd = pd.DataFrame(pvalues_pd)
     
         pvalues_pd.to_csv(f'/home2/ebrahim/beyond-brainscore/analyze_results/figures_code/figures_data/figure2/pvalues_{dataset}.csv')

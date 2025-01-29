@@ -319,6 +319,26 @@ def compute_squared_error(y_hat, dataset, exp, shuffled=False):
     
     return (y_hat - y_test_lang)**2
 
+
+def array_with_highest_mean(array_list, subjects_arr):
+    """
+    array_list is a list containing arrays, where each array is of shape N
+    subjects_arr is an array of shape N, containing the subject indices 
+    """
+    if not array_list:
+        raise ValueError("The list is empty.")
+    
+    mean_grouped_by_subject = []
+    for arr in array_list:
+        subject_means = []
+        for subj in np.unique(subjects_arr):
+            subj_indices = np.argwhere(subjects_arr==subj)
+            subject_means.append(np.mean(arr[subj_indices]))
+        mean_grouped_by_subject.append(np.mean(subject_means))
+
+    max_mean_index = np.argmax(mean_grouped_by_subject)
+    return array_list[max_mean_index]
+
 def calculate_omega(df, model_combined, model_A, model_B):
     # Ensure the required models are present for each subject
     required_models = {model_combined, model_A, model_B}
@@ -334,14 +354,17 @@ def calculate_omega(df, model_combined, model_A, model_B):
             # Get performance values for each specified model
             banded_perf = subject_data.loc[subject_data['Model'] == model_combined, 'perf'].values[0]
             LLM_perf = subject_data.loc[subject_data['Model'] == model_A, 'perf'].values[0]
-            oasm_perf = subject_data.loc[subject_data['Model'] == model_B, 'perf'].values[0]
+            simple_perf = subject_data.loc[subject_data['Model'] == model_B, 'perf'].values[0]
+            
+            if banded_perf < LLM_perf:
+                banded_perf = LLM_perf
         
             if LLM_perf == 0.0:
                 print(LLM_perf)
                 result = 100
             else:
                 # Perform the calculation
-                result = np.clip((banded_perf - oasm_perf) / LLM_perf, 0, 1)
+                result = np.clip((banded_perf - simple_perf) / LLM_perf, 0, 1)
                 result = (1-result)*100
             
             # Append result as a dictionary for the subjectco
@@ -353,39 +376,6 @@ def calculate_omega(df, model_combined, model_A, model_B):
     # Convert results to a DataFrame
     result_df = pd.DataFrame(results)
     return result_df
-
-def calculate_omega_voxel_level(df, model_combined, model_A, model_B):
-    # Ensure the required models are present for each subject
-    required_models = {model_combined, model_A, model_B}
-    results = []
-    
-    df['perf'] = np.clip(df['perf'], 0,np.inf)
-    
-    # Iterate through each unique subject
-    for subject in df['subjects'].unique():
-        # Filter data for the current subject
-        subject_data = df[df['subjects'] == subject]
-        # Check if all required models are present for the subject
-        if required_models.issubset(subject_data['Model'].unique()):
-            # Get performance values for each specified model
-            banded_perf = np.array(subject_data.loc[subject_data['Model'] == model_combined, 'perf'])
-            LLM_perf = np.array(subject_data.loc[subject_data['Model'] == model_A, 'perf'])
-            oasm_perf = np.array(subject_data.loc[subject_data['Model'] == model_B, 'perf'])
-        
-            # Perform the calculation
-            result = (banded_perf - oasm_perf) / LLM_perf
-            result[np.argwhere(LLM_perf<=0)] = np.nan
-            result = np.clip((1 - np.nanmean(result)) * 100, 0, 100)
-            # Append result as a dictionary for the subject
-            results.append({
-                'subjects': subject,
-                'metric': result
-            })
-    
-    # Convert results to a DataFrame
-    result_df = pd.DataFrame(results)
-    return result_df
-
 
 def elementwise_max(arrays):
     
