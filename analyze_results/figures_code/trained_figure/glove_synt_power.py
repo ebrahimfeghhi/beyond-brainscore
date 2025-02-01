@@ -1,7 +1,7 @@
 import numpy as np
 import sys
 sys.path.append("/home2/ebrahim/beyond-brainscore/analyze_results/figures_code")
-from trained_untrained_results_funcs import load_perf, select_columns_with_lower_error, calculate_omega, array_with_highest_mean
+from trained_untrained_results_funcs import load_perf, select_columns_with_lower_error, calculate_omega, array_with_highest_mean, find_best_layer
 from plotting_functions import plot_across_subjects
 from matplotlib import pyplot as plt
 from stats_funcs import compute_paired_ttest
@@ -31,8 +31,10 @@ feature_extraction_arr = ['', '-mp', '-sp']
 perf_arr = ['out_of_sample_r2']
 shuffled_arr = ['']
 shuffled = ''
-dataset_arr = ['pereira', 'fedorenko', 'blank']
-save_folder = 'figure4'
+dataset_arr = ['pereira']
+
+synt_mode = False
+save_folder = 'glove'
 
 for e in ['243', '384']:
 
@@ -74,7 +76,6 @@ se_intercept_fed = np.load(f'{resultsPath}results_fedorenko/mse_intercept.npy')
 
 se_intercept_blank = np.load(f'{resultsPath}results_blank/mse_intercept.npy')
 
-
 se_intercept_dict = {'pereira': se_intercept_pereira_full, 'fedorenko': se_intercept_fed, 
                      'blank': se_intercept_blank}
                     
@@ -90,7 +91,7 @@ models_save_name = ['Llama', 'rwkv', 'roberta-large', 'gpt2xl']
 #models_save_name = ['gpt2xl']
 num_layers = {'roberta-large': 25, 'gpt2-xl': 49, 'rwkv-4-3b-pike': 33, 'Llama-3.2-3B-Instruct': 29}
 perf = 'out_of_sample_r2'
-synt_mode = False
+
 
 for LLM_name, LLM_name_results in zip(models, models_save_name):
     
@@ -158,13 +159,7 @@ for LLM_name, LLM_name_results in zip(models, models_save_name):
                     
                 if d == 'pereira':
                     
-                    if synt_mode:
-                        best_layer_syntax = np.load('/home2/ebrahim/beyond-brainscore/analyze_results/figures_code/best_layer_sigma_info/gpt2xl-syntax.npz')
-                        bl_synt = best_layer_syntax[f'pereira{exp}_out_of_sample_r2_contig{fe}']
-                        simple_perf, simple_se = load_perf(f"/data/LLMs/brainscore/results_pereira/pereira_gpt2xl-syntax{fe}_layer_{bl_synt}_1{exp}.npz", perf, return_SE=True, 
-                                                        shape_pereira_full=shape_pereira_full, non_nan_indices_dict=non_nan_indices_dict, exp=exp, dataset=d)
-                    else:
-                        simple_perf, simple_se = load_perf(f"/data/LLMs/brainscore/results_pereira/pereira_trained-var-par{exp}-sp_WN+pos+glove_1000{exp}.npz", perf, return_SE=True, 
+                    simple_perf, simple_se = load_perf(f"/data/LLMs/brainscore/results_pereira/pereira_trained-var-par{exp}-sp_WN+pos_1{exp}.npz", perf, return_SE=True, 
                                                         shape_pereira_full=shape_pereira_full, non_nan_indices_dict=non_nan_indices_dict, exp=exp, dataset=d)
 
                     # for each voxel, set the squared error values to the intercept only model or the simple model
@@ -173,27 +168,7 @@ for LLM_name, LLM_name_results in zip(models, models_save_name):
                         se_corrected_243 = select_columns_with_lower_error(se_intercept_pereira_full[:243], simple_se[:243])
                     else:
                         se_corrected_384 =  select_columns_with_lower_error(se_intercept_pereira_full[243:], simple_se[243:])
-                                    
-                elif d == 'fedorenko':
-    
-                    best_layer_WP_fed = '4.7'
-                    
-                    simple_perf, se_corrected = load_perf(f"/data/LLMs/brainscore/results_{d}/{d}_pos_layer_{best_layer_WP_fed}_1.npz", perf, return_SE=True, 
-                                                        dataset='fedorenko')
-                    
-                    se_corrected = select_columns_with_lower_error(se_intercept_fed, se_corrected)
-                    
-                    
-                elif d == 'blank':
-
-                    best_layer_pos_blank = 11
-                
-                    POS_WN, POS_WN_se = load_perf(f"/data/LLMs/brainscore/results_blank/blank_pos-WN_layer_{best_layer_pos_blank}_1{exp}.npz", perf, return_SE=True, dataset='blank')
-    
-                    se_corrected = select_columns_with_lower_error(se_intercept_blank, POS_WN_se)
-                    
-                    simple_perf = POS_WN
-                    
+                                                        
                     
                 # just do it for the first fe since simple model does not depend on feature extraction
                 if fe == '':  
@@ -207,63 +182,60 @@ for LLM_name, LLM_name_results in zip(models, models_save_name):
                         simple_dict['Exp'].extend(np.repeat(exp.strip('_'), len(simple_perf)))
 
             
-                llm_bl_perf, LLM_se  = load_perf(f"/data/LLMs/brainscore/results_{d}/{d}_trained-var-par{LLM_name}{exp}{fe}_{LLM_name}_1{exp}.npz", perf, return_SE=True, 
-                                                                        shape_pereira_full=shape_pereira_full, non_nan_indices_dict=non_nan_indices_dict, exp=exp, dataset=d)
-                
                 if d == 'pereira':
+                    
                     if synt_mode:
-                        LLM_BANDED, LLM_BANDED_se  = load_perf(f"/data/LLMs/brainscore/results_pereira/pereira_synt_gpt2xl{exp}{fe}_layer1_1000{exp}.npz", 
+                        
+                        if '243' in exp:
+                            bl_synt = '7'
+                        else:
+                            bl_synt = '16'
+                        
+                        model_perf, model_se = load_perf(f"/data/LLMs/brainscore/results_pereira/pereira_gpt2xl-syntax-sp_layer_{bl_synt}_1{exp}.npz", 
+                                                                perf, return_SE=True, 
+                                                                shape_pereira_full=shape_pereira_full, non_nan_indices_dict=non_nan_indices_dict, exp=exp, dataset=d)
+                        
+                        
+                        PWR_COMBINED, PWR_COMBINED_se = load_perf(f"/data/LLMs/brainscore/results_pereira/pereira_syntax-sp_PWR{exp}_layer1_1000{exp}.npz", 
                                                                         perf, return_SE=True, 
                                                                         shape_pereira_full=shape_pereira_full, non_nan_indices_dict=non_nan_indices_dict, exp=exp, dataset=d)
                     else:
-                        LLM_BANDED, LLM_BANDED_se  = load_perf(f"/data/LLMs/brainscore/results_pereira/pereira_trained-var-par{LLM_name}{exp}{fe}_pos+WN+glove+{LLM_name}_1000{exp}.npz", 
-                                                                            perf, return_SE=True, 
-                                                                            shape_pereira_full=shape_pereira_full, non_nan_indices_dict=non_nan_indices_dict, exp=exp, dataset=d)
+                        
+                        model_perf, model_se = load_perf(f"/data/LLMs/brainscore/results_pereira/pereira_trained-var-par{exp}-sp_glove_1{exp}.npz", 
+                                                                perf, return_SE=True, 
+                                                                shape_pereira_full=shape_pereira_full, non_nan_indices_dict=non_nan_indices_dict, exp=exp, dataset=d)
+                        
+                        PWR_COMBINED, PWR_COMBINED_se = load_perf(f"/data/LLMs/brainscore/results_pereira/pereira_trained-var-par{exp}-sp_WN+pos+glove_1000{exp}.npz", 
+                                                                perf, return_SE=True, 
+                                                                shape_pereira_full=shape_pereira_full, non_nan_indices_dict=non_nan_indices_dict, exp=exp, dataset=d)
+                        
                     simple_color = "Orange"
                     banded_color = 'Red'
                     yticks_perf_banded = [0, 0.08]
                     
                     
-                elif d == 'fedorenko':    
-                    LLM_WP, LLM_WP_se = load_perf(f"/data/LLMs/brainscore/results_fedorenko/fedorenko_trained-var-par{LLM_name}{exp}{fe}_WP+{LLM_name}_1000{exp}.npz", perf, return_SE=True, dataset=d)
-                    simple_color = sns.color_palette("Greens", 5)[3]  
-                    banded_color = 'Purple'
-                    yticks_perf_banded = [0, 0.10]
                     
-                elif d == 'blank':
-                    LLM_POS_WN, LLM_POS_WN_se = load_perf(f"/data/LLMs/brainscore/results_blank/blank_trained-var-par{LLM_name}{exp}{fe}_pos+WN+{LLM_name}_1000{exp}.npz", perf, return_SE=True, dataset=d)
-                    simple_color = sns.color_palette("Greens", 5)[3]   
-                    banded_color = 'Purple'
-                    yticks_perf_banded = [0, 0.03]
-                    
-                    
-                
-                results_dict_LLM['perf'].extend(llm_bl_perf)
+                results_dict_LLM['perf'].extend(model_perf)
                 results_dict_LLM['subjects'].extend(subjects_arr)
                 results_dict_LLM['Network'].extend(networks_arr)
-                results_dict_LLM['Model'].extend(np.repeat(f'{LLM_name_results}{fe_str}', len(llm_bl_perf)))
+                results_dict_LLM['Model'].extend(np.repeat(f'{LLM_name_results}{fe_str}', len(model_perf)))
             
         
                 if d == 'pereira':
                     results_dict_LLM['Exp'].extend(np.repeat(exp.strip('_'), num_vox_dict[exp.strip('_')]))
                     
                     if '243' in exp:
-                        se_llm_243_banded = select_columns_with_lower_error(se_intercept_pereira_full[:243], LLM_BANDED_se[:243], 
-                                                                        LLM_se[:243])
-                        se_llm_243 = select_columns_with_lower_error(se_intercept_pereira_full[:243], LLM_se[:243])
+                        se_llm_243_banded = select_columns_with_lower_error(se_intercept_pereira_full[:243], PWR_COMBINED_se[:243], 
+                                                                        model_se[:243])
+                        se_llm_243 = select_columns_with_lower_error(se_intercept_pereira_full[:243], model_se[:243])
                     else:
-                        se_llm_384_banded = select_columns_with_lower_error(se_intercept_pereira_full[243:], LLM_BANDED_se[243:], 
-                                                                        LLM_se[243:])
-                        se_llm_384 = select_columns_with_lower_error(se_intercept_pereira_full[243:], LLM_se[243:])
+                        se_llm_384_banded = select_columns_with_lower_error(se_intercept_pereira_full[243:], PWR_COMBINED_se[243:], 
+                                                                        model_se[243:])
+                        se_llm_384 = select_columns_with_lower_error(se_intercept_pereira_full[243:], model_se[243:])
                         
                     exp_no_underscore = exp.strip('_')
-                    banded_perf = array_with_highest_mean([llm_bl_perf, LLM_BANDED], subjects_dict[exp_no_underscore])
-                    
-                elif d == 'fedorenko':
-                    banded_perf = array_with_highest_mean([llm_bl_perf, LLM_WP], subjects_arr_fed)
-                    
-                elif d == 'blank':
-                    banded_perf = array_with_highest_mean([llm_bl_perf, LLM_POS_WN], subjects_arr_blank)
+                    banded_perf = array_with_highest_mean([model_perf, PWR_COMBINED], subjects_dict[exp_no_underscore])
+
                     
                     
                 results_dict_LLM_banded['perf'].extend(banded_perf)
@@ -278,15 +250,7 @@ for LLM_name, LLM_name_results in zip(models, models_save_name):
                 se_corrected_llm_banded = np.vstack((se_llm_243_banded, se_llm_384_banded))
                 se_corrected_llm = np.vstack((se_llm_243, se_llm_384))
                 se_corrected = np.vstack((se_corrected_243, se_corrected_384))
-                
-            elif d == 'fedorenko':
-                se_corrected_llm_banded = select_columns_with_lower_error(se_intercept_fed, LLM_se, LLM_WP_se)
-                se_corrected_llm = select_columns_with_lower_error(se_intercept_fed, LLM_se)
-                
-            else:
-                se_corrected_llm_banded = select_columns_with_lower_error(se_intercept_blank, LLM_se, LLM_POS_WN_se)
-                se_corrected_llm = select_columns_with_lower_error(se_intercept_blank, LLM_se)
-                
+
 
             pvalues_pd = compute_paired_ttest(pvalues_pd.copy(), se_corrected_llm_banded, se_corrected, se_corrected_llm, se_intercept_dict[d], 
                                             subjects_stats_dict[d], networks_stats_dict[d], fe, d)
