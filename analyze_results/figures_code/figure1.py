@@ -9,7 +9,7 @@ import seaborn as sns
 import pandas as pd
 from trained_untrained_results_funcs import find_best_layer, find_best_sigma
 
-noL2_str_arr = ['_noL2', '_noL2custom', '']
+noL2_str_arr = ['_noL2custom', '']
 shuffled_arr = [False, True]
 dataset_arr = ['pereira', 'fedorenko', 'blank']
 perf_arr = ['out_of_sample_r2', 'pearson_r']
@@ -59,10 +59,10 @@ for perf in perf_arr:
                     num_vox_dict = {}
                     subjects_dict = {}
                     for e in exp:
-                        bre = np.load(f'{data_processed_folder}/networks_{e}.npy', allow_pickle=True)
+                        bre = np.load(f'{data_processed_folder}/networks_{e}_lang.npy', allow_pickle=True)
                         br_labels_dict[e] = bre
                         num_vox_dict[e] = bre.shape[0]
-                        subjects_dict[e] = np.load(f"{data_processed_folder}/subjects_{e}.npy", allow_pickle=True)
+                        subjects_dict[e] = np.load(f"{data_processed_folder}/subjects_{e}_lang.npy", allow_pickle=True)
                         
                     lang_indices_384 = np.argwhere(br_labels_dict['384'] == 'language').squeeze()
                     lang_indices_243 = np.argwhere(br_labels_dict['243'] == 'language').squeeze()
@@ -88,6 +88,7 @@ for perf in perf_arr:
                 
                     save_best_sigma[f"{dataset}_384_{perf}{shuffled_save_str}{noL2_str}"] = best_sigma_384
                     save_best_sigma[f"{dataset}_243_{perf}{shuffled_save_str}{noL2_str}"] = best_sigma_243
+                    
                     
                     results_dict_simple_384 = pd.DataFrame({'perf': OASM_perf_best_sigma_384, 'subjects': subjects_dict['384'], 
                                     'Network': br_labels_dict['384'], 'Model': np.repeat('OASM', num_vox_dict['384']), 'Exp': np.repeat('384', num_vox_dict['384'])})

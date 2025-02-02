@@ -21,9 +21,9 @@ dataset_arr = ['pereira', 'blank', 'fedorenko']
 shuffled_arr = ['shuffled', '']
 perf_arr = ['out_of_sample_r2', 'pearson_r']
 
-create_banded = False
+create_banded = True
 create_across_layer = False
-create_sig = True
+create_sig = False
 
 exp = ['243', '384']
 
@@ -145,7 +145,7 @@ if create_banded:
                 
                 exp_arr = ['']
                 
-            fig, ax = plt.subplots(1,3,figsize=(12,6))
+            fig, ax = plt.subplots(1,3,figsize=(10,6))
             sns.despine()
             plt.subplots_adjust(wspace=0.05)  # Decrease wspace to reduce the horizontal space between plots
 
