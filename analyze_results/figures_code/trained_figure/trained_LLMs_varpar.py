@@ -86,11 +86,10 @@ pereira_best_layers_simple = np.load('/home2/ebrahim/beyond-brainscore/analyze_r
 
 models = ['Llama-3.2-3B-Instruct', 'rwkv-4-3b-pile', 'roberta-large', 'gpt2-xl']
 models_save_name = ['Llama', 'rwkv', 'roberta-large', 'gpt2xl']
-#models = ['gpt2-xl']
-#models_save_name = ['gpt2xl']
+models = ['gpt2-xl']
+models_save_name = ['gpt2xl']
 num_layers = {'roberta-large': 25, 'gpt2-xl': 49, 'rwkv-4-3b-pike': 33, 'Llama-3.2-3B-Instruct': 29}
 perf = 'out_of_sample_r2'
-synt_mode = False
 
 for LLM_name, LLM_name_results in zip(models, models_save_name):
     
@@ -100,8 +99,6 @@ for LLM_name, LLM_name_results in zip(models, models_save_name):
             
     for dnum, d in enumerate(dataset_arr):
         
-        if synt_mode and d != 'pereira':
-            continue
         
         results_dict_LLM = {'perf':[], 'subjects': [], 'Network': [], 
                                     'Model': []}
@@ -157,15 +154,9 @@ for LLM_name, LLM_name_results in zip(models, models_save_name):
                     selected_lang_indices = None
                     
                 if d == 'pereira':
-                    
-                    if synt_mode:
-                        best_layer_syntax = np.load('/home2/ebrahim/beyond-brainscore/analyze_results/figures_code/best_layer_sigma_info/gpt2xl-syntax.npz')
-                        bl_synt = best_layer_syntax[f'pereira{exp}_out_of_sample_r2_contig{fe}']
-                        simple_perf, simple_se = load_perf(f"/data/LLMs/brainscore/results_pereira/pereira_gpt2xl-syntax{fe}_layer_{bl_synt}_1{exp}.npz", perf, return_SE=True, 
-                                                        shape_pereira_full=shape_pereira_full, non_nan_indices_dict=non_nan_indices_dict, exp=exp, dataset=d)
-                    else:
-                        simple_perf, simple_se = load_perf(f"/data/LLMs/brainscore/results_pereira/pereira_trained-var-par{exp}-sp_WN+pos+glove_1000{exp}.npz", perf, return_SE=True, 
-                                                        shape_pereira_full=shape_pereira_full, non_nan_indices_dict=non_nan_indices_dict, exp=exp, dataset=d)
+          
+                    simple_perf, simple_se = load_perf(f"/data/LLMs/brainscore/results_pereira/pereira_trained-var-par{exp}-sp_WN+pos+glove_1000{exp}.npz", perf, return_SE=True, 
+                                                    shape_pereira_full=shape_pereira_full, non_nan_indices_dict=non_nan_indices_dict, exp=exp, dataset=d)
 
                     # for each voxel, set the squared error values to the intercept only model or the simple model
                     # depending on which performs better (effecitively clipping squared errors corresponding to negative r2 values to 0)
@@ -211,12 +202,8 @@ for LLM_name, LLM_name_results in zip(models, models_save_name):
                                                                         shape_pereira_full=shape_pereira_full, non_nan_indices_dict=non_nan_indices_dict, exp=exp, dataset=d)
                 
                 if d == 'pereira':
-                    if synt_mode:
-                        LLM_BANDED, LLM_BANDED_se  = load_perf(f"/data/LLMs/brainscore/results_pereira/pereira_synt_gpt2xl{exp}{fe}_layer1_1000{exp}.npz", 
-                                                                        perf, return_SE=True, 
-                                                                        shape_pereira_full=shape_pereira_full, non_nan_indices_dict=non_nan_indices_dict, exp=exp, dataset=d)
-                    else:
-                        LLM_BANDED, LLM_BANDED_se  = load_perf(f"/data/LLMs/brainscore/results_pereira/pereira_trained-var-par{LLM_name}{exp}{fe}_pos+WN+glove+{LLM_name}_1000{exp}.npz", 
+        
+                    LLM_BANDED, LLM_BANDED_se  = load_perf(f"/data/LLMs/brainscore/results_pereira/pereira_trained-var-par{LLM_name}{exp}{fe}_pos+WN+glove+{LLM_name}_1000{exp}.npz", 
                                                                             perf, return_SE=True, 
                                                                             shape_pereira_full=shape_pereira_full, non_nan_indices_dict=non_nan_indices_dict, exp=exp, dataset=d)
                     simple_color = "Orange"
@@ -257,13 +244,13 @@ for LLM_name, LLM_name_results in zip(models, models_save_name):
                         se_llm_384 = select_columns_with_lower_error(se_intercept_pereira_full[243:], LLM_se[243:])
                         
                     exp_no_underscore = exp.strip('_')
-                    banded_perf = array_with_highest_mean([llm_bl_perf, LLM_BANDED], subjects_dict[exp_no_underscore])
+                    banded_perf = LLM_BANDED
                     
                 elif d == 'fedorenko':
-                    banded_perf = array_with_highest_mean([llm_bl_perf, LLM_WP], subjects_arr_fed)
+                    banded_perf = LLM_WP
                     
                 elif d == 'blank':
-                    banded_perf = array_with_highest_mean([llm_bl_perf, LLM_POS_WN], subjects_arr_blank)
+                    banded_perf = LLM_POS_WN
                     
                     
                 results_dict_LLM_banded['perf'].extend(banded_perf)
@@ -343,7 +330,7 @@ for LLM_name, LLM_name_results in zip(models, models_save_name):
             ax2[2].spines['left'].set_visible(False)
             ax2[2].yaxis.set_visible(False)
             ax2[2].set_yticks([])
-                
+            
             omega = calculate_omega(subject_avg_pd.reset_index(), f'Banded{fe_str}', f'{LLM_name_results}{fe_str}', f'Simple')
             omega_metric['feature_extraction'].extend(np.repeat(f"{fe_str}", len(omega['metric'])))
             omega_metric['dataset'].extend(np.repeat(f"{d}", len(omega['metric'])))

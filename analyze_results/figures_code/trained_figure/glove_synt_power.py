@@ -32,7 +32,7 @@ shuffled_arr = ['']
 shuffled = ''
 dataset_arr = ['pereira']
 
-synt_mode = False
+synt_mode = True
 
 if synt_mode:
     save_folder = 'synt'
@@ -230,7 +230,7 @@ for dnum, d in enumerate(dataset_arr):
                     se_llm_384 = select_columns_with_lower_error(se_intercept_pereira_full[243:], model_se[243:])
                     
                 exp_no_underscore = exp.strip('_')
-                banded_perf = array_with_highest_mean([model_perf, PWR_COMBINED], subjects_dict[exp_no_underscore])
+                banded_perf = PWR_COMBINED
 
                 
                 
@@ -273,7 +273,7 @@ for dnum, d in enumerate(dataset_arr):
             color_palette_banded = sns.color_palette([simple_color, banded_color, 'lightblue'])
         else:
             banded_color = 'Orange'
-            color_palette_banded = sns.color_palette([simple_color, banded_color, 'purple'])
+            color_palette_banded = sns.color_palette([simple_color, banded_color, '#5C4033'])
 
         results_banded_fe = results_combined_with_banded.loc[
             results_combined_with_banded['Model'].str.contains(fe_str) |
