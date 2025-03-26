@@ -336,6 +336,7 @@ for LLM_name, LLM_name_results in zip(models, models_save_name):
             omega_metric['dataset'].extend(np.repeat(f"{d}", len(omega['metric'])))
             omega_metric['values'].extend(omega['metric'])
             
+            
         fig2.savefig(f"/home2/ebrahim/beyond-brainscore/analyze_results/figures_code/figures/new_figures/{save_folder}/banded/banded_{perf}_{d}_{LLM_name_results}.pdf", bbox_inches='tight')
         fig2.savefig(f"/home2/ebrahim/beyond-brainscore/analyze_results/figures_code/figures/new_figures/{save_folder}/banded/banded_{perf}_{d}_{LLM_name_results}.png")
         

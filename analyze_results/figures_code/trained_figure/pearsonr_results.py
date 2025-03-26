@@ -32,11 +32,11 @@ perf_str=''
 plot_xlabel = False
 remove_y_axis = False
 num_seeds = 5
-feature_extraction_arr = ['', '-mp', '-sp']
+feature_extraction_arr = ['-sp']
 perf_arr = ['pearson_r']
 shuffled_arr = ['']
 shuffled = ''
-dataset_arr = ['pereira', 'fedorenko', 'blank']
+dataset_arr = ['pereira']
 
 for e in ['243', '384']:
 
@@ -54,6 +54,8 @@ lang_indices_dict['243'] = lang_indices_243
 subjects_arr_fed  = np.load(f"{data_processed_folder_fed}/subjects.npy", allow_pickle=True)
 subjects_arr_blank  = np.load(f"{data_processed_folder_blank}/subjects.npy", allow_pickle=True)
 subjects_arr_pereira = np.load(f"{data_processed_folder_pereira}/subjects_complete_lang.npy", allow_pickle=True)
+unique_subjects = np.unique(subjects_arr_pereira)
+unique_subjects = np.append(unique_subjects, 'subj_avg')
 subjects_stats_dict = {'pereira': subjects_arr_pereira, 'fedorenko': subjects_arr_fed, 'blank': subjects_arr_blank}
 networks_arr_pereira = np.load(f"{data_processed_folder_pereira}/network_complete_lang.npy", allow_pickle=True)
 
@@ -242,28 +244,34 @@ for perf in perf_arr:
             nodes = [0.0, 0.25, 0.5, 0.75, 1.0]   # Define transition points in [0, 1]
 
             custom_cmap = LinearSegmentedColormap.from_list("custom_cmap", list(zip(nodes, colors)))
-       
-            plotting.plot_glass_brain(f'/data/LLMs/brainscore/results_pereira/glass_brain_plots/SP+SL+GloVe_{perf}_subj_avg.nii', 
-            colorbar=True, display_mode='l',vmax=0.5, vmin=0,
-            output_file=f'/home2/ebrahim/beyond-brainscore/analyze_results/figures_code/figures/new_figures/figure4/glass_brain/SP+SL+GloVe_{perf}_subj_avg_cmap.pdf', cmap=custom_cmap)
             
-            plotting.plot_glass_brain(f'/data/LLMs/brainscore/results_pereira/glass_brain_plots/SP+SL+GloVe_{perf}_subj_avg.nii', 
-            colorbar=False, display_mode='l',vmax=0.5, vmin=0,
-            output_file=f'/home2/ebrahim/beyond-brainscore/analyze_results/figures_code/figures/new_figures/figure4/glass_brain/SP+SL+GloVe_{perf}_subj_avg.pdf', cmap=custom_cmap)
-            
-            plotting.plot_glass_brain(f'/data/LLMs/brainscore/results_pereira/glass_brain_plots/{LLM_name}{fe}_{perf}_subj_avg.nii', 
-            colorbar=False, display_mode='l', vmax=0.5, vmin=0,
-            output_file=f'/home2/ebrahim/beyond-brainscore/analyze_results/figures_code/figures/new_figures/figure4/glass_brain/{LLM_name}{fe}_{perf}_subj_avg.pdf', cmap=custom_cmap)
-            
-            plotting.plot_glass_brain(f'/data/LLMs/brainscore/results_pereira/glass_brain_plots/SP+SL+GloVe-{LLM_name}{fe}_{perf}_subj_avg.nii', 
-            colorbar=True, display_mode='l', vmax=0.5, vmin=-0.5,
-            output_file=f'/home2/ebrahim/beyond-brainscore/analyze_results/figures_code/figures/new_figures/figure4/glass_brain/SP+SL-{LLM_name}{fe}_{perf}_subj_avg_cmap.pdf', cmap='seismic', 
-            plot_abs=False)
-               
-            plotting.plot_glass_brain(f'/data/LLMs/brainscore/results_pereira/glass_brain_plots/SP+SL+GloVe-{LLM_name}{fe}_{perf}_subj_avg.nii', 
-            colorbar=False, display_mode='l', vmax=0.5, vmin=-0.5,
-            output_file=f'/home2/ebrahim/beyond-brainscore/analyze_results/figures_code/figures/new_figures/figure4/glass_brain/SP+SL+GloVe-{LLM_name}{fe}_{perf}_subj_avg.pdf', cmap='seismic', 
-            plot_abs=False)
+            for subj in np.unique(unique_subjects):
+                plotting.plot_glass_brain(f'/data/LLMs/brainscore/results_pereira/glass_brain_plots/SP+SL+GloVe_{perf}_{subj}.nii', 
+                colorbar=True, display_mode='l',vmax=0.5, vmin=0,
+                output_file=f'/home2/ebrahim/beyond-brainscore/analyze_results/figures_code/figures/new_figures/figure4/glass_brain/SP+SL+GloVe_{perf}_{subj}_cmap.pdf', cmap=custom_cmap, 
+                resampling_interpolation='nearest')
+                
+                plotting.plot_glass_brain(f'/data/LLMs/brainscore/results_pereira/glass_brain_plots/SP+SL+GloVe_{perf}_{subj}.nii', 
+                colorbar=False, display_mode='l',vmax=0.5, vmin=0,
+                output_file=f'/home2/ebrahim/beyond-brainscore/analyze_results/figures_code/figures/new_figures/figure4/glass_brain/SP+SL+GloVe_{perf}_{subj}.pdf', cmap=custom_cmap, 
+                resampling_interpolation='nearest')
+                
+                plotting.plot_glass_brain(f'/data/LLMs/brainscore/results_pereira/glass_brain_plots/{LLM_name}{fe}_{perf}_{subj}.nii', 
+                colorbar=False, display_mode='l', vmax=0.5, vmin=0,
+                output_file=f'/home2/ebrahim/beyond-brainscore/analyze_results/figures_code/figures/new_figures/figure4/glass_brain/{LLM_name}{fe}_{perf}_{subj}.pdf', cmap=custom_cmap, 
+                resampling_interpolation='nearest')
+                
+                plotting.plot_glass_brain(f'/data/LLMs/brainscore/results_pereira/glass_brain_plots/SP+SL+GloVe-{LLM_name}{fe}_{perf}_{subj}.nii', 
+                colorbar=True, display_mode='l', vmax=0.5, vmin=-0.5,
+                output_file=f'/home2/ebrahim/beyond-brainscore/analyze_results/figures_code/figures/new_figures/figure4/glass_brain/SP+SL-{LLM_name}{fe}_{perf}_{subj}_cmap.pdf', cmap='seismic', 
+                plot_abs=False,  resampling_interpolation='nearest')
+                
+                plotting.plot_glass_brain(f'/data/LLMs/brainscore/results_pereira/glass_brain_plots/SP+SL+GloVe-{LLM_name}{fe}_{perf}_{subj}.nii', 
+                colorbar=False, display_mode='l', vmax=0.5, vmin=-0.5,
+                output_file=f'/home2/ebrahim/beyond-brainscore/analyze_results/figures_code/figures/new_figures/figure4/glass_brain/glass_brain_extended/SP+SL+GloVe-{LLM_name}{fe}_{perf}_{subj}.pdf', 
+                cmap='seismic', 
+                plot_abs=False,  resampling_interpolation='nearest')
+
  
     
         results_dict_LLM = pd.DataFrame(results_dict_LLM)
