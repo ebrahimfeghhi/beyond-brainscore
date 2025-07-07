@@ -1,5 +1,5 @@
 import numpy as np
-base = '/home2/ebrahim/beyond-brainscore/'
+base = '/home3/ebrahim2/beyond-brainscore/'
 from matplotlib import pyplot as plt
 from sklearn.metrics import mean_squared_error
 import sys
@@ -47,7 +47,7 @@ for perf in perf_arr:
                     resultsPath_dataset = resultsPath_dataset_nonshuffled
                     
                 data_processed_folder = f'/data/LLMs/data_processed/{dataset}/dataset'
-                figurePath = '/home2/ebrahim/beyond-brainscore/analyze_results/figures_code/figures/new_figures/figure1/'
+                figurePath = '/home3/ebrahim2/beyond-brainscore/analyze_results/figures_code/figures/new_figures/figure1/'
                 figurePath = f'{figurePath}{perf}/'
 
                 # load information regarding number of voxels, subjects, and functional network localization for each experiment into a dictionary
@@ -219,9 +219,9 @@ for perf in perf_arr:
                 
                 subject_avg_pd = subject_avg_pd.reset_index()
                 if median:
-                    subject_avg_pd.to_csv(f"/home2/ebrahim/beyond-brainscore/analyze_results/figures_code/figures_data/figure1/{dataset}_{perf}{noL2_str}{shuffled_save_str}_median.csv", index=False)                
+                    subject_avg_pd.to_csv(f"/home3/ebrahim2/beyond-brainscore/analyze_results/figures_code/figures_data/figure1/{dataset}_{perf}{noL2_str}{shuffled_save_str}_median.csv", index=False)                
                 else:
-                    subject_avg_pd.to_csv(f"/home2/ebrahim/beyond-brainscore/analyze_results/figures_code/figures_data/figure1/{dataset}_{perf}{noL2_str}{shuffled_save_str}.csv", index=False)                
+                    subject_avg_pd.to_csv(f"/home3/ebrahim2/beyond-brainscore/analyze_results/figures_code/figures_data/figure1/{dataset}_{perf}{noL2_str}{shuffled_save_str}.csv", index=False)                
                     
                 # so I just do it manually here (fed is always index 1)
                 ax[1].spines['left'].set_visible(False)   # Hide the left spine

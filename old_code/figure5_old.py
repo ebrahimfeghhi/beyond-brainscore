@@ -169,6 +169,6 @@ for shuffled in shuffled_arr:
                                                                 plot_legend_under=False, width=0.7, median=median, ylabel_str=perf_str, legend_fontsize=30, ax_select=ax_select,
                                                                 remove_yaxis=remove_y_axis, plot_xlabel=plot_xlabel, alpha=0.5)
             
-        fig.savefig(f"/home2/ebrahim/beyond-brainscore/analyze_results/figures_code/figures/new_figures/figure5/{perf}_{shuffled}.png")
-        fig.savefig(f"/home2/ebrahim/beyond-brainscore/analyze_results/figures_code/figures/new_figures/figure5/{perf}_{shuffled}.pdf", bbox_inches='tight')
+        fig.savefig(f"/home3/ebrahim2/beyond-brainscore/analyze_results/figures_code/figures/new_figures/figure5/{perf}_{shuffled}.png")
+        fig.savefig(f"/home3/ebrahim2/beyond-brainscore/analyze_results/figures_code/figures/new_figures/figure5/{perf}_{shuffled}.pdf", bbox_inches='tight')
         

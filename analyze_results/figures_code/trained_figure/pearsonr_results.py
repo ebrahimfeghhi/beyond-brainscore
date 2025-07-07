@@ -1,6 +1,6 @@
 import numpy as np
 import sys
-sys.path.append("/home2/ebrahim/beyond-brainscore/analyze_results/figures_code")
+sys.path.append("/home3/ebrahim2/beyond-brainscore/analyze_results/figures_code")
 from trained_untrained_results_funcs import find_best_layer, elementwise_max, custom_add_2d, load_perf, select_columns_with_lower_error, calculate_omega
 from untrained_results_funcs import load_untrained_data
 from plotting_functions import plot_across_subjects, load_into_3d, save_nii, plot_2d_hist_scatter_updated
@@ -75,7 +75,7 @@ save_best_layer = []
 clip_zero = False 
 median = False
 
-pereira_best_layers_simple = np.load('/home2/ebrahim/beyond-brainscore/analyze_results/figures_code/best_layer_sigma_info/best_layer_other_pereira.npz')
+pereira_best_layers_simple = np.load('/home3/ebrahim2/beyond-brainscore/analyze_results/figures_code/best_layer_sigma_info/best_layer_other_pereira.npz')
 
 
 LLM_name = 'gpt2-xl'
@@ -248,27 +248,27 @@ for perf in perf_arr:
             for subj in np.unique(unique_subjects):
                 plotting.plot_glass_brain(f'/data/LLMs/brainscore/results_pereira/glass_brain_plots/SP+SL+GloVe_{perf}_{subj}.nii', 
                 colorbar=True, display_mode='l',vmax=0.5, vmin=0,
-                output_file=f'/home2/ebrahim/beyond-brainscore/analyze_results/figures_code/figures/new_figures/figure4/glass_brain/SP+SL+GloVe_{perf}_{subj}_cmap.pdf', cmap=custom_cmap, 
+                output_file=f'/home3/ebrahim2/beyond-brainscore/analyze_results/figures_code/figures/new_figures/figure4/glass_brain/SP+SL+GloVe_{perf}_{subj}_cmap.pdf', cmap=custom_cmap, 
                 resampling_interpolation='nearest')
                 
                 plotting.plot_glass_brain(f'/data/LLMs/brainscore/results_pereira/glass_brain_plots/SP+SL+GloVe_{perf}_{subj}.nii', 
                 colorbar=False, display_mode='l',vmax=0.5, vmin=0,
-                output_file=f'/home2/ebrahim/beyond-brainscore/analyze_results/figures_code/figures/new_figures/figure4/glass_brain/SP+SL+GloVe_{perf}_{subj}.pdf', cmap=custom_cmap, 
+                output_file=f'/home3/ebrahim2/beyond-brainscore/analyze_results/figures_code/figures/new_figures/figure4/glass_brain/SP+SL+GloVe_{perf}_{subj}.pdf', cmap=custom_cmap, 
                 resampling_interpolation='nearest')
                 
                 plotting.plot_glass_brain(f'/data/LLMs/brainscore/results_pereira/glass_brain_plots/{LLM_name}{fe}_{perf}_{subj}.nii', 
                 colorbar=False, display_mode='l', vmax=0.5, vmin=0,
-                output_file=f'/home2/ebrahim/beyond-brainscore/analyze_results/figures_code/figures/new_figures/figure4/glass_brain/{LLM_name}{fe}_{perf}_{subj}.pdf', cmap=custom_cmap, 
+                output_file=f'/home3/ebrahim2/beyond-brainscore/analyze_results/figures_code/figures/new_figures/figure4/glass_brain/{LLM_name}{fe}_{perf}_{subj}.pdf', cmap=custom_cmap, 
                 resampling_interpolation='nearest')
                 
                 plotting.plot_glass_brain(f'/data/LLMs/brainscore/results_pereira/glass_brain_plots/SP+SL+GloVe-{LLM_name}{fe}_{perf}_{subj}.nii', 
                 colorbar=True, display_mode='l', vmax=0.5, vmin=-0.5,
-                output_file=f'/home2/ebrahim/beyond-brainscore/analyze_results/figures_code/figures/new_figures/figure4/glass_brain/SP+SL-{LLM_name}{fe}_{perf}_{subj}_cmap.pdf', cmap='seismic', 
+                output_file=f'/home3/ebrahim2/beyond-brainscore/analyze_results/figures_code/figures/new_figures/figure4/glass_brain/SP+SL-{LLM_name}{fe}_{perf}_{subj}_cmap.pdf', cmap='seismic', 
                 plot_abs=False,  resampling_interpolation='nearest')
                 
                 plotting.plot_glass_brain(f'/data/LLMs/brainscore/results_pereira/glass_brain_plots/SP+SL+GloVe-{LLM_name}{fe}_{perf}_{subj}.nii', 
                 colorbar=False, display_mode='l', vmax=0.5, vmin=-0.5,
-                output_file=f'/home2/ebrahim/beyond-brainscore/analyze_results/figures_code/figures/new_figures/figure4/glass_brain/glass_brain_extended/SP+SL+GloVe-{LLM_name}{fe}_{perf}_{subj}.pdf', 
+                output_file=f'/home3/ebrahim2/beyond-brainscore/analyze_results/figures_code/figures/new_figures/figure4/glass_brain/glass_brain_extended/SP+SL+GloVe-{LLM_name}{fe}_{perf}_{subj}.pdf', 
                 cmap='seismic', 
                 plot_abs=False,  resampling_interpolation='nearest')
 
@@ -298,16 +298,16 @@ for perf in perf_arr:
         subject_avg_pd = subject_avg_pd.reset_index()
         
 
-        subject_avg_pd.to_csv(f"/home2/ebrahim/beyond-brainscore/analyze_results/figures_code/figures_data/figure4/{d}_{perf}_{LLM_name_results}.csv", index=False)                
+        subject_avg_pd.to_csv(f"/home3/ebrahim2/beyond-brainscore/analyze_results/figures_code/figures_data/figure4/{d}_{perf}_{LLM_name_results}.csv", index=False)                
                 
 
         plot_2d_hist_scatter_updated(dataset=d, simplemodel='Simple', llm_model=LLM_name_results, results_combined=results_combined, ticks_hist2d=ticks_hist2d, 
-                              savePath='/home2/ebrahim/beyond-brainscore/analyze_results/figures_code/figures/new_figures/figure4/histograms/', 
+                              savePath='/home3/ebrahim2/beyond-brainscore/analyze_results/figures_code/figures/new_figures/figure4/histograms/', 
                               feature_extraction_arr=feature_extraction_arr, custom_cmap=custom_cmap, subjects_arr_pereira=subjects_arr_pereira, 
                               networks_arr_pereira=networks_arr_pereira, non_nan_indices_dict=non_nan_indices_dict, 
                               exp_arr=['384', '243'], perf=perf, shuffled='', 
-                              savePath_figures_data='/home2/ebrahim/beyond-brainscore/analyze_results/figures_code/figures_data/figure4/')
+                              savePath_figures_data='/home3/ebrahim2/beyond-brainscore/analyze_results/figures_code/figures_data/figure4/')
 
-    fig.savefig(f"/home2/ebrahim/beyond-brainscore/analyze_results/figures_code/figures/new_figures/figure4/model_comp/{perf}.png")
-    fig.savefig(f"/home2/ebrahim/beyond-brainscore/analyze_results/figures_code/figures/new_figures/figure4/model_comp/{perf}.pdf", bbox_inches='tight')
+    fig.savefig(f"/home3/ebrahim2/beyond-brainscore/analyze_results/figures_code/figures/new_figures/figure4/model_comp/{perf}.png")
+    fig.savefig(f"/home3/ebrahim2/beyond-brainscore/analyze_results/figures_code/figures/new_figures/figure4/model_comp/{perf}.pdf", bbox_inches='tight')
 

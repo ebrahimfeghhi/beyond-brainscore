@@ -1,27 +1,29 @@
-# What is brainscore 
+# Beyond Brainscore 
 
-Code for "A revised view of correspondences between large language models and brains".
+Code for "Illusions of Alignment Between Large Language Models and Brains
+Emerge From Fragile Methods and Overlooked Confounds".
 
 ## Environment 
 
-Required packages can be installed using the environment.yaml file. 
+Required packages can be installed using the requirements_updated.txt file.
 
-Our code relies on an edited version of himalaya and LMMS. 
-To use this code, clone our custom himalaya and LMMS repo 
-and pip install. 
+We recommend first creating a conda environment: conda create -n "YOUR_ENV_NAME" python=3.11 -y.
+
+Next, activate this conda environment, and run: pip install -r requirements_updated.txt
 
 ## Overview
 
 ### Constructing neural data matrices (y)
 
-To construct the y matrix from the .nc files, use the create_y_matrix notebook
-within the format_neural_data_folder. 
+To save the neural data and necessary associated data, run create_y_matrix.ipynb. We are working on uploading the associated neural data (.nc) files
+required for this notebook. 
 
 ### Generating activations
-\
-All code to generate model activations is located in the generate activations folder.
-The LLM script creates activations for LLM models, and the OASM and simple_features notebooks
-creates the activations for OASM and the simple models. 
+All code to generate model activations (i.e., X variables in regression) is located in the generate activations folder.
+
+Run OASM.ipynb and simple_features.ipynb to generate activations for OASM and the simple features, respecitvely.
+
+Run LLM.py to generate activations for LLMs. 
 
 ### Combining activations
 
@@ -42,6 +44,10 @@ regression results.
 All results are saved to results_all/results_dataset, where dataset 
 is specified by the user. The three possible datasets which 
 were used in the paper, are pereira, fedorenko, and blank.
+
+The folders are organized as following:
+
+figure 
 
 
 ### Generating figures

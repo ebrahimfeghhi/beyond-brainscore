@@ -1,5 +1,5 @@
 import sys
-sys.path.append('/home2/ebrahim/beyond-brainscore/generate_activations/')
+sys.path.append('/home3/ebrahim2/beyond-brainscore/generate_activations/')
 from banded_reg_func import himalaya_regression_caller
 import numpy as np
 

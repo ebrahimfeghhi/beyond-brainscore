@@ -1,5 +1,5 @@
 import sys
-sys.path.append('/home2/ebrahim/beyond-brainscore/analyze_results/figures_code/')
+sys.path.append('/home3/ebrahim2/beyond-brainscore/analyze_results/figures_code/')
 from trained_results_funcs import find_best_layer
 import argparse
 import numpy as np

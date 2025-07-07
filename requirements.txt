@@ -1,4 +1,4 @@
-affinewarp==0.1.0
+affinewarp==0.2.0
 #anaconda-anon-usage==0.4.4
 archspec==0.2.3
 boltons==23.0.0
@@ -35,7 +35,7 @@ nilearn==0.10.4
 numba==0.60.0
 numpy==1.25
 packaging==23.2
-pandas=2.2.2
+pandas==2.2.2
 pillow==10.4.0
 #pip==24.0
 platformdirs==3.10.0

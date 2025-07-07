@@ -1,0 +1,60 @@
+# === core scientific stack ===
+numpy==1.25.*          # 1.25 wheels build for Py3.11
+scipy==1.14.0
+pandas==2.2.2
+scikit-learn==1.5.1
+numba==0.60.0
+llvmlite==0.43.0
+threadpoolctl==3.5.0
+
+# === I/O & utilities ===
+Brotli==1.0.9
+certifi==2024.6.2
+charset-normalizer==2.0.4
+h5py==3.11.0
+idna==3.7
+joblib==1.4.2
+packaging==23.2
+platformdirs==3.10.0
+requests==2.32.2
+tqdm==4.66.4
+urllib3==2.2.2
+
+# === plotting ===
+contourpy==1.2.1
+cycler==0.12.1
+fonttools==4.53.1
+kiwisolver==1.4.5
+matplotlib==3.9.2
+pillow==10.4.0
+seaborn==0.13.2
+
+# === ML / neuroimaging extras ===
+affinewarp==0.2.0
+editdistance==0.8.1
+nibabel==5.2.1
+nilearn==0.10.4
+
+# === misc helpers ===
+boltons==23.0.0
+cryptography==42.0.5
+distro==1.9.0
+frozendict==2.4.2
+iniconfig==2.0.0
+jsonpatch==1.33
+jsonpointer==2.1
+pluggy==1.5.0
+PySocks==1.7.1
+pytest==8.2.2
+six==1.16.0
+truststore==0.8.0
+wheel==0.43.0
+
+# === development version of himalaya (kept) ===
+-e git+https://github.com/ebrahimfeghhi/himalaya.git@c8239bfe3598b3b67340f036ddca8b4860f676ca#egg=himalaya
+
+# --- optional / conda-specific packages (commented) ---
+# archspec==0.2.3
+# pycosat==0.6.6
+# ruamel.yaml==0.17.21
+# zstandard==0.22.0

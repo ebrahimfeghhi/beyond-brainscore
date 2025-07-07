@@ -1,5 +1,5 @@
 import sys
-sys.path.append('/home2/ebrahim/beyond-brainscore/')
+sys.path.append('/home3/ebrahim2/beyond-brainscore/')
 from helper_funcs import *
 import argparse
 import os 

@@ -209,8 +209,6 @@ def generate_activations(basePath, savePath, dataset, model_str, untrained, mode
         model = model.to(device)
         embedding_matrix = None
         positional_matrix = None
-
-
         
     def pool_representations(contextual_embeddings):
         

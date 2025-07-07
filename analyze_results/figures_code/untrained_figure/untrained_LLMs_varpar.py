@@ -1,6 +1,6 @@
 import numpy as np
 import sys
-sys.path.append("/home2/ebrahim/beyond-brainscore/analyze_results/figures_code")
+sys.path.append("/home3/ebrahim2/beyond-brainscore/analyze_results/figures_code")
 from trained_untrained_results_funcs import find_best_layer, calculate_omega, load_perf, select_columns_with_lower_error,array_with_highest_mean
 from untrained_results_funcs import load_untrained_data
 from plotting_functions import plot_across_subjects
@@ -85,7 +85,7 @@ se_intercept_dict = {'pereira': se_intercept_pereira_full, 'fedorenko': se_inter
 clip_zero = False
 median = False 
 
-pereira_best_layers_simple = np.load('/home2/ebrahim/beyond-brainscore/analyze_results/figures_code/best_layer_sigma_info/best_layer_other_pereira.npz')
+pereira_best_layers_simple = np.load('/home3/ebrahim2/beyond-brainscore/analyze_results/figures_code/best_layer_sigma_info/best_layer_other_pereira.npz')
 
 
 fig, ax = plt.subplots(1, len(dataset_arr), figsize=(15,5))
@@ -384,11 +384,11 @@ for dnum, d in enumerate(dataset_arr):
         omega_metric['dataset'].extend(np.repeat(f"{d}", len(omega['metric'])))
         omega_metric['values'].extend(omega['metric'])
         
-    fig2.savefig(f"/home2/ebrahim/beyond-brainscore/analyze_results/figures_code/figures/new_figures/figure5/banded/banded_{perf}_{shuffled}_{d}.pdf", bbox_inches='tight')
-    fig2.savefig(f"/home2/ebrahim/beyond-brainscore/analyze_results/figures_code/figures/new_figures/figure5/banded/banded_{perf}_{shuffled}_{d}.png")
+    fig2.savefig(f"/home3/ebrahim2/beyond-brainscore/analyze_results/figures_code/figures/new_figures/figure5/banded/banded_{perf}_{shuffled}_{d}.pdf", bbox_inches='tight')
+    fig2.savefig(f"/home3/ebrahim2/beyond-brainscore/analyze_results/figures_code/figures/new_figures/figure5/banded/banded_{perf}_{shuffled}_{d}.png")
 
     pvalues_pd = pd.DataFrame(pvalues_pd)
-    pvalues_pd.to_csv(f'/home2/ebrahim/beyond-brainscore/analyze_results/figures_code/figures_data/figure5/pvalues_{d}.csv')
+    pvalues_pd.to_csv(f'/home3/ebrahim2/beyond-brainscore/analyze_results/figures_code/figures_data/figure5/pvalues_{d}.csv')
     
 omega_metric = pd.DataFrame(omega_metric)
-omega_metric.to_csv("/home2/ebrahim/beyond-brainscore/analyze_results/figures_code/figures_data/figure5/gpt2xlu_omega_values.csv")
+omega_metric.to_csv("/home3/ebrahim2/beyond-brainscore/analyze_results/figures_code/figures_data/figure5/gpt2xlu_omega_values.csv")

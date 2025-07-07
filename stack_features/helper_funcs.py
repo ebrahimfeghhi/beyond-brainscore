@@ -1,6 +1,6 @@
 import numpy as np
 import sys
-sys.path.append('/home2/ebrahim/beyond-brainscore/analyze_results/figures_code')
+sys.path.append('/home3/ebrahim2/beyond-brainscore/analyze_results/figures_code')
 from trained_untrained_results_funcs import find_best_layer, loop_through_datasets
 import itertools
 from matplotlib import pyplot as plt
@@ -98,7 +98,8 @@ def stack_combinations(input_dict, exclude_pairs=None, merge_sizes=None, exclude
     return output_dict, size_dict
 
 
-def save_stacked(LLM_name, llm_best_layer_dict, all_simple_models_save, best_pos, exclude_non_LLM=True, feature_extraction_arr=['', '-mp', '-sp']):
+def save_stacked(LLM_name, llm_best_layer_dict, all_simple_models_save, 
+                 best_pos, exclude_non_LLM=True, feature_extraction_arr=['', '-mp', '-sp']):
 
     for dataset, fe, exp, subjects, network in loop_through_datasets(['pereira', 'fedorenko', 'blank'], feature_extraction_arr):
         

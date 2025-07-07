@@ -17,7 +17,7 @@ exp_arr=("243" "384")
 source ~/miniconda3/etc/profile.d/conda.sh
 
 # Store the current directory
-HOME_DIR="/home2/ebrahim/beyond-brainscore/"
+HOME_DIR="/home3/ebrahim2/beyond-brainscore/"
 
 ENV_NAME="llm_brain" 
 conda activate "$ENV_NAME"

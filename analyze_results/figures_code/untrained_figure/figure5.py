@@ -85,7 +85,7 @@ se_intercept_dict = {'pereira': se_intercept_pereira_full, 'fedorenko': se_inter
 clip_zero = False
 median = False 
 
-pereira_best_layers_simple = np.load('/home2/ebrahim/beyond-brainscore/analyze_results/figures_code/best_layer_sigma_info/best_layer_other_pereira.npz')
+pereira_best_layers_simple = np.load('/home3/ebrahim2/beyond-brainscore/analyze_results/figures_code/best_layer_sigma_info/best_layer_other_pereira.npz')
 
 for perf in perf_arr:
                 
@@ -409,24 +409,24 @@ for perf in perf_arr:
 
             plotting.plot_glass_brain(f'/data/LLMs/brainscore/results_pereira/glass_brain_plots/SP+SL_{perf}_subj_avg.nii', 
             colorbar=True, display_mode='l', vmax=0.4, vmin=0,
-            output_file=f'/home2/ebrahim/beyond-brainscore/analyze_results/figures_code/figures/new_figures/figure5/glass_brain/SP+SL_{perf}_subj_avg_cmap.pdf', cmap=custom_cmap)
+            output_file=f'/home3/ebrahim2/beyond-brainscore/analyze_results/figures_code/figures/new_figures/figure5/glass_brain/SP+SL_{perf}_subj_avg_cmap.pdf', cmap=custom_cmap)
             
             plotting.plot_glass_brain(f'/data/LLMs/brainscore/results_pereira/glass_brain_plots/SP+SL_{perf}_subj_avg.nii', 
             colorbar=False, display_mode='l', vmax=0.4, vmin=0,
-            output_file=f'/home2/ebrahim/beyond-brainscore/analyze_results/figures_code/figures/new_figures/figure5/glass_brain/SP+SL_{perf}_subj_avg.pdf', cmap=custom_cmap)
+            output_file=f'/home3/ebrahim2/beyond-brainscore/analyze_results/figures_code/figures/new_figures/figure5/glass_brain/SP+SL_{perf}_subj_avg.pdf', cmap=custom_cmap)
             
             plotting.plot_glass_brain(f'/data/LLMs/brainscore/results_pereira/glass_brain_plots/GPT2-XLU{fe}_{perf}_subj_avg.nii', 
             colorbar=False, display_mode='l', vmax=0.4, vmin=0,
-            output_file=f'/home2/ebrahim/beyond-brainscore/analyze_results/figures_code/figures/new_figures/figure5/glass_brain/GPT2-XLU{fe}_{perf}_subj_avg.pdf', cmap=custom_cmap)
+            output_file=f'/home3/ebrahim2/beyond-brainscore/analyze_results/figures_code/figures/new_figures/figure5/glass_brain/GPT2-XLU{fe}_{perf}_subj_avg.pdf', cmap=custom_cmap)
             
             plotting.plot_glass_brain(f'/data/LLMs/brainscore/results_pereira/glass_brain_plots/SP+SL-GPT2-XLU{fe}_{perf}_subj_avg.nii', 
             colorbar=True, display_mode='l', vmin=-0.4, vmax=0.4,
-            output_file=f'/home2/ebrahim/beyond-brainscore/analyze_results/figures_code/figures/new_figures/figure5/glass_brain/SP+SL-GPT2-XLU{fe}_{perf}_subj_avg_cmap.pdf', cmap='seismic', 
+            output_file=f'/home3/ebrahim2/beyond-brainscore/analyze_results/figures_code/figures/new_figures/figure5/glass_brain/SP+SL-GPT2-XLU{fe}_{perf}_subj_avg_cmap.pdf', cmap='seismic', 
             plot_abs=False)
                
             plotting.plot_glass_brain(f'/data/LLMs/brainscore/results_pereira/glass_brain_plots/SP+SL-GPT2-XLU{fe}_{perf}_subj_avg.nii', 
             colorbar=False, display_mode='l', vmin=-0.4, vmax=0.4,
-            output_file=f'/home2/ebrahim/beyond-brainscore/analyze_results/figures_code/figures/new_figures/figure5/glass_brain/SP+SL-GPT2-XLU{fe}_{perf}_subj_avg.pdf', cmap='seismic', 
+            output_file=f'/home3/ebrahim2/beyond-brainscore/analyze_results/figures_code/figures/new_figures/figure5/glass_brain/SP+SL-GPT2-XLU{fe}_{perf}_subj_avg.pdf', cmap='seismic', 
             plot_abs=False)
         
             
@@ -450,7 +450,7 @@ for perf in perf_arr:
             
         results_combined['Model'] = results_combined['Model'].apply(lambda x: 'Simple' if 'simple' in x.lower() else x)
         
-        results_combined.to_csv(f'/home2/ebrahim/beyond-brainscore/analyze_results/figures_code/figures_data/figure5/results_combined_{d}_{perf}.csv')
+        results_combined.to_csv(f'/home3/ebrahim2/beyond-brainscore/analyze_results/figures_code/figures_data/figure5/results_combined_{d}_{perf}.csv')
         
         subject_avg_pd, dict_pd_merged, dict_pd_with_all = plot_across_subjects(results_combined.copy(), figurePath=figurePath,  selected_networks=['language'],
                                                             dataset=d, saveName=f'{d}_{fe}', order=['language'], clip_zero=clip_zero, 
@@ -463,16 +463,16 @@ for perf in perf_arr:
         subject_avg_pd = subject_avg_pd.reset_index()
         
         if median:
-            subject_avg_pd.to_csv(f"/home2/ebrahim/beyond-brainscore/analyze_results/figures_code/figures_data/figure5/{d}_{perf}_median.csv", index=False)                
+            subject_avg_pd.to_csv(f"/home3/ebrahim2/beyond-brainscore/analyze_results/figures_code/figures_data/figure5/{d}_{perf}_median.csv", index=False)                
         else:
-            subject_avg_pd.to_csv(f"/home2/ebrahim/beyond-brainscore/analyze_results/figures_code/figures_data/figure5/{d}_{perf}.csv", index=False)                
+            subject_avg_pd.to_csv(f"/home3/ebrahim2/beyond-brainscore/analyze_results/figures_code/figures_data/figure5/{d}_{perf}.csv", index=False)                
                 
         plot_2d_hist_scatter_updated(dataset=d, simplemodel='Simple', gpt2model='GPT2XLU', results_combined=results_combined, ticks_hist2d=ticks_hist2d, 
-                              savePath='/home2/ebrahim/beyond-brainscore/analyze_results/figures_code/figures/new_figures/figure5/histograms/', 
+                              savePath='/home3/ebrahim2/beyond-brainscore/analyze_results/figures_code/figures/new_figures/figure5/histograms/', 
                               feature_extraction_arr=feature_extraction_arr, custom_cmap=custom_cmap, subjects_arr_pereira=subjects_arr_pereira, 
                               networks_arr_pereira=networks_arr_pereira, non_nan_indices_dict=non_nan_indices_dict, 
                               exp_arr=['384', '243'], perf=perf, shuffled='', 
-                              savePath_figures_data='/home2/ebrahim/beyond-brainscore/analyze_results/figures_code/figures_data/figure5/')
+                              savePath_figures_data='/home3/ebrahim2/beyond-brainscore/analyze_results/figures_code/figures_data/figure5/')
         
         fig2, ax2 = plt.subplots(1,3, figsize=(15,6))
         fig2.subplots_adjust(wspace=0.1) 
@@ -524,16 +524,16 @@ for perf in perf_arr:
                 omega_metric['dataset'].extend(np.repeat(f"{d}", len(omega['metric'])))
                 omega_metric['values'].extend(omega['metric'])
                 
-            fig2.savefig(f"/home2/ebrahim/beyond-brainscore/analyze_results/figures_code/figures/new_figures/figure5/banded/banded_{perf}_{shuffled}_{d}.pdf", bbox_inches='tight')
-            fig2.savefig(f"/home2/ebrahim/beyond-brainscore/analyze_results/figures_code/figures/new_figures/figure5/banded/banded_{perf}_{shuffled}_{d}.png")
+            fig2.savefig(f"/home3/ebrahim2/beyond-brainscore/analyze_results/figures_code/figures/new_figures/figure5/banded/banded_{perf}_{shuffled}_{d}.pdf", bbox_inches='tight')
+            fig2.savefig(f"/home3/ebrahim2/beyond-brainscore/analyze_results/figures_code/figures/new_figures/figure5/banded/banded_{perf}_{shuffled}_{d}.png")
             
  
         if perf == 'out_of_sample_r2':
             pvalues_pd = pd.DataFrame(pvalues_pd)
-            pvalues_pd.to_csv(f'/home2/ebrahim/beyond-brainscore/analyze_results/figures_code/figures_data/figure5/pvalues_{d}.csv')
+            pvalues_pd.to_csv(f'/home3/ebrahim2/beyond-brainscore/analyze_results/figures_code/figures_data/figure5/pvalues_{d}.csv')
             
-    fig.savefig(f"/home2/ebrahim/beyond-brainscore/analyze_results/figures_code/figures/new_figures/figure5/model_comp/{perf}_{shuffled}.png")
-    fig.savefig(f"/home2/ebrahim/beyond-brainscore/analyze_results/figures_code/figures/new_figures/figure5/model_comp/{perf}_{shuffled}.pdf", bbox_inches='tight')
+    fig.savefig(f"/home3/ebrahim2/beyond-brainscore/analyze_results/figures_code/figures/new_figures/figure5/model_comp/{perf}_{shuffled}.png")
+    fig.savefig(f"/home3/ebrahim2/beyond-brainscore/analyze_results/figures_code/figures/new_figures/figure5/model_comp/{perf}_{shuffled}.pdf", bbox_inches='tight')
 
 omega_metric = pd.DataFrame(omega_metric)
-omega_metric.to_csv("/home2/ebrahim/beyond-brainscore/analyze_results/figures_code/figures_data/figure5/gpt2xlu_omega_values.csv")
+omega_metric.to_csv("/home3/ebrahim2/beyond-brainscore/analyze_results/figures_code/figures_data/figure5/gpt2xlu_omega_values.csv")

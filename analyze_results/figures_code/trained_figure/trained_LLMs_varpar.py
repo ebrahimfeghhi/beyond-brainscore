@@ -1,6 +1,6 @@
 import numpy as np
 import sys
-sys.path.append("/home2/ebrahim/beyond-brainscore/analyze_results/figures_code")
+sys.path.append("/home3/ebrahim2/beyond-brainscore/analyze_results/figures_code")
 from trained_untrained_results_funcs import load_perf, select_columns_with_lower_error, calculate_omega, array_with_highest_mean
 from plotting_functions import plot_across_subjects
 from matplotlib import pyplot as plt
@@ -82,7 +82,7 @@ save_best_layer = []
 clip_zero = False 
 median = False
 
-pereira_best_layers_simple = np.load('/home2/ebrahim/beyond-brainscore/analyze_results/figures_code/best_layer_sigma_info/best_layer_other_pereira.npz')
+pereira_best_layers_simple = np.load('/home3/ebrahim2/beyond-brainscore/analyze_results/figures_code/best_layer_sigma_info/best_layer_other_pereira.npz')
 
 models = ['Llama-3.2-3B-Instruct', 'rwkv-4-3b-pile', 'roberta-large', 'gpt2-xl']
 models_save_name = ['Llama', 'rwkv', 'roberta-large', 'gpt2xl']
@@ -337,11 +337,11 @@ for LLM_name, LLM_name_results in zip(models, models_save_name):
             omega_metric['values'].extend(omega['metric'])
             
             
-        fig2.savefig(f"/home2/ebrahim/beyond-brainscore/analyze_results/figures_code/figures/new_figures/{save_folder}/banded/banded_{perf}_{d}_{LLM_name_results}.pdf", bbox_inches='tight')
-        fig2.savefig(f"/home2/ebrahim/beyond-brainscore/analyze_results/figures_code/figures/new_figures/{save_folder}/banded/banded_{perf}_{d}_{LLM_name_results}.png")
+        fig2.savefig(f"/home3/ebrahim2/beyond-brainscore/analyze_results/figures_code/figures/new_figures/{save_folder}/banded/banded_{perf}_{d}_{LLM_name_results}.pdf", bbox_inches='tight')
+        fig2.savefig(f"/home3/ebrahim2/beyond-brainscore/analyze_results/figures_code/figures/new_figures/{save_folder}/banded/banded_{perf}_{d}_{LLM_name_results}.png")
         
         pvalues_pd = pd.DataFrame(pvalues_pd)
-        pvalues_pd.to_csv(f'/home2/ebrahim/beyond-brainscore/analyze_results/figures_code/figures_data/{save_folder}/pvalues_{d}_{LLM_name_results}.csv')
+        pvalues_pd.to_csv(f'/home3/ebrahim2/beyond-brainscore/analyze_results/figures_code/figures_data/{save_folder}/pvalues_{d}_{LLM_name_results}.csv')
 
     omega_metric = pd.DataFrame(omega_metric)
-    omega_metric.to_csv(f"/home2/ebrahim/beyond-brainscore/analyze_results/figures_code/figures_data/{save_folder}/{LLM_name_results}_omega_values.csv")
+    omega_metric.to_csv(f"/home3/ebrahim2/beyond-brainscore/analyze_results/figures_code/figures_data/{save_folder}/{LLM_name_results}_omega_values.csv")
