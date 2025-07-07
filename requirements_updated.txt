@@ -6,6 +6,7 @@ scikit-learn==1.5.1
 numba==0.60.0
 llvmlite==0.43.0
 threadpoolctl==3.5.0
+torch==2.7.1  
 
 # === I/O & utilities ===
 Brotli==1.0.9
@@ -49,7 +50,8 @@ pytest==8.2.2
 six==1.16.0
 truststore==0.8.0
 wheel==0.43.0
-
+xarray<2025.7
+netCDF4>=1.6,<2 
 # === development version of himalaya (kept) ===
 -e git+https://github.com/ebrahimfeghhi/himalaya.git@c8239bfe3598b3b67340f036ddca8b4860f676ca#egg=himalaya
 

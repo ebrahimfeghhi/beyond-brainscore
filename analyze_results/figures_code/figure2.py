@@ -21,9 +21,9 @@ dataset_arr = ['pereira', 'blank', 'fedorenko']
 shuffled_arr = ['shuffled', '']
 perf_arr = ['out_of_sample_r2', 'pearson_r']
 
-create_banded = True
+create_banded = False
 create_across_layer = False
-create_sig = False
+create_sig = True
 
 exp = ['243', '384']
 
