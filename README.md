@@ -19,7 +19,7 @@ To save the neural data and necessary associated data, run create_y_matrix.ipynb
 required for this notebook. 
 
 ### Generating activations
-All code to generate model activations (i.e., X variables in regression) is located in the generate activations folder.
+All code to generate model activations (i.e., X variables in regression) is located in the generate_activations folder.
 
 Run OASM.ipynb and simple_features.ipynb to generate activations for OASM and the simple features, respecitvely.
 
@@ -27,8 +27,9 @@ Run LLM.py to generate activations for LLMs.
 
 ### Combining activations
 
-To fit banded regressions in figures 4 and 5, activations are combined using the notebooks
-located in the stack_features folder. 
+Code to combine activations for the banded regressions is located in the stack_features folder. 
+
+Stack_features_figure_2.ipynb stacks OASM with with GPT2 activations.
 
 ### Regression code 
 

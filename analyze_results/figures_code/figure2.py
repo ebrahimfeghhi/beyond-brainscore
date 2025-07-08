@@ -21,6 +21,37 @@ dataset_arr = ['pereira', 'blank', 'fedorenko']
 shuffled_arr = ['shuffled', '']
 perf_arr = ['out_of_sample_r2', 'pearson_r']
 
+
+def average_by_label(data_labels, data, apply_avg):
+    
+    """
+    Averages rows of `data` according to `data_labels`.
+
+    Parameters:
+    - data_labels (array-like): 1D array of shape (N,), labels indicating groups.
+    - data (array-like): 2D array of shape (N, M), data to be averaged.
+    - apply_avg (bool): if true, average. Otherwise, skip this function
+
+    Returns:
+    - averaged_data (np.ndarray): 2D array of shape (K, M), where K is the number of unique labels.
+    
+    Used for doing block-wise stats tests.
+    """
+    
+    if apply_avg == False:
+        return data
+    
+    data_labels = np.asarray(data_labels)
+    data = np.asarray(data)
+
+    unique_labels = np.unique(data_labels)
+    averaged_data = np.stack([
+        data[data_labels == label].mean(axis=0)
+        for label in unique_labels
+    ])
+
+    return averaged_data
+
 create_banded = False
 create_across_layer = False
 create_sig = True
@@ -47,7 +78,6 @@ lang_indices_384 = np.argwhere(br_labels_dict['384'] == 'language').squeeze()
 lang_indices_243 = np.argwhere(br_labels_dict['243'] == 'language').squeeze()
 lang_indices_dict['384'] = lang_indices_384
 lang_indices_dict['243'] = lang_indices_243
-
 
 subjects_arr_fed  = np.load(f"{data_processed_folder_fed}/subjects.npy", allow_pickle=True)
 subjects_arr_blank  = np.load(f"{data_processed_folder_blank}/subjects.npy", allow_pickle=True)
@@ -103,6 +133,28 @@ se_intercept_pereira_full_shuffled[243:, non_nan_indices_384] = se_intercept_384
 se_intercept_dict = {'pereira': se_intercept_pereira_full_shuffled, 
                      'fedorenko': se_intercept_fed_shuffled, 
                      'blank': se_intercept_blank_shuffled}
+
+pereira_data_labels = np.load(f"{data_processed_folder_pereira}/data_labels_pereira.npy")
+fedorenko_data_labels = np.repeat(np.arange(52), 8)
+
+# label every 10 TRs as the same chunk, unless it crosses a story boundary
+blank_data_labels = np.load(f"{data_processed_folder_blank}/data_labels_blank.npy")
+blank_data_labels_chunked = []
+blank_chunk_size = 10 # 10 TRs, or 20 seconds. 
+bdl_label = 0
+bdl_prev = blank_data_labels[0]  # Initialize to first label
+for bdl_idx, bdl in enumerate(blank_data_labels):
+    
+    if bdl_idx > 0:
+        if bdl_idx % blank_chunk_size == 0 or bdl != bdl_prev:
+            bdl_label += 1
+    
+    blank_data_labels_chunked.append(bdl_label)
+    
+    bdl_prev = bdl
+    
+blank_data_labels_chunked = np.array(blank_data_labels_chunked)
+np.save(f"{data_processed_folder_blank}/data_labels_blank_chunked.npy", blank_data_labels_chunked)
 
 # Use the default Nilearn colormap 'cold_hot' as the base
 base_cmap = plt.get_cmap('cold_hot')
@@ -585,71 +637,83 @@ if create_sig:
     mse_subject_network_intercept = {}
 
     from scipy.stats import ttest_rel
-    
     network = 'language'
 
     # Step 2) Compute p values by doing a t-test for each voxel/electrode/fROI between the squared error values of 
     # GPT2XL best layer and the GPT2XL + OASM model
-    for dataset in ['pereira', 'blank', 'fedorenko']:
-        
-        pvalues_pd = {'fe': [], 'subject': [], 'pval': [], 'pval_LLM_sig': [], 'pval_orig': [], 'shuffled': [], 'network': []}
-        
-        if dataset == 'pereira':
-            subjects_arr = subjects_arr_pereira
-            networks_arr = networks_arr_pereira
-        elif dataset == 'blank':
-            subjects_arr = subjects_arr_blank
-            networks_arr = np.repeat(['language'], len(subjects_arr_blank))
-        else:
-            subjects_arr = subjects_arr_fed
-            networks_arr = np.repeat(['language'], len(subjects_arr_fed))
-        
-        for fe in feature_extraction_methods:
-            
-            mse_gpt2xl = mse_best_layer[f"{dataset}_{shuffle_str}_{fe}_gpt2xl"]
-            mse_intercept = mse_best_layer[f"{dataset}_{shuffle_str}_{fe}_intercept"]
-            mse_oasm = mse_best_layer[f"{dataset}_{shuffle_str}_{fe}_OASM"]
-            mse_gpt2xl_oasm = mse_best_layer[f"{dataset}_{shuffle_str}_{fe}_stacked"]
-        
-            for subject in np.unique(subjects_arr):
-                for network in np.unique(networks_arr):
-                    
-                    if network == 'language':
-                        
-                        subject_idxs = np.argwhere(subjects_arr==subject)
-                        network_idxs = np.argwhere(networks_arr==network)
-                        subject_network_idxs =  np.intersect1d(subject_idxs, network_idxs).squeeze()
-                        
-                        _, pval_gpt2xl_sig = ttest_rel(mse_gpt2xl[:,  subject_network_idxs], mse_intercept[:, subject_network_idxs], 
-                                               axis=0, nan_policy='omit', alternative='less')
-
-                        stat, pval = ttest_rel(mse_gpt2xl_oasm[:,  subject_network_idxs], mse_oasm[:, subject_network_idxs], 
-                                               axis=0, nan_policy='omit', alternative='less')
+    for avg_by_label_bool in [False, True]:
                 
-                        pval_gpt2xl_sig[np.isnan(pval_gpt2xl_sig)] = 1 
-                        pval[np.isnan(pval)] = 1 
+        for dataset in ['pereira', 'blank', 'fedorenko']:
+            
+            pvalues_pd = {'fe': [], 'subject': [], 'pval': [], 'pval_LLM_sig': [], 'pval_orig': [], 'shuffled': [], 'network': []}
+            
+            if dataset == 'pereira':
+                subjects_arr = subjects_arr_pereira
+                networks_arr = networks_arr_pereira
+                data_labels = pereira_data_labels
+                
+            elif dataset == 'blank':
+                subjects_arr = subjects_arr_blank
+                networks_arr = np.repeat(['language'], len(subjects_arr_blank))
+                data_labels = blank_data_labels_chunked
+                
+            elif dataset == 'fedorenko':
+                subjects_arr = subjects_arr_fed
+                networks_arr = np.repeat(['language'], len(subjects_arr_fed))
+                data_labels = fedorenko_data_labels
+                
+            for fe in feature_extraction_methods:
+                
+                mse_gpt2xl =  average_by_label(data_labels, mse_best_layer[f"{dataset}_{shuffle_str}_{fe}_gpt2xl"], avg_by_label_bool)
+                mse_intercept =  average_by_label(data_labels, mse_best_layer[f"{dataset}_{shuffle_str}_{fe}_intercept"], avg_by_label_bool)
+                mse_oasm =  average_by_label(data_labels, mse_best_layer[f"{dataset}_{shuffle_str}_{fe}_OASM"], avg_by_label_bool)
+                mse_gpt2xl_oasm = average_by_label(data_labels, mse_best_layer[f"{dataset}_{shuffle_str}_{fe}_stacked"], avg_by_label_bool)
+                print(f"{dataset} {mse_gpt2xl.shape}")
+            
+                for subject in np.unique(subjects_arr):
+                    for network in np.unique(networks_arr):
                         
-                        pval_gpt2xl_sig_fdr = false_discovery_control(pval_gpt2xl_sig, method='bh')
-                        pval_fdr = false_discovery_control(pval, method='bh')
-                        
-                        pvalues_pd['pval'].extend(pval_fdr)
-                        pvalues_pd['pval_LLM_sig'].extend(pval_gpt2xl_sig_fdr)
-                        pvalues_pd['pval_orig'].extend(pval)
-                        pvalues_pd['subject'].extend(np.repeat(subject,len(pval)))
-                        pvalues_pd['network'].extend(np.repeat(network,len(pval)))
-                        pvalues_pd['shuffled'].extend(np.repeat(shuffle_str,len(pval)))
-                        
-                        if len(fe) == 0:
-                            fe_name = '-lt'
-                        else:
-                            fe_name = fe
+                        if network == 'language':
                             
-                        pvalues_pd['fe'].extend(np.repeat(fe_name,len(pval)))
+                            subject_idxs = np.argwhere(subjects_arr==subject)
+                            network_idxs = np.argwhere(networks_arr==network)
+                            subject_network_idxs =  np.intersect1d(subject_idxs, network_idxs).squeeze()
+                            
+                            
+                            _, pval_gpt2xl_sig = ttest_rel(mse_gpt2xl[:,  subject_network_idxs], mse_intercept[:, subject_network_idxs], 
+                                                axis=0, nan_policy='omit', alternative='less')
+
+                            stat, pval = ttest_rel(mse_gpt2xl_oasm[:,  subject_network_idxs], mse_oasm[:, subject_network_idxs], 
+                                                axis=0, nan_policy='omit', alternative='less')
+                    
+                            pval_gpt2xl_sig[np.isnan(pval_gpt2xl_sig)] = 1 
+                            pval[np.isnan(pval)] = 1 
+                            
+                            pval_gpt2xl_sig_fdr = false_discovery_control(pval_gpt2xl_sig, method='bh')
+                            pval_fdr = false_discovery_control(pval, method='bh')
+                            
+                            pvalues_pd['pval'].extend(pval_fdr)
+                            pvalues_pd['pval_LLM_sig'].extend(pval_gpt2xl_sig_fdr)
+                            pvalues_pd['pval_orig'].extend(pval)
+                            pvalues_pd['subject'].extend(np.repeat(subject,len(pval)))
+                            pvalues_pd['network'].extend(np.repeat(network,len(pval)))
+                            pvalues_pd['shuffled'].extend(np.repeat(shuffle_str,len(pval)))
+                            
+                            if len(fe) == 0:
+                                fe_name = '-lt'
+                            else:
+                                fe_name = fe
+                                
+                            pvalues_pd['fe'].extend(np.repeat(fe_name,len(pval)))
         
-        values_len = [len(value) for key, value in pvalues_pd.items()]
-        keys_ordering = [key for key, value in pvalues_pd.items()]
-        pvalues_pd = pd.DataFrame(pvalues_pd)
-    
-        pvalues_pd.to_csv(f'/home3/ebrahim2/beyond-brainscore/analyze_results/figures_code/figures_data/figure2/pvalues_{dataset}.csv')
+            values_len = [len(value) for key, value in pvalues_pd.items()]
+            keys_ordering = [key for key, value in pvalues_pd.items()]
+            pvalues_pd = pd.DataFrame(pvalues_pd)
         
+            if avg_by_label_bool:
+                pvalues_pd.to_csv(f'/home3/ebrahim2/beyond-brainscore/analyze_results/figures_code/figures_data/figure2/blocked_pvalues_{dataset}.csv')
+            else:
+                pvalues_pd.to_csv(f'/home3/ebrahim2/beyond-brainscore/analyze_results/figures_code/figures_data/figure2/pvalues_{dataset}.csv')
+                
+            
        
