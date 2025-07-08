@@ -70,7 +70,6 @@ se_intercept_384 = np.load(f'{resultsPath}results_pereira/mse_intercept_384_lang
 se_intercept_243_shuffled = np.load(f'{resultsPath}results_pereira/shuffled/mse_intercept_243_lang.npy')
 se_intercept_384_shuffled = np.load(f'{resultsPath}results_pereira/shuffled/mse_intercept_384_lang.npy')
 
-
 ytest_fed = np.load(f"{resultsPath}results_fedorenko/y_test_ordered.npy")
 ytest_fed_shuffled = np.load(f"{resultsPath}results_fedorenko/shuffled/y_test_ordered.npy")
 
@@ -101,8 +100,8 @@ se_intercept_pereira_full_shuffled = np.full(shape_pereira_full, fill_value=np.n
 se_intercept_pereira_full_shuffled[:243, non_nan_indices_243] = se_intercept_243_shuffled
 se_intercept_pereira_full_shuffled[243:, non_nan_indices_384] = se_intercept_384_shuffled
 
-
-se_intercept_dict = {'pereira': se_intercept_pereira_full_shuffled, 'fedorenko': se_intercept_fed_shuffled, 
+se_intercept_dict = {'pereira': se_intercept_pereira_full_shuffled, 
+                     'fedorenko': se_intercept_fed_shuffled, 
                      'blank': se_intercept_blank_shuffled}
 
 # Use the default Nilearn colormap 'cold_hot' as the base
@@ -511,13 +510,12 @@ if create_sig:
             
             if dataset == 'pereira':
                 
-                
                 best_layer_384 = best_layer_gpt2[f"{dataset}_384_out_of_sample_r2_shuffled{fe}"]
                 best_layer_243 = best_layer_gpt2[f"{dataset}_243_out_of_sample_r2_shuffled{fe}"]
             
                 best_sigma_value_384 = best_sigma[f"{dataset}_384_out_of_sample_r2_shuffled"]
                 best_sigma_value_243 = best_sigma[f"{dataset}_243_out_of_sample_r2_shuffled"]
-                 
+                
                 y_hat_384 = np.load(f"{resultsPath_loop}{dataset}_OASM-all-sigma_{best_sigma_value_384}_1_384.npz")['y_hat']
                 y_hat_243 = np.load(f"{resultsPath_loop}{dataset}_OASM-all-sigma_{best_sigma_value_243}_1_243.npz")['y_hat']
                 

@@ -86,8 +86,7 @@ pereira_best_layers_simple = np.load('/home3/ebrahim2/beyond-brainscore/analyze_
 
 models = ['Llama-3.2-3B-Instruct', 'rwkv-4-3b-pile', 'roberta-large', 'gpt2-xl']
 models_save_name = ['Llama', 'rwkv', 'roberta-large', 'gpt2xl']
-models = ['gpt2-xl']
-models_save_name = ['gpt2xl']
+#models_save_name = ['gpt2xl']
 num_layers = {'roberta-large': 25, 'gpt2-xl': 49, 'rwkv-4-3b-pike': 33, 'Llama-3.2-3B-Instruct': 29}
 perf = 'out_of_sample_r2'
 
