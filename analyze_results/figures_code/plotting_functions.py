@@ -531,6 +531,7 @@ def plot_2d_hist_scatter_updated(dataset, simplemodel, llm_model, results_combin
                 # custom takes the average for voxels that are in both experiments, otherwise sets the value for that voxel to whatever experiment it's in
                 simple_perf_combined[non_nan_indices_dict[exp]] = custom_add_2d(simple_perf_combined[non_nan_indices_dict[exp]],  
                                                                                 results_combined_exp.loc[results_combined_exp.Model==simplemodel]['perf'])
+                
                 llm_model_perf_combined[non_nan_indices_dict[exp]] = custom_add_2d(llm_model_perf_combined[non_nan_indices_dict[exp]], 
                                                                             results_combined_exp.loc[results_combined_exp.Model==f'{llm_model}{fe_str}']['perf'])
             llm_model_perf_combined = llm_model_perf_combined[lang_indices]

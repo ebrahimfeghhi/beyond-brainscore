@@ -32,11 +32,11 @@ perf_str=''
 plot_xlabel = False
 remove_y_axis = False
 num_seeds = 5
-feature_extraction_arr = ['-sp']
+feature_extraction_arr = ['', '-mp', '-sp']
 perf_arr = ['pearson_r']
 shuffled_arr = ['']
 shuffled = ''
-dataset_arr = ['pereira']
+dataset_arr = ['pereira', 'fedorenko', 'blank']
 
 for e in ['243', '384']:
 
@@ -70,7 +70,6 @@ non_nan_indices_dict = {'384': non_nan_indices_384, '243': non_nan_indices_243}
 
 resultsPath = '/data/LLMs/brainscore/'
 
-       
 save_best_layer = []
 clip_zero = False 
 median = False
@@ -280,6 +279,7 @@ for perf in perf_arr:
         
         results_combined = pd.concat((results_dict_LLM, simple_dict))
         
+        
         if len(dataset_arr) == 1:
             ax_select = ax
         else:
@@ -298,9 +298,10 @@ for perf in perf_arr:
         subject_avg_pd = subject_avg_pd.reset_index()
         
 
-        subject_avg_pd.to_csv(f"/home3/ebrahim2/beyond-brainscore/analyze_results/figures_code/figures_data/figure4/{d}_{perf}_{LLM_name_results}.csv", index=False)                
+        subject_avg_pd.to_csv(f"/home3/ebrahim2/beyond-brainscore/analyze_results/figures_code/figures_data/figure4/{d}_{perf}_{LLM_name_results}.csv", index=False)        
+        
+        breakpoint()        
                 
-
         plot_2d_hist_scatter_updated(dataset=d, simplemodel='Simple', llm_model=LLM_name_results, results_combined=results_combined, ticks_hist2d=ticks_hist2d, 
                               savePath='/home3/ebrahim2/beyond-brainscore/analyze_results/figures_code/figures/new_figures/figure4/histograms/', 
                               feature_extraction_arr=feature_extraction_arr, custom_cmap=custom_cmap, subjects_arr_pereira=subjects_arr_pereira, 
