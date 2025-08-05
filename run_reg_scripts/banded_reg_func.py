@@ -203,10 +203,10 @@ def himalaya_regression_caller(model: Union[str, dict, np.ndarray],
         
         if dataset == 'pereira':
             
-           mse_stored_intercept_only, mse_stored, y_hat_folds, mse_stored_intercept_non_avg, y_test_folds, test_fold_size = \
+            mse_stored_intercept_only, mse_stored, y_hat_folds, mse_stored_intercept_non_avg, y_test_folds, test_fold_size, val_scores = \
                             construct_splits_pereira(X, y, data_labels, alphas, device, feature_grouper, 
                              n_iter_layer, use_kernelized, dataset, exp, linear_reg=linear_reg)
-        
+                            
         elif dataset == 'fedorenko':
             
             mse_stored_intercept_only, mse_stored, y_hat_folds, mse_stored_intercept_non_avg, y_test_folds, test_fold_size = \
@@ -229,6 +229,7 @@ def himalaya_regression_caller(model: Union[str, dict, np.ndarray],
         y_hat_folds = np.vstack(y_hat_folds)
         mse_stored_intercept_non_avg = np.vstack(mse_stored_intercept_non_avg)
         y_test_folds = np.vstack(y_test_folds)
+        val_scores_stacked = np.vstack(val_scores)
         
         if len(exp) != 0:
             exp_str = f'_{exp}'
@@ -276,7 +277,7 @@ def himalaya_regression_caller(model: Union[str, dict, np.ndarray],
             complete_file_name = f"{file_name}.npz"
         
             results_stored = {'pnum': features_list, 
-                            'out_of_sample_r2': out_of_sample_r2, 'pearson_r': pearson_corr}
+                            'out_of_sample_r2': out_of_sample_r2, 'pearson_r': pearson_corr, 'val_scores': val_scores_stacked}
 
             if save_y_hat:
                 
@@ -296,7 +297,7 @@ def himalaya_regression_caller(model: Union[str, dict, np.ndarray],
         else:
             
             r2_storage.append(out_of_sample_r2)
-        
+                    
         
     return r2_storage
                             

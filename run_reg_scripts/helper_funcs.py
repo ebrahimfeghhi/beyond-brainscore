@@ -669,8 +669,10 @@ def run_himalayas(X_train, y_train, X_test,
                             solver_params={'alphas': alphas, 'n_iter': n_iter, 'warn': False, 
                                         'n_alphas_batch': n_alphas_batch, 'n_targets_batch': targets_batch})
         
+        
         pipe = make_pipeline(feature_grouper, model)
         _ = pipe.fit(X_train, y_train)
+        
         
         y_pred = pipe.predict(X_test)
         y_pred = y_pred.cpu().numpy()
@@ -678,13 +680,12 @@ def run_himalayas(X_train, y_train, X_test,
     mse_test = mean_squared_error(y_pred, y_test, multioutput = 'raw_values')
     mse_test_intercept, mse_test_intercept_non_avg = compute_mse_intercept_test(y_train, y_test)
 
-    
     # R2 values are not good with linear, printing them is useless
     if linear_reg == False:
         R2_fold = 1-mse_test/mse_test_intercept
         print("Mean test perf: ", np.nanmean(R2_fold))
     
-    return mse_test, mse_test_intercept, y_pred, mse_test_intercept_non_avg
+    return mse_test, mse_test_intercept, y_pred, mse_test_intercept_non_avg, model.cv_scores_.squeeze().numpy()
 
 def preprocess_himalayas(n_features_list, use_kernelized):
         

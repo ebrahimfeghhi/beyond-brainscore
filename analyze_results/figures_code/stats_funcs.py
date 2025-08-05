@@ -6,10 +6,38 @@ from trained_untrained_results_funcs import elementwise_max
 from scipy.stats import ttest_rel
 
 
-
-def compute_paired_ttest(pvalues_pd, with_LLM, simple, LLM_only, intercept_only, subjects_arr, networks_arr, fe, dataset):
+def average_by_label(data_labels, data, apply_avg):
     
+    """
+    Averages rows of `data` according to `data_labels`.
 
+    Parameters:
+    - data_labels (array-like): 1D array of shape (N,), labels indicating groups.
+    - data (array-like): 2D array of shape (N, M), data to be averaged.
+    - apply_avg (bool): if true, average. Otherwise, skip this function
+
+    Returns:
+    - averaged_data (np.ndarray): 2D array of shape (K, M), where K is the number of unique labels.
+    
+    Used for doing block-wise stats tests.
+    """
+    
+    if apply_avg == False:
+        return data
+    
+    data_labels = np.asarray(data_labels)
+    data = np.asarray(data)
+
+    unique_labels = np.unique(data_labels)
+    averaged_data = np.stack([
+        data[data_labels == label].mean(axis=0)
+        for label in unique_labels
+    ])
+
+    return averaged_data
+
+def compute_paired_ttest(pvalues_pd, with_LLM, simple, LLM_only, intercept_only, subjects_arr, networks_arr, fe):
+    
     for subject in np.unique(subjects_arr):
         for network in np.unique(networks_arr):
             
@@ -28,8 +56,6 @@ def compute_paired_ttest(pvalues_pd, with_LLM, simple, LLM_only, intercept_only,
                 pval_LLM_sig[np.isnan(pval_LLM_sig)] = 1
                 pval[np.isnan(pval)] = 1
                 
-
-
                 pval_LLM_sig_fdr = false_discovery_control(pval_LLM_sig, method='bh')
                 pval_fdr = false_discovery_control(pval, method='bh')
                         

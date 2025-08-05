@@ -11,6 +11,7 @@ def construct_splits_pereira(X, y, data_labels, alphas, device, feature_grouper,
     mse_stored = []
     mse_stored_intercept_only = []
     test_fold_size = []
+    val_scores_all_folds = []
     
     # for within experiment regressions, divide the set of 24 passages (one from 
     # each category) into two sets for val/test. Otherwise the amount of training data is very low.
@@ -62,7 +63,7 @@ def construct_splits_pereira(X, y, data_labels, alphas, device, feature_grouper,
                 X_test = X[test_indices]
                 y_test = y[test_indices]
 
-                mse_test, mse_intercept, y_pred, mse_intercept_non_avg = run_himalayas(X_train, 
+                mse_test, mse_intercept, y_pred, mse_intercept_non_avg, val_scores = run_himalayas(X_train, 
                                                 y_train, X_test, y_test, alphas, device, 
                                                 train_labels, feature_grouper, n_iter, use_kernelized, 
                                                 dataset, exp, 
@@ -74,8 +75,9 @@ def construct_splits_pereira(X, y, data_labels, alphas, device, feature_grouper,
                 mse_stored_intercept_non_avg.append(mse_intercept_non_avg)
                 y_test_folds.append(y_test)
                 test_fold_size.append(X_test.shape[0])
+                val_scores_all_folds.append(val_scores)
                 
-    return mse_stored_intercept_only, mse_stored, y_hat_folds, mse_stored_intercept_non_avg, y_test_folds, test_fold_size
+    return mse_stored_intercept_only, mse_stored, y_hat_folds, mse_stored_intercept_non_avg, y_test_folds, test_fold_size, val_scores_all_folds
 
 
 def construct_splits_fedorenko(X, y, data_labels, alphas, device, feature_grouper, 
@@ -150,7 +152,6 @@ def construct_splits_blank(X, y, data_labels, alphas, device, feature_grouper,
                                     dataset, linear_reg=linear_reg)
 
 
-        
         mse_stored_intercept_only.append(mse_intercept)
         mse_stored_intercept_non_avg.append(mse_intercept_non_avg)
         mse_stored.append(mse_test)

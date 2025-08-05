@@ -4,7 +4,7 @@ sys.path.append("/home3/ebrahim2/beyond-brainscore/analyze_results/figures_code"
 from trained_untrained_results_funcs import load_perf, select_columns_with_lower_error, calculate_omega, array_with_highest_mean
 from plotting_functions import plot_across_subjects
 from matplotlib import pyplot as plt
-from stats_funcs import compute_paired_ttest
+from stats_funcs import compute_paired_ttest, average_by_label
 import pandas as pd
 import seaborn as sns
 import matplotlib
@@ -90,6 +90,12 @@ models_save_name = ['Llama', 'rwkv', 'roberta-large', 'gpt2xl']
 num_layers = {'roberta-large': 25, 'gpt2-xl': 49, 'rwkv-4-3b-pike': 33, 'Llama-3.2-3B-Instruct': 29}
 perf = 'out_of_sample_r2'
 
+pereira_data_labels = np.load(f"{data_processed_folder_pereira}/data_labels_pereira.npy")
+fedorenko_data_labels = np.repeat(np.arange(52), 8)
+blank_data_labels = np.load(f"{data_processed_folder_blank}/data_labels_blank_chunked.npy")
+
+avg_by_label_bool = True
+
 for LLM_name, LLM_name_results in zip(models, models_save_name):
     
     omega_metric = {'feature_extraction': [], 'dataset': [], 'values': []}
@@ -104,6 +110,9 @@ for LLM_name, LLM_name_results in zip(models, models_save_name):
 
         
         pvalues_pd = {'fe': [], 'subject': [], 'pval': [], 
+                'pval_orig': [], 'network': [], 'pval_LLM_sig':[], 'pval_LLM_sig_orig': []}
+        
+        pvalues_pd_blocked = {'fe': [], 'subject': [], 'pval': [], 
                 'pval_orig': [], 'network': [], 'pval_LLM_sig':[], 'pval_LLM_sig_orig': []}
 
         results_dict_LLM_banded = {'perf':[], 'subjects': [], 'Network': [], 
@@ -264,20 +273,32 @@ for LLM_name, LLM_name_results in zip(models, models_save_name):
                 se_corrected_llm_banded = np.vstack((se_llm_243_banded, se_llm_384_banded))
                 se_corrected_llm = np.vstack((se_llm_243, se_llm_384))
                 se_corrected = np.vstack((se_corrected_243, se_corrected_384))
+                data_labels = pereira_data_labels
+                
                 
             elif d == 'fedorenko':
                 se_corrected_llm_banded = select_columns_with_lower_error(se_intercept_fed, LLM_se, LLM_WP_se)
                 se_corrected_llm = select_columns_with_lower_error(se_intercept_fed, LLM_se)
+                data_labels = fedorenko_data_labels
                 
             else:
                 se_corrected_llm_banded = select_columns_with_lower_error(se_intercept_blank, LLM_se, LLM_POS_WN_se)
                 se_corrected_llm = select_columns_with_lower_error(se_intercept_blank, LLM_se)
+                data_labels = blank_data_labels
                 
+        
+            pvalues_pd = compute_paired_ttest(pvalues_pd.copy(), se_corrected_llm_banded, se_corrected, se_corrected_llm, 
+                                              se_intercept_dict[d], subjects_stats_dict[d], networks_stats_dict[d], fe)
+            
+            
+            # perfom statistical testing when averaging across (approximately) non-independent squared error values
+            se_corrected_llm_banded_blocked = average_by_label(data_labels, se_corrected_llm_banded, avg_by_label_bool)
+            se_corrected_blocked = average_by_label(data_labels, se_corrected, avg_by_label_bool)
+            se_corrected_llm_blocked = average_by_label(data_labels, se_corrected_llm, avg_by_label_bool)
+            se_intercept_dict_blocked = average_by_label(data_labels, se_intercept_dict[d], avg_by_label_bool)
+            
+            pvalues_pd_blocked = compute_paired_ttest(pvalues_pd_blocked.copy(), se_corrected_llm_banded_blocked, se_corrected_blocked, se_corrected_llm_blocked, se_intercept_dict_blocked, subjects_stats_dict[d], networks_stats_dict[d], fe)
 
-            pvalues_pd = compute_paired_ttest(pvalues_pd.copy(), se_corrected_llm_banded, se_corrected, se_corrected_llm, se_intercept_dict[d], 
-                                            subjects_stats_dict[d], networks_stats_dict[d], fe, d)
-
-    
         results_dict_LLM_banded = pd.DataFrame(results_dict_LLM_banded)
         results_dict_LLM = pd.DataFrame(results_dict_LLM)
         simple_dict = pd.DataFrame(simple_dict)
@@ -341,6 +362,9 @@ for LLM_name, LLM_name_results in zip(models, models_save_name):
         
         pvalues_pd = pd.DataFrame(pvalues_pd)
         pvalues_pd.to_csv(f'/home3/ebrahim2/beyond-brainscore/analyze_results/figures_code/figures_data/{save_folder}/pvalues_{d}_{LLM_name_results}.csv')
+        
+        pvalues_pd_blocked = pd.DataFrame(pvalues_pd_blocked)
+        pvalues_pd_blocked.to_csv(f'/home3/ebrahim2/beyond-brainscore/analyze_results/figures_code/figures_data/{save_folder}/blocked_pvalues_{d}_{LLM_name_results}.csv')
 
     omega_metric = pd.DataFrame(omega_metric)
     omega_metric.to_csv(f"/home3/ebrahim2/beyond-brainscore/analyze_results/figures_code/figures_data/{save_folder}/{LLM_name_results}_omega_values.csv")

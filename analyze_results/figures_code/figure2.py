@@ -13,6 +13,7 @@ import pickle
 from matplotlib import pyplot as plt
 import seaborn as sns
 from nilearn import plotting
+from stats_funcs import average_by_label
 
 best_layer_gpt2 = np.load('best_layer_sigma_info/best_gpt2xl_layer.npz')
 best_sigma = np.load('best_layer_sigma_info/best_sigma.npz')
@@ -21,36 +22,6 @@ dataset_arr = ['pereira', 'blank', 'fedorenko']
 shuffled_arr = ['shuffled', '']
 perf_arr = ['out_of_sample_r2', 'pearson_r']
 
-
-def average_by_label(data_labels, data, apply_avg):
-    
-    """
-    Averages rows of `data` according to `data_labels`.
-
-    Parameters:
-    - data_labels (array-like): 1D array of shape (N,), labels indicating groups.
-    - data (array-like): 2D array of shape (N, M), data to be averaged.
-    - apply_avg (bool): if true, average. Otherwise, skip this function
-
-    Returns:
-    - averaged_data (np.ndarray): 2D array of shape (K, M), where K is the number of unique labels.
-    
-    Used for doing block-wise stats tests.
-    """
-    
-    if apply_avg == False:
-        return data
-    
-    data_labels = np.asarray(data_labels)
-    data = np.asarray(data)
-
-    unique_labels = np.unique(data_labels)
-    averaged_data = np.stack([
-        data[data_labels == label].mean(axis=0)
-        for label in unique_labels
-    ])
-
-    return averaged_data
 
 create_banded = False
 create_across_layer = False
@@ -155,6 +126,7 @@ for bdl_idx, bdl in enumerate(blank_data_labels):
     
 blank_data_labels_chunked = np.array(blank_data_labels_chunked)
 np.save(f"{data_processed_folder_blank}/data_labels_blank_chunked.npy", blank_data_labels_chunked)
+breakpoint()
 
 # Use the default Nilearn colormap 'cold_hot' as the base
 base_cmap = plt.get_cmap('cold_hot')

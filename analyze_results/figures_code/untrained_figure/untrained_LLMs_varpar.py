@@ -4,7 +4,7 @@ sys.path.append("/home3/ebrahim2/beyond-brainscore/analyze_results/figures_code"
 from trained_untrained_results_funcs import find_best_layer, calculate_omega, load_perf, select_columns_with_lower_error,array_with_highest_mean
 from untrained_results_funcs import load_untrained_data
 from plotting_functions import plot_across_subjects
-from stats_funcs import compute_paired_ttest
+from stats_funcs import compute_paired_ttest, average_by_label
 from matplotlib import pyplot as plt
 import pandas as pd
 import seaborn as sns
@@ -89,11 +89,19 @@ pereira_best_layers_simple = np.load('/home3/ebrahim2/beyond-brainscore/analyze_
 
 
 fig, ax = plt.subplots(1, len(dataset_arr), figsize=(15,5))
+
+pereira_data_labels = np.load(f"{data_processed_folder_pereira}/data_labels_pereira.npy")
+fedorenko_data_labels = np.repeat(np.arange(52), 8)
+blank_data_labels = np.load(f"{data_processed_folder_blank}/data_labels_blank_chunked.npy")
+avg_by_label_bool = True
         
 for dnum, d in enumerate(dataset_arr):
     
         
     pvalues_pd = {'fe': [], 'subject': [], 'pval': [], 
+            'pval_orig': [], 'network': [], 'pval_LLM_sig':[], 'pval_LLM_sig_orig': []}
+    
+    pvalues_pd_blocked = {'fe': [], 'subject': [], 'pval': [], 
             'pval_orig': [], 'network': [], 'pval_LLM_sig':[], 'pval_LLM_sig_orig': []}
 
     results_dict_gpt2_untrained = {'perf':[], 'subjects': [], 'Network': [], 
@@ -302,21 +310,31 @@ for dnum, d in enumerate(dataset_arr):
             se_corrected_gpt2_banded = np.vstack((se_gpt2_banded_243, se_gpt2_banded_384))
             se_corrected_gpt2 = np.vstack((se_gpt2_243, se_gpt2_384))
             se_corrected = np.vstack((se_corrected_243, se_corrected_384))
+            data_labels = pereira_data_labels
             
         elif d == 'fedorenko':
             se_corrected_gpt2_banded = select_columns_with_lower_error(se_across_seeds_gpt2xlu, se_across_seeds_gpt2xlu, se_across_seeds_gpt2xlu_WP)
             se_corrected_gpt2 = select_columns_with_lower_error(se_across_seeds_gpt2xlu, se_across_seeds_gpt2xlu)
+            data_labels = fedorenko_data_labels
             
         else:
             se_corrected_gpt2_banded = select_columns_with_lower_error(se_intercept_blank, se_across_seeds_gpt2xlu, se_across_seeds_gpt2xlu_POS_WN)
             se_corrected_gpt2 = select_columns_with_lower_error(se_intercept_blank, se_across_seeds_gpt2xlu)
+            data_labels = blank_data_labels
         
         se_corrected_gpt2 /= num_seeds
 
         pvalues_pd = compute_paired_ttest(pvalues_pd.copy(), se_corrected_gpt2_banded, se_corrected, se_corrected_gpt2, se_intercept_dict[d], 
-                                        subjects_stats_dict[d], networks_stats_dict[d], fe, d)
-
+                                        subjects_stats_dict[d], networks_stats_dict[d], fe)
         
+        # perfom statistical testing when averaging across (approximately) non-independent squared error values
+        se_corrected_gpt2_banded_blocked = average_by_label(data_labels, se_corrected_gpt2_banded, avg_by_label_bool)
+        se_corrected_blocked = average_by_label(data_labels, se_corrected, avg_by_label_bool)
+        se_corrected_gpt2_blocked = average_by_label(data_labels, se_corrected_gpt2, avg_by_label_bool)
+        se_intercept_blocked = average_by_label(data_labels, se_intercept_dict[d], avg_by_label_bool)
+        
+        pvalues_pd_blocked = compute_paired_ttest(pvalues_pd_blocked.copy(), se_corrected_gpt2_banded_blocked, se_corrected_blocked, se_corrected_gpt2_blocked, se_intercept_blocked, subjects_stats_dict[d], networks_stats_dict[d], fe)
+
     results_dict_gpt2_untrained = pd.DataFrame(results_dict_gpt2_untrained)
     results_dict_gpt2_untrained_banded = pd.DataFrame(results_dict_gpt2_untrained_banded)
     
@@ -331,12 +349,9 @@ for dnum, d in enumerate(dataset_arr):
         
     color_palette = ['gray', 'blue', 'black', simple_color]
         
-        
-    
     fig2, ax2 = plt.subplots(1,3, figsize=(10,6))
     fig2.subplots_adjust(wspace=0.1) 
 
-        
     for ja, fe in enumerate(feature_extraction_arr):
         
         if len(fe) == 0:
@@ -389,6 +404,9 @@ for dnum, d in enumerate(dataset_arr):
 
     pvalues_pd = pd.DataFrame(pvalues_pd)
     pvalues_pd.to_csv(f'/home3/ebrahim2/beyond-brainscore/analyze_results/figures_code/figures_data/figure5/pvalues_{d}.csv')
+    
+    pvalues_pd_blocked = pd.DataFrame(pvalues_pd_blocked)
+    pvalues_pd_blocked.to_csv(f'/home3/ebrahim2/beyond-brainscore/analyze_results/figures_code/figures_data/figure5/blocked_pvalues_{d}.csv')
     
 omega_metric = pd.DataFrame(omega_metric)
 omega_metric.to_csv("/home3/ebrahim2/beyond-brainscore/analyze_results/figures_code/figures_data/figure5/gpt2xlu_omega_values.csv")
