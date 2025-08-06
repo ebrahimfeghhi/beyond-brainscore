@@ -219,7 +219,8 @@ def himalaya_regression_caller(model: Union[str, dict, np.ndarray],
            mse_stored_intercept_only, mse_stored, y_hat_folds, mse_stored_intercept_non_avg, y_test_folds, test_fold_size = \
                construct_splits_blank(X, y, data_labels, alphas, device, feature_grouper, 
                              n_iter_layer, use_kernelized, dataset, linear_reg=linear_reg)
-
+               
+        
         mse_stored_intercept = np.vstack(mse_stored_intercept_only)
         mse_stored = np.vstack(mse_stored)
         
@@ -248,6 +249,8 @@ def himalaya_regression_caller(model: Union[str, dict, np.ndarray],
             np.save(y_test_ordered_filename, y_test_folds)
         if ~os.path.isfile(mse_intercept_filename):
             np.save(mse_intercept_filename, mse_stored_intercept_non_avg)
+            
+        np.save(f'{full_results_folder}/test_fold_size{exp_str}.npy', test_fold_size)
         
         # pool mse across folds based on fold size 
         pooled_mse  = combine_MSE_across_folds(mse_stored, test_fold_size)
@@ -257,6 +260,7 @@ def himalaya_regression_caller(model: Union[str, dict, np.ndarray],
         out_of_sample_r2 = 1 - pooled_mse/pooled_mse_intercept
         print("R2 mean: ", np.nanmean(out_of_sample_r2))
         print("Pearson r median: ", np.nanmedian(pearson_corr))
+        
 
         if save_results:
 
@@ -277,7 +281,9 @@ def himalaya_regression_caller(model: Union[str, dict, np.ndarray],
             complete_file_name = f"{file_name}.npz"
         
             results_stored = {'pnum': features_list, 
-                            'out_of_sample_r2': out_of_sample_r2, 'pearson_r': pearson_corr, 'val_scores': val_scores_stacked}
+                            'out_of_sample_r2': out_of_sample_r2, 
+                            'pearson_r': pearson_corr, 
+                            'val_scores': val_scores_stacked}
 
             if save_y_hat:
                 
