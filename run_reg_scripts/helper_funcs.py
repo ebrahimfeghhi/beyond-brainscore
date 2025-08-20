@@ -596,7 +596,7 @@ def obtain_val_predictions(alphas, X_train, y_train, pereira_cv):
 def run_himalayas(X_train, y_train, X_test, 
                   y_test, alphas, device, train_labels, feature_grouper, n_iter, 
                   use_kernelized, dataset, selected_exp=None, first_second_half=None, 
-                  linear_reg=False, custom_linear=True):
+                  linear_reg=False, custom_linear=True, zscore=True):
     
     
     '''
@@ -641,8 +641,11 @@ def run_himalayas(X_train, y_train, X_test,
         X_train = np.expand_dims(X_train, axis=-1)
         X_test = np.expand_dims(X_test, axis=-1)
         
-    X_train = scaler.fit_transform(X_train)
-    X_test = scaler.transform(X_test)
+    if zscore: 
+        print("Z-SCORING")
+        X_train = scaler.fit_transform(X_train)
+        X_test = scaler.transform(X_test)
+        
     if linear_reg:
         
         if custom_linear:
@@ -665,6 +668,7 @@ def run_himalayas(X_train, y_train, X_test,
                                         solver_params=solver_params)
             
         else:
+            
             model = GroupRidgeCV(groups="input", fit_intercept=True, cv=cv, 
                             solver_params={'alphas': alphas, 'n_iter': n_iter, 'warn': False, 
                                         'n_alphas_batch': n_alphas_batch, 'n_targets_batch': targets_batch})
@@ -672,7 +676,6 @@ def run_himalayas(X_train, y_train, X_test,
         
         pipe = make_pipeline(feature_grouper, model)
         _ = pipe.fit(X_train, y_train)
-        
         
         y_pred = pipe.predict(X_test)
         y_pred = y_pred.cpu().numpy()
@@ -684,6 +687,7 @@ def run_himalayas(X_train, y_train, X_test,
     if linear_reg == False:
         R2_fold = 1-mse_test/mse_test_intercept
         print("Mean test perf: ", np.nanmean(R2_fold))
+        
     
     return mse_test, mse_test_intercept, y_pred, mse_test_intercept_non_avg, model.cv_scores_.squeeze().numpy()
 

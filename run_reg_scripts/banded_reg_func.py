@@ -16,7 +16,7 @@ def himalaya_regression_caller(model: Union[str, dict, np.ndarray],
                                device: Union[str, int] = 'cpu', untrained: bool = False,
                                results_folder: str = '/data/LLMs/brainscore', linear_reg: bool = False, 
                                shuffled: bool = False, custom_linear: bool = False,
-                               specified_layers: list=[], lang_only: bool = True):
+                               specified_layers: list=[], lang_only: bool = True, zscore: bool = True):
     
     '''
     This function performs banded regression based on the himalaya package. 
@@ -65,6 +65,8 @@ def himalaya_regression_caller(model: Union[str, dict, np.ndarray],
     specified_layers: If empty, run all layers. Else, only run layers in the list
     
     lang_only: If true, the only run regression for lang network voxels for Pereira
+    
+    zscore: If true, zscore using training set statistics
     '''
     
     if len(exp) == 0 and dataset == 'pereira':
@@ -205,20 +207,20 @@ def himalaya_regression_caller(model: Union[str, dict, np.ndarray],
             
             mse_stored_intercept_only, mse_stored, y_hat_folds, mse_stored_intercept_non_avg, y_test_folds, test_fold_size, val_scores = \
                             construct_splits_pereira(X, y, data_labels, alphas, device, feature_grouper, 
-                             n_iter_layer, use_kernelized, dataset, exp, linear_reg=linear_reg)
+                             n_iter_layer, use_kernelized, dataset, exp, linear_reg=linear_reg, zscore=zscore)
                             
         elif dataset == 'fedorenko':
             
-            mse_stored_intercept_only, mse_stored, y_hat_folds, mse_stored_intercept_non_avg, y_test_folds, test_fold_size = \
+            mse_stored_intercept_only, mse_stored, y_hat_folds, mse_stored_intercept_non_avg, y_test_folds, test_fold_size, val_scores = \
                 construct_splits_fedorenko(X, y, data_labels, alphas, device, feature_grouper, 
-                             n_iter_layer, use_kernelized, dataset, split_size=32, linear_reg=linear_reg)
+                             n_iter_layer, use_kernelized, dataset, split_size=32, linear_reg=linear_reg, zscore=zscore)
             
           
         elif dataset == 'blank':
             
-           mse_stored_intercept_only, mse_stored, y_hat_folds, mse_stored_intercept_non_avg, y_test_folds, test_fold_size = \
+           mse_stored_intercept_only, mse_stored, y_hat_folds, mse_stored_intercept_non_avg, y_test_folds, test_fold_size, val_scores = \
                construct_splits_blank(X, y, data_labels, alphas, device, feature_grouper, 
-                             n_iter_layer, use_kernelized, dataset, linear_reg=linear_reg)
+                             n_iter_layer, use_kernelized, dataset, linear_reg=linear_reg, zscore=zscore)
                
         
         mse_stored_intercept = np.vstack(mse_stored_intercept_only)
@@ -261,7 +263,7 @@ def himalaya_regression_caller(model: Union[str, dict, np.ndarray],
         print("R2 mean: ", np.nanmean(out_of_sample_r2))
         print("Pearson r median: ", np.nanmedian(pearson_corr))
         
-
+    
         if save_results:
 
             file_name = f"{dataset}_{model}_{layer_name}_{n_iter_layer}"
