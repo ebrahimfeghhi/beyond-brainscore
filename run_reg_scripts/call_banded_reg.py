@@ -34,7 +34,7 @@ parser.add_argument("--intercept", action='store_true', help="save intercept mod
 parser.add_argument("--save_new", action='store_true', help="save under new name")
 parser.add_argument("--exp", type=str, default='', help='384 or 243, pereira only')
 parser.add_argument("--data_folder", type=str, default='/data/LLMs/data_processed', help='where to look for data')
-parser.add_argument("--device", type=int, default=1, help="-1 for cpu, otherwise specify gpu device")
+parser.add_argument("--device", type=int, default=2, help="-1 for cpu, otherwise specify gpu device")
 parser.add_argument("--untrained", action='store_true', default=False, help="If true, save to untrained folder")
 parser.add_argument("--y_hat", action='store_true', default=False, help="If true, save y hat")
 parser.add_argument("--linear_reg", action='store_true', default=False, help="If true, run linear regression, as opposed to ridge")
@@ -44,7 +44,6 @@ parser.add_argument("--custom_linear", action='store_true', default=False, help=
 parser.add_argument("--specified_layers", default=[], help="If not empty, only layer names in this list are run")
 parser.add_argument("--lang_only", type=bool, default=True)
 parser.add_argument("--zscore", type=int, default=1)
-
 
 
 # Parse the command-line arguments

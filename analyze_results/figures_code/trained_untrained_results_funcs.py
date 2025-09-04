@@ -266,7 +266,7 @@ def find_best_layer(layer_range, noL2_str='', exp='', resultsPath='/data/LLMs/br
         layer_subject = pd.DataFrame({'perf': layer_perf, 'subject': subjects})    
 
         perf_avg = np.median(layer_subject.groupby(['subject']).median())
-        perf_avg_mean = np.mean(layer_subject.groupby(['subject']).mean())
+        perf_avg_mean = np.mean(layer_subject.groupby(['subject']).mean().clip(lower=0))
 
         if median: 
             layer_perf_dict[l] = perf_avg
