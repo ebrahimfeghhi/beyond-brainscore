@@ -244,9 +244,10 @@ def find_best_sigma(sigma_range, noL2_str, exp, resultsPath, dataset, subjects, 
 def find_best_layer(layer_range, noL2_str='', exp='', resultsPath='/data/LLMs/brainscore/results_pereira/', 
                     subjects=None, dataset='pereira', perf='pearson_r', 
                     selected_network_indices = None, feature_extraction = '', model_name='gpt2-xl', seed_number=None, 
-                    return_SE=False, niter=1, median=False, shape_pereira_full=None, non_nan_indices_dict=None):
+                    return_SE=False, niter=1, median=False, shape_pereira_full=None, non_nan_indices_dict=None, return_per_subject_scores=False):
     
     layer_perf_dict = {}
+    layer_perf_across_subject_dict = {}
     
     if dataset == 'pereira' and selected_network_indices is not None:
         subjects = subjects[selected_network_indices]
@@ -267,11 +268,13 @@ def find_best_layer(layer_range, noL2_str='', exp='', resultsPath='/data/LLMs/br
 
         perf_avg = np.median(layer_subject.groupby(['subject']).median())
         perf_avg_mean = np.mean(layer_subject.groupby(['subject']).mean().clip(lower=0))
+        per_subject_scores = layer_subject.groupby(['subject']).mean().clip(lower=0)
 
         if median: 
             layer_perf_dict[l] = perf_avg
         else:
             layer_perf_dict[l] = perf_avg_mean
+            layer_perf_across_subject_dict[l] = per_subject_scores
         
     best_layer = max(layer_perf_dict, key=layer_perf_dict.get)
     
@@ -298,7 +301,10 @@ def find_best_layer(layer_range, noL2_str='', exp='', resultsPath='/data/LLMs/br
             layer_perf_best_se = se_full
 
         return layer_perf_dict, best_layer, layer_perf_best, layer_perf_best_se
-        
+    
+    if return_per_subject_scores:
+        return layer_perf_dict, best_layer, layer_perf_best, layer_perf_across_subject_dict[best_layer]
+    
     return layer_perf_dict, best_layer, layer_perf_best  
 
 
