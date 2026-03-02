@@ -9,7 +9,7 @@ import seaborn as sns
 import pandas as pd
 from trained_untrained_results_funcs import find_best_layer, find_best_sigma
 
-noL2_str_arr = ['_noL2custom', '']
+noL2_str_arr = ['_noL2custom', '_customRidge', '']
 shuffled_arr = [False, True]
 dataset_arr = ['pereira', 'fedorenko', 'blank']
 perf_arr = ['out_of_sample_r2', 'pearson_r']
