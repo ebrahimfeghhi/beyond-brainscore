@@ -41,6 +41,7 @@ parser.add_argument("--linear_reg", action='store_true', default=False, help="If
 parser.add_argument("--shuffled", action='store_true', default=False, help="If true, use shuffled train-test splits")
 parser.add_argument("--save_res", type=bool, default=True)
 parser.add_argument("--custom_linear", action='store_true', default=False, help="Custom linear reg")
+parser.add_argument("--custom_ridge", action='store_true', default=False, help="Custom GPU ridge regression with per-voxel alpha CV")
 parser.add_argument("--specified_layers", default=[], help="If not empty, only layer names in this list are run")
 parser.add_argument("--lang_only", type=bool, default=True)
 parser.add_argument("--zscore", type=int, default=1)
@@ -62,6 +63,7 @@ linear_reg = args.linear_reg
 shuffled = args.shuffled
 save_res = args.save_res
 custom_linear = args.custom_linear
+custom_ridge = args.custom_ridge
 specified_layers = args.specified_layers
 lang_only = args.lang_only
 zscore = args.zscore
@@ -72,10 +74,11 @@ if device == -1:
     
 print("Model name: ", model)
 
-or2 = himalaya_regression_caller(model, y='', data_labels='', features_list=f_list, 
-                            n_iter=niter, dataset=dataset, data_folder=data_folder, exp=exp, 
-                            save_results=save_res, save_y_hat=y_hat, save_new=save_new, 
-                            device=device, untrained=untrained, linear_reg=linear_reg, shuffled=shuffled, 
-                            custom_linear=custom_linear, specified_layers=specified_layers, lang_only=lang_only, zscore=zscore)
+or2 = himalaya_regression_caller(model, y='', data_labels='', features_list=f_list,
+                            n_iter=niter, dataset=dataset, data_folder=data_folder, exp=exp,
+                            save_results=save_res, save_y_hat=y_hat, save_new=save_new,
+                            device=device, untrained=untrained, linear_reg=linear_reg, shuffled=shuffled,
+                            custom_linear=custom_linear, custom_ridge=custom_ridge,
+                            specified_layers=specified_layers, lang_only=lang_only, zscore=zscore)
 
 

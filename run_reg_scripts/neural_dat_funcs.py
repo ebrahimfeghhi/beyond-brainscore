@@ -2,8 +2,8 @@ import numpy as np
 
 from helper_funcs import run_himalayas, split_by_exp_passage_num
 
-def construct_splits_pereira(X, y, data_labels, alphas, device, feature_grouper, 
-                             n_iter, use_kernelized, dataset, exp, linear_reg, zscore):
+def construct_splits_pereira(X, y, data_labels, alphas, device, feature_grouper,
+                             n_iter, use_kernelized, dataset, exp, linear_reg, zscore, custom_ridge=False):
     
     y_hat_folds = []
     mse_stored_intercept_non_avg = []
@@ -63,11 +63,11 @@ def construct_splits_pereira(X, y, data_labels, alphas, device, feature_grouper,
                 X_test = X[test_indices]
                 y_test = y[test_indices]
 
-                mse_test, mse_intercept, y_pred, mse_intercept_non_avg, val_scores = run_himalayas(X_train, 
-                                                y_train, X_test, y_test, alphas, device, 
-                                                train_labels, feature_grouper, n_iter, use_kernelized, 
-                                                dataset, exp, 
-                                                first_second_half, linear_reg, zscore=zscore)
+                mse_test, mse_intercept, y_pred, mse_intercept_non_avg, val_scores = run_himalayas(X_train,
+                                                y_train, X_test, y_test, alphas, device,
+                                                train_labels, feature_grouper, n_iter, use_kernelized,
+                                                dataset, exp,
+                                                first_second_half, linear_reg, custom_ridge=custom_ridge, zscore=zscore)
             
                 mse_stored_intercept_only.append(mse_intercept)
                 mse_stored.append(mse_test)
@@ -80,8 +80,8 @@ def construct_splits_pereira(X, y, data_labels, alphas, device, feature_grouper,
     return mse_stored_intercept_only, mse_stored, y_hat_folds, mse_stored_intercept_non_avg, y_test_folds, test_fold_size, val_scores_all_folds
 
 
-def construct_splits_fedorenko(X, y, data_labels, alphas, device, feature_grouper, 
-                             n_iter, use_kernelized, dataset, split_size, linear_reg, zscore):
+def construct_splits_fedorenko(X, y, data_labels, alphas, device, feature_grouper,
+                             n_iter, use_kernelized, dataset, split_size, linear_reg, zscore, custom_ridge=False):
     
     sentence_length = 8
     sentence_num = 52
@@ -107,10 +107,10 @@ def construct_splits_fedorenko(X, y, data_labels, alphas, device, feature_groupe
         X_test = X[test_indices]
         y_test = y[test_indices]
         
-        mse_test, mse_intercept, y_pred, mse_intercept_non_avg, val_scores = run_himalayas(X_train, 
-                                        y_train, X_test, y_test, alphas, device, 
-                                        train_indices, feature_grouper, n_iter, use_kernelized, 
-                                        dataset, linear_reg=linear_reg, zscore=zscore)
+        mse_test, mse_intercept, y_pred, mse_intercept_non_avg, val_scores = run_himalayas(X_train,
+                                        y_train, X_test, y_test, alphas, device,
+                                        train_indices, feature_grouper, n_iter, use_kernelized,
+                                        dataset, linear_reg=linear_reg, custom_ridge=custom_ridge, zscore=zscore)
 
         mse_stored_intercept_only.append(mse_intercept)
         mse_stored_intercept_non_avg.append(mse_intercept_non_avg)
@@ -124,8 +124,8 @@ def construct_splits_fedorenko(X, y, data_labels, alphas, device, feature_groupe
     return mse_stored_intercept_only, mse_stored, y_hat_folds, mse_stored_intercept_non_avg, y_test_folds, test_fold_size, val_scores_all_folds
 
 
-def construct_splits_blank(X, y, data_labels, alphas, device, feature_grouper, 
-                             n_iter, use_kernelized, dataset, linear_reg, zscore):
+def construct_splits_blank(X, y, data_labels, alphas, device, feature_grouper,
+                             n_iter, use_kernelized, dataset, linear_reg, zscore, custom_ridge=False):
     
     y_hat_folds = []
     y_test_folds = []
@@ -150,10 +150,10 @@ def construct_splits_blank(X, y, data_labels, alphas, device, feature_grouper,
         X_test = np.squeeze(X[test_indices])
         y_test = np.squeeze(y[test_indices])
         
-        mse_test, mse_intercept, y_pred, mse_intercept_non_avg, val_scores = run_himalayas(X_train, 
-                                    y_train, X_test, y_test, alphas, device, 
-                                    train_labels, feature_grouper, n_iter, use_kernelized, 
-                                    dataset, linear_reg=linear_reg, zscore=zscore)
+        mse_test, mse_intercept, y_pred, mse_intercept_non_avg, val_scores = run_himalayas(X_train,
+                                    y_train, X_test, y_test, alphas, device,
+                                    train_labels, feature_grouper, n_iter, use_kernelized,
+                                    dataset, linear_reg=linear_reg, custom_ridge=custom_ridge, zscore=zscore)
 
 
         mse_stored_intercept_only.append(mse_intercept)

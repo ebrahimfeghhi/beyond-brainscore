@@ -14,8 +14,8 @@ def himalaya_regression_caller(model: Union[str, dict, np.ndarray],
                                exp: str ='both', save_results: bool = True, 
                                save_y_hat: bool = True, save_new: bool= False, 
                                device: Union[str, int] = 'cpu', untrained: bool = False,
-                               results_folder: str = '/data/LLMs/brainscore', linear_reg: bool = False, 
-                               shuffled: bool = False, custom_linear: bool = False,
+                               results_folder: str = '/data/LLMs/brainscore', linear_reg: bool = False,
+                               shuffled: bool = False, custom_linear: bool = False, custom_ridge: bool = False,
                                specified_layers: list=[], lang_only: bool = True, zscore: bool = True):
     
     '''
@@ -206,21 +206,21 @@ def himalaya_regression_caller(model: Union[str, dict, np.ndarray],
         if dataset == 'pereira':
             
             mse_stored_intercept_only, mse_stored, y_hat_folds, mse_stored_intercept_non_avg, y_test_folds, test_fold_size, val_scores = \
-                            construct_splits_pereira(X, y, data_labels, alphas, device, feature_grouper, 
-                             n_iter_layer, use_kernelized, dataset, exp, linear_reg=linear_reg, zscore=zscore)
+                            construct_splits_pereira(X, y, data_labels, alphas, device, feature_grouper,
+                             n_iter_layer, use_kernelized, dataset, exp, linear_reg=linear_reg, zscore=zscore, custom_ridge=custom_ridge)
                             
         elif dataset == 'fedorenko':
             
             mse_stored_intercept_only, mse_stored, y_hat_folds, mse_stored_intercept_non_avg, y_test_folds, test_fold_size, val_scores = \
-                construct_splits_fedorenko(X, y, data_labels, alphas, device, feature_grouper, 
-                             n_iter_layer, use_kernelized, dataset, split_size=32, linear_reg=linear_reg, zscore=zscore)
+                construct_splits_fedorenko(X, y, data_labels, alphas, device, feature_grouper,
+                             n_iter_layer, use_kernelized, dataset, split_size=32, linear_reg=linear_reg, zscore=zscore, custom_ridge=custom_ridge)
             
           
         elif dataset == 'blank':
             
            mse_stored_intercept_only, mse_stored, y_hat_folds, mse_stored_intercept_non_avg, y_test_folds, test_fold_size, val_scores = \
-               construct_splits_blank(X, y, data_labels, alphas, device, feature_grouper, 
-                             n_iter_layer, use_kernelized, dataset, linear_reg=linear_reg, zscore=zscore)
+               construct_splits_blank(X, y, data_labels, alphas, device, feature_grouper,
+                             n_iter_layer, use_kernelized, dataset, linear_reg=linear_reg, zscore=zscore, custom_ridge=custom_ridge)
                
         
         mse_stored_intercept = np.vstack(mse_stored_intercept_only)
@@ -269,11 +269,14 @@ def himalaya_regression_caller(model: Union[str, dict, np.ndarray],
             file_name = f"{dataset}_{model}_{layer_name}_{n_iter_layer}"
             
             if linear_reg:
-                
+
                 if custom_linear:
                     file_name = f"{file_name}_noL2custom"
                 else:
                     file_name = f"{file_name}_noL2"
+
+            if custom_ridge:
+                file_name = f"{file_name}_customRidge"
                     
 
             if dataset == 'pereira':

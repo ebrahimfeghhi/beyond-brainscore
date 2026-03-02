@@ -593,10 +593,88 @@ def obtain_val_predictions(alphas, X_train, y_train, pereira_cv):
     return predictions
     
     
-def run_himalayas(X_train, y_train, X_test, 
-                  y_test, alphas, device, train_labels, feature_grouper, n_iter, 
-                  use_kernelized, dataset, selected_exp=None, first_second_half=None, 
-                  linear_reg=False, custom_linear=True, zscore=True):
+def ridge_regression_from_scratch(X_train, y_train, alpha, add_bias=True, device=2):
+    # Convert inputs to torch tensors if they aren't already
+    X_train = torch.tensor(X_train, dtype=torch.float32).to(device)
+    y_train = torch.tensor(y_train, dtype=torch.float32).to(device)
+
+    # Optionally add a bias (intercept) term by subtracting the mean of the target (y)
+    if add_bias:
+        y_mean = y_train.mean(0)
+        y_reg = y_train - y_mean
+    else:
+        y_reg = y_train
+
+    n_features = X_train.shape[1]
+    # Ridge: solve (X^T X + alpha * I) w = X^T y
+    A = X_train.T @ X_train + alpha * torch.eye(n_features, device=X_train.device, dtype=torch.float32)
+    w = torch.linalg.solve(A, X_train.T @ y_reg)
+
+    if add_bias:
+        w = torch.cat((y_mean.unsqueeze(0), w))
+
+    return w
+
+
+def ridge_regression_cv(X_train, y_train, cv, alphas, add_bias=True, device=2):
+    n_alphas = len(alphas)
+    n_voxels = y_train.shape[1]
+
+    # Accumulate val MSE across folds, shape (n_alphas, n_voxels)
+    val_mse = np.zeros((n_alphas, n_voxels))
+    n_folds = 0
+
+    for train_idx, val_idx in cv.split(X_train):
+        X_fold_train = X_train[train_idx]
+        y_fold_train = y_train[train_idx]
+        X_fold_val = X_train[val_idx]
+        y_fold_val_t = torch.tensor(y_train[val_idx], dtype=torch.float32).to(device)
+
+        for i, alpha in enumerate(alphas):
+            w = ridge_regression_from_scratch(X_fold_train, y_fold_train, alpha, add_bias=add_bias, device=device)
+            y_pred_val = predict_scratch(X_fold_val, w, add_bias=add_bias, device=device)
+            mse = ((y_pred_val - y_fold_val_t) ** 2).mean(0).cpu().numpy()
+            val_mse[i] += mse
+
+        n_folds += 1
+
+    val_mse /= n_folds
+    best_alpha_idx = val_mse.argmin(0)  # best alpha index per voxel, shape (n_voxels,)
+
+    # Refit on full training data using best alpha per voxel
+    X_train_t = torch.tensor(X_train, dtype=torch.float32).to(device)
+    y_train_t = torch.tensor(y_train, dtype=torch.float32).to(device)
+
+    if add_bias:
+        y_mean = y_train_t.mean(0)
+        y_centered = y_train_t - y_mean
+    else:
+        y_centered = y_train_t
+
+    n_features = X_train.shape[1]
+    XtX = X_train_t.T @ X_train_t
+    Xty = X_train_t.T @ y_centered
+
+    w_coeffs = torch.zeros(n_features, n_voxels, dtype=torch.float32, device=X_train_t.device)
+
+    for i in np.unique(best_alpha_idx):
+        voxel_mask = (best_alpha_idx == i)
+        A = XtX + alphas[i] * torch.eye(n_features, device=X_train_t.device, dtype=torch.float32)
+        w_alpha = torch.linalg.solve(A, Xty[:, voxel_mask])
+        w_coeffs[:, voxel_mask] = w_alpha
+
+    if add_bias:
+        w = torch.cat((y_mean.unsqueeze(0), w_coeffs), dim=0)
+    else:
+        w = w_coeffs
+
+    return w, val_mse
+
+
+def run_himalayas(X_train, y_train, X_test,
+                  y_test, alphas, device, train_labels, feature_grouper, n_iter,
+                  use_kernelized, dataset, selected_exp=None, first_second_half=None,
+                  linear_reg=False, custom_linear=True, custom_ridge=False, zscore=True):
     
     
     '''
@@ -646,8 +724,10 @@ def run_himalayas(X_train, y_train, X_test,
         X_train = scaler.fit_transform(X_train)
         X_test = scaler.transform(X_test)
         
+    val_scores = np.zeros(1)  # placeholder; overwritten for ridge paths below
+
     if linear_reg:
-        
+
         if custom_linear:
             w = linear_regression_from_scratch(X_train, y_train, device)
             y_pred = predict_scratch(X_test, w, device)
@@ -657,28 +737,36 @@ def run_himalayas(X_train, y_train, X_test,
             model = LinearRegression(fit_intercept=True)
             model.fit(X_train, y_train)
             y_pred = model.predict(X_test)
-        
+
     else:
-        
-        if use_kernelized:
-        
+
+        if custom_ridge:
+            w, val_scores = ridge_regression_cv(X_train, y_train, cv, alphas, device=device)
+            y_pred = predict_scratch(X_test, w, device=device)
+            y_pred = y_pred.cpu().numpy()
+
+        elif use_kernelized:
+
             solver_params = dict(n_iter=n_iter, alphas=alphas, diagonalize_method='svd', conservative=False)
             model = MultipleKernelRidgeCV(kernels="precomputed", solver="random_search",
                                         cv=cv, fit_intercept=True, early_stop_y_idxs=None,
                                         solver_params=solver_params)
-            
+            pipe = make_pipeline(feature_grouper, model)
+            _ = pipe.fit(X_train, y_train)
+            y_pred = pipe.predict(X_test)
+            y_pred = y_pred.cpu().numpy()
+            val_scores = model.cv_scores_.squeeze().numpy()
+
         else:
-            
-            model = GroupRidgeCV(groups="input", fit_intercept=True, cv=cv, 
-                            solver_params={'alphas': alphas, 'n_iter': n_iter, 'warn': False, 
+
+            model = GroupRidgeCV(groups="input", fit_intercept=True, cv=cv,
+                            solver_params={'alphas': alphas, 'n_iter': n_iter, 'warn': False,
                                         'n_alphas_batch': n_alphas_batch, 'n_targets_batch': targets_batch})
-        
-        
-        pipe = make_pipeline(feature_grouper, model)
-        _ = pipe.fit(X_train, y_train)
-        
-        y_pred = pipe.predict(X_test)
-        y_pred = y_pred.cpu().numpy()
+            pipe = make_pipeline(feature_grouper, model)
+            _ = pipe.fit(X_train, y_train)
+            y_pred = pipe.predict(X_test)
+            y_pred = y_pred.cpu().numpy()
+            val_scores = model.cv_scores_.squeeze().numpy()
 
     mse_test = mean_squared_error(y_pred, y_test, multioutput = 'raw_values')
     mse_test_intercept, mse_test_intercept_non_avg = compute_mse_intercept_test(y_train, y_test)
@@ -687,9 +775,9 @@ def run_himalayas(X_train, y_train, X_test,
     if linear_reg == False:
         R2_fold = 1-mse_test/mse_test_intercept
         print("Mean test perf: ", np.nanmean(R2_fold))
-        
-    
-    return mse_test, mse_test_intercept, y_pred, mse_test_intercept_non_avg, model.cv_scores_.squeeze().numpy()
+
+
+    return mse_test, mse_test_intercept, y_pred, mse_test_intercept_non_avg, val_scores
 
 def preprocess_himalayas(n_features_list, use_kernelized):
         
