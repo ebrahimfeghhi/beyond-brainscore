@@ -9,7 +9,8 @@ import seaborn as sns
 import pandas as pd
 from trained_untrained_results_funcs import find_best_layer, find_best_sigma
 
-noL2_str_arr = ['_noL2custom', '_customRidge', '']
+noL2_str_oasm = '_customRidge'  # OASM uses custom ridge
+noL2_str_gpt = ''               # GPT uses regular ridge
 shuffled_arr = [False, True]
 dataset_arr = ['pereira', 'fedorenko', 'blank']
 perf_arr = ['out_of_sample_r2', 'pearson_r']
@@ -21,17 +22,13 @@ save_best_sigma = {}
 save_best_layer = {}
 
 for perf in perf_arr:
-    for noL2_str in noL2_str_arr:
-        for shuffled in shuffled_arr:
+    for shuffled in shuffled_arr:
             
             fig, ax = plt.subplots(1, 3, figsize=(15, 6))
             
             for dataset in dataset_arr:
                 
-                if len(noL2_str) == 0:
-                    noL2 = False
-                else:
-                    noL2 = True
+                noL2 = True
 
                 if shuffled:
                     shuffled_str = '_shuffled'
@@ -78,16 +75,16 @@ for perf in perf_arr:
                             
                 if dataset == 'pereira':
                     
-                    sigma_perf_dict_384, best_sigma_384, OASM_perf_best_sigma_384 = find_best_sigma(sigma_values, noL2_str=noL2_str, exp='_384', subjects=subjects_dict['384'], 
-                                                                    resultsPath=resultsPath_dataset, dataset=dataset, selected_network_indices=lang_indices_384, 
-                                                                    perf=perf)   
-                    
-                    sigma_perf_dict_243, best_sigma_243, OASM_perf_best_sigma_243 = find_best_sigma(sigma_values, noL2_str=noL2_str, exp='_243', subjects=subjects_dict['243'], 
-                                                                    resultsPath=resultsPath_dataset, dataset=dataset, selected_network_indices=lang_indices_243, 
+                    sigma_perf_dict_384, best_sigma_384, OASM_perf_best_sigma_384 = find_best_sigma(sigma_values, noL2_str=noL2_str_oasm, exp='_384', subjects=subjects_dict['384'],
+                                                                    resultsPath=resultsPath_dataset, dataset=dataset, selected_network_indices=lang_indices_384,
                                                                     perf=perf)
-                
-                    save_best_sigma[f"{dataset}_384_{perf}{shuffled_save_str}{noL2_str}"] = best_sigma_384
-                    save_best_sigma[f"{dataset}_243_{perf}{shuffled_save_str}{noL2_str}"] = best_sigma_243
+
+                    sigma_perf_dict_243, best_sigma_243, OASM_perf_best_sigma_243 = find_best_sigma(sigma_values, noL2_str=noL2_str_oasm, exp='_243', subjects=subjects_dict['243'],
+                                                                    resultsPath=resultsPath_dataset, dataset=dataset, selected_network_indices=lang_indices_243,
+                                                                    perf=perf)
+
+                    save_best_sigma[f"{dataset}_384_{perf}{shuffled_save_str}{noL2_str_oasm}"] = best_sigma_384
+                    save_best_sigma[f"{dataset}_243_{perf}{shuffled_save_str}{noL2_str_oasm}"] = best_sigma_243
                     
                     
                     results_dict_simple_384 = pd.DataFrame({'perf': OASM_perf_best_sigma_384, 'subjects': subjects_dict['384'], 
@@ -99,10 +96,10 @@ for perf in perf_arr:
                     
                 else:
                     
-                    sigma_perf_dict, best_sigma, OASM_perf_best_sigma = find_best_sigma(sigma_values, noL2_str=noL2_str, exp='', 
+                    sigma_perf_dict, best_sigma, OASM_perf_best_sigma = find_best_sigma(sigma_values, noL2_str=noL2_str_oasm, exp='',
                                                         subjects=subjects_arr, resultsPath=resultsPath_dataset, dataset=dataset, perf=perf)
-                    
-                    save_best_sigma[f"{dataset}_{perf}{shuffled_save_str}{noL2_str}"] = best_sigma
+
+                    save_best_sigma[f"{dataset}_{perf}{shuffled_save_str}{noL2_str_oasm}"] = best_sigma
     
                     num_brain_units = OASM_perf_best_sigma.shape[0]
         
@@ -118,11 +115,11 @@ for perf in perf_arr:
            
                     for fe in feature_extraction:
                         
-                        gpt2_xl_384_dict, gpt2_xl_384_bl, gpt2_xl_384_bl_perf = find_best_layer(np.arange(0,49), noL2_str=noL2_str, exp='_384', 
-                                                                        resultsPath=resultsPath_dataset, selected_network_indices=lang_indices_384, dataset=dataset, 
+                        gpt2_xl_384_dict, gpt2_xl_384_bl, gpt2_xl_384_bl_perf = find_best_layer(np.arange(0,49), noL2_str=noL2_str_gpt, exp='_384',
+                                                                        resultsPath=resultsPath_dataset, selected_network_indices=lang_indices_384, dataset=dataset,
                                                                         subjects=subjects_dict['384'], perf=perf, feature_extraction=fe)
-                        gpt2_xl_243_dict, gpt2_xl_243_bl, gpt2_xl_243_bl_perf = find_best_layer(np.arange(0,49), noL2_str=noL2_str, exp='_243', 
-                                                                        resultsPath=resultsPath_dataset, selected_network_indices=lang_indices_243, dataset=dataset, 
+                        gpt2_xl_243_dict, gpt2_xl_243_bl, gpt2_xl_243_bl_perf = find_best_layer(np.arange(0,49), noL2_str=noL2_str_gpt, exp='_243',
+                                                                        resultsPath=resultsPath_dataset, selected_network_indices=lang_indices_243, dataset=dataset,
                                                                         subjects=subjects_dict['243'], perf=perf, feature_extraction=fe)
                         
                         results_dict_gpt2['perf'].extend(gpt2_xl_384_bl_perf)
@@ -136,8 +133,8 @@ for perf in perf_arr:
                         results_dict_gpt2['Exp'].extend(np.repeat(f'384', num_vox_dict['384']))
                         results_dict_gpt2['Exp'].extend(np.repeat(f'243', num_vox_dict['243']))
                         
-                        save_best_layer[f"{dataset}_384_{perf}{shuffled_save_str}{noL2_str}{fe}"] = gpt2_xl_384_bl
-                        save_best_layer[f"{dataset}_243_{perf}{shuffled_save_str}{noL2_str}{fe}"] = gpt2_xl_243_bl
+                        save_best_layer[f"{dataset}_384_{perf}{shuffled_save_str}{fe}"] = gpt2_xl_384_bl
+                        save_best_layer[f"{dataset}_243_{perf}{shuffled_save_str}{fe}"] = gpt2_xl_243_bl
             
                 else:
                     
@@ -145,7 +142,7 @@ for perf in perf_arr:
                                 'Model': []}
                     
                     for fe in feature_extraction:
-                        gpt2_xl_dict, gpt2_xl_bl, gpt2_xl_bl_perf = find_best_layer(np.arange(0,49), noL2_str=noL2_str, exp='', 
+                        gpt2_xl_dict, gpt2_xl_bl, gpt2_xl_bl_perf = find_best_layer(np.arange(0,49), noL2_str=noL2_str_gpt, exp='',
                                                 subjects=subjects_arr, resultsPath=resultsPath_dataset, dataset=dataset, perf=perf, feature_extraction=fe)
                         
                         num_brain_units = gpt2_xl_bl_perf.shape[0]
@@ -155,7 +152,7 @@ for perf in perf_arr:
                         results_dict_gpt2['Network'].extend(np.repeat('language', num_brain_units))
                         results_dict_gpt2['Model'].extend(np.repeat(f'GPT2-XL{fe}', num_brain_units))
                         
-                        save_best_layer[f"{dataset}_{perf}{shuffled_save_str}{noL2_str}{fe}"] = gpt2_xl_bl
+                        save_best_layer[f"{dataset}_{perf}{shuffled_save_str}{fe}"] = gpt2_xl_bl
                         
                         
                 results_dict_gpt2 = pd.DataFrame(results_dict_gpt2)
@@ -211,7 +208,7 @@ for perf in perf_arr:
                 plot_legend = False
                 
                 subject_avg_pd, dict_pd_merged, dict_pd_with_all = plot_across_subjects(results_simple_gpt2xl.copy(), figurePath=figurePath,  selected_networks=['language'],
-                                                        dataset=dataset, saveName=f'{dataset}{noL2_str}{shuffled_str}_both', 
+                                                        dataset=dataset, saveName=f'{dataset}{noL2_str_oasm}{shuffled_str}_both',
                                                         yticks=[0, ymax], order=['language'], clip_zero=clip_zero, color_palette=palette, 
                                                         draw_lines=False, ms=15, plot_legend=plot_legend, 
                                                         plot_legend_under=False, width=0.7, median=median, ylabel_str=perf_str, legend_fontsize=30, ax_select=ax[index],
@@ -219,9 +216,9 @@ for perf in perf_arr:
                 
                 subject_avg_pd = subject_avg_pd.reset_index()
                 if median:
-                    subject_avg_pd.to_csv(f"/home3/ebrahim2/beyond-brainscore/analyze_results/figures_code/figures_data/figure1/{dataset}_{perf}{noL2_str}{shuffled_save_str}_median.csv", index=False)                
+                    subject_avg_pd.to_csv(f"/home3/ebrahim2/beyond-brainscore/analyze_results/figures_code/figures_data/figure1/{dataset}_{perf}{noL2_str_oasm}{shuffled_save_str}_median.csv", index=False)
                 else:
-                    subject_avg_pd.to_csv(f"/home3/ebrahim2/beyond-brainscore/analyze_results/figures_code/figures_data/figure1/{dataset}_{perf}{noL2_str}{shuffled_save_str}.csv", index=False)                
+                    subject_avg_pd.to_csv(f"/home3/ebrahim2/beyond-brainscore/analyze_results/figures_code/figures_data/figure1/{dataset}_{perf}{noL2_str_oasm}{shuffled_save_str}.csv", index=False)                
                     
                 # so I just do it manually here (fed is always index 1)
                 ax[1].spines['left'].set_visible(False)   # Hide the left spine
@@ -242,12 +239,12 @@ for perf in perf_arr:
                     ax[i].set_xlabel('')
 
                 if median:
-                    fig.savefig(f'{figurePath}figure1{noL2_str}{shuffled_str}_median.png')
-                    fig.savefig(f'{figurePath}figure1{noL2_str}{shuffled_str}_median.pdf',  bbox_inches='tight')
-                           
+                    fig.savefig(f'{figurePath}figure1{noL2_str_oasm}{shuffled_str}_median.png')
+                    fig.savefig(f'{figurePath}figure1{noL2_str_oasm}{shuffled_str}_median.pdf',  bbox_inches='tight')
+
                 else:
-                    fig.savefig(f'{figurePath}figure1{noL2_str}{shuffled_str}.png')
-                    fig.savefig(f'{figurePath}figure1{noL2_str}{shuffled_str}.pdf',  bbox_inches='tight')
+                    fig.savefig(f'{figurePath}figure1{noL2_str_oasm}{shuffled_str}.png')
+                    fig.savefig(f'{figurePath}figure1{noL2_str_oasm}{shuffled_str}.pdf',  bbox_inches='tight')
                                             
 
 np.savez('best_layer_sigma_info/best_sigma', **save_best_sigma)
