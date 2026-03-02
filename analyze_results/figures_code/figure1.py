@@ -9,7 +9,7 @@ import seaborn as sns
 import pandas as pd
 from trained_untrained_results_funcs import find_best_layer, find_best_sigma
 
-noL2_str_gpt = ''               # GPT uses regular ridge
+reg_conditions = ['noL2', 'L2']
 shuffled_arr = [False, True]
 dataset_arr = ['pereira', 'fedorenko', 'blank']
 perf_arr = ['out_of_sample_r2', 'pearson_r']
@@ -21,10 +21,18 @@ save_best_sigma = {}
 save_best_layer = {}
 
 for perf in perf_arr:
-    for shuffled in shuffled_arr:
+    for reg in reg_conditions:
+        for shuffled in shuffled_arr:
 
-        # use custom ridge for non-shuffled OASM, regular ridge for shuffled
-        noL2_str_oasm = '_customRidge' if not shuffled else ''
+            if reg == 'noL2':
+                # no regularization: both OASM and GPT use noL2custom files
+                noL2_str_oasm = '_noL2custom'
+                noL2_str_gpt = '_noL2custom'
+            else:
+                # L2: OASM uses customRidge for contiguous, regular ridge for shuffled
+                # GPT always uses regular ridge
+                noL2_str_oasm = '_customRidge' if not shuffled else ''
+                noL2_str_gpt = ''
             
             fig, ax = plt.subplots(1, 3, figsize=(15, 6))
             
