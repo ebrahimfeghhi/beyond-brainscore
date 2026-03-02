@@ -262,6 +262,7 @@ def himalaya_regression_caller(model: Union[str, dict, np.ndarray],
         out_of_sample_r2 = 1 - pooled_mse/pooled_mse_intercept
         print("R2 mean: ", np.nanmean(out_of_sample_r2))
         print("Pearson r median: ", np.nanmedian(pearson_corr))
+        print("Pearson r mean: ", np.nanmean(pearson_corr))
         
     
         if save_results:
