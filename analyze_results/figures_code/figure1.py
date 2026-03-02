@@ -9,7 +9,6 @@ import seaborn as sns
 import pandas as pd
 from trained_untrained_results_funcs import find_best_layer, find_best_sigma
 
-noL2_str_oasm = '_customRidge'  # OASM uses custom ridge
 noL2_str_gpt = ''               # GPT uses regular ridge
 shuffled_arr = [False, True]
 dataset_arr = ['pereira', 'fedorenko', 'blank']
@@ -23,6 +22,9 @@ save_best_layer = {}
 
 for perf in perf_arr:
     for shuffled in shuffled_arr:
+
+        # use custom ridge for non-shuffled OASM, regular ridge for shuffled
+        noL2_str_oasm = '_customRidge' if not shuffled else ''
             
             fig, ax = plt.subplots(1, 3, figsize=(15, 6))
             
