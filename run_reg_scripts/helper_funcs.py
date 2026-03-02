@@ -617,7 +617,9 @@ def ridge_regression_from_scratch(X_train, y_train, alpha, add_bias=True, device
 
 
 def ridge_regression_cv(X_train, y_train, cv, alphas, add_bias=True, device=2):
-    n_alphas = len(alphas)
+    # alpha=0 makes X^T X singular when samples < features, so exclude it from ridge CV
+    ridge_alphas = alphas[alphas > 0]
+    n_alphas = len(ridge_alphas)
     n_voxels = y_train.shape[1]
 
     # Accumulate val MSE across folds, shape (n_alphas, n_voxels)
@@ -630,7 +632,7 @@ def ridge_regression_cv(X_train, y_train, cv, alphas, add_bias=True, device=2):
         X_fold_val = X_train[val_idx]
         y_fold_val_t = torch.tensor(y_train[val_idx], dtype=torch.float32).to(device)
 
-        for i, alpha in enumerate(alphas):
+        for i, alpha in enumerate(ridge_alphas):
             w = ridge_regression_from_scratch(X_fold_train, y_fold_train, alpha, add_bias=add_bias, device=device)
             y_pred_val = predict_scratch(X_fold_val, w, add_bias=add_bias, device=device)
             mse = ((y_pred_val - y_fold_val_t) ** 2).mean(0).cpu().numpy()
@@ -659,7 +661,7 @@ def ridge_regression_cv(X_train, y_train, cv, alphas, add_bias=True, device=2):
 
     for i in np.unique(best_alpha_idx):
         voxel_mask = (best_alpha_idx == i)
-        A = XtX + alphas[i] * torch.eye(n_features, device=X_train_t.device, dtype=torch.float32)
+        A = XtX + ridge_alphas[i] * torch.eye(n_features, device=X_train_t.device, dtype=torch.float32)
         w_alpha = torch.linalg.solve(A, Xty[:, voxel_mask])
         w_coeffs[:, voxel_mask] = w_alpha
 
